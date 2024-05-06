@@ -23,7 +23,11 @@ services:
       beebot:
         ipv4_address: 192.168.101.121
     entrypoint: ["mongod", "--replSet", "myReplicaSet", "--bind_ip", "localhost,mongo2"]
+
   mongosetup:
+  # refer to:
+  #   - https://www.mongodb.com/resources/products/compatibilities/deploying-a-mongodb-cluster-with-docker
+  #   - https://dev.to/mattdark/deploy-a-mongodb-cluster-with-docker-compose-4ieo
     image: mongo:6
     container_name: mongosetup
     depends_on:
