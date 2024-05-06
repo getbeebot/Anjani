@@ -1,0 +1,47 @@
+services:
+  mongo1:
+    image: mongo:6
+    hostname: mongo1
+    container_name: mongo1
+    expose:
+      - 27017
+    volumes:
+      - ./mongo1:/data/db
+    networks:
+      beebot:
+        ipv4_address: 192.168.101.120
+    entrypoint: ["mongod", "--replSet", "myReplicaSet", "--bind_ip", "localhost,mongo1"]
+  mongo2:
+    image: mongo:6
+    hostname: mongo2
+    container_name: mongo2
+    expose:
+      - 27017
+    volumes:
+      - ./mongo2:/data/db
+    networks:
+      beebot:
+        ipv4_address: 192.168.101.121
+    entrypoint: ["mongod", "--replSet", "myReplicaSet", "--bind_ip", "localhost,mongo2"]
+  mongosetup:
+    image: mongo:6
+    container_name: mongosetup
+    depends_on:
+      - mongo1
+      - mongo2
+    restart: "no"
+    networks:
+      beebot:
+        ipv4_address: 192.168.101.122
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: ["bash", "/scripts/mongo_setup.sh"]
+
+networks:
+  beebot:
+    name: beebot
+    driver: bridge
+    external: true
+    ipam:
+      config:
+        - subnet: 192.168.101.0/24
