@@ -1,4 +1,4 @@
-name: Alpha release
+name: Beta release
 
 on:
   push:
