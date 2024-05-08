@@ -60,7 +60,7 @@ jobs:
       - name: Auto update on dev environment
         run: |
           ssh -T beebot <<'EOL'
-            pushd /home/ops/anjani
+            pushd /home/ops/ops/anjani
             docker compose up -d --build --no-deps --pull always
             docker image prune --force
           EOL
