@@ -1,7 +1,7 @@
 services:
   anjani:
     image: exbee/anjani:alpha.latest
-    container_name: anjaniBot
+    container_name: anjani
     ports:
       - 8000:8000
     env_file:

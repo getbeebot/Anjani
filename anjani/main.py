@@ -124,4 +124,4 @@ def start() -> None:
     loop = asyncio.new_event_loop()
 
     # aiorun.run(Anjani.init_and_run(Config(), loop=loop), loop=loop if _uvloop else None)
-    aiorun(client_server(loop=loop), loop=loop if _uvloop else None)
+    aiorun.run(client_server(loop=loop), loop=loop if _uvloop else None)
