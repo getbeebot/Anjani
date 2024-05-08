@@ -19,7 +19,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, MutableMapping
+from typing import Any, MutableMapping  # noqa: F401
 
 import aiorun
 import colorlog
@@ -28,6 +28,7 @@ import dotenv
 from . import DEFAULT_CONFIG_PATH
 from .core import Anjani
 from .util.config import Config
+from .web_server import web_server
 
 log = logging.getLogger("launch")
 
@@ -66,7 +67,9 @@ def _setup_log() -> None:
             "%(name)-15s  |  %(log_color)s%(message)s%(reset)s"
         )
     else:
-        formatter = logging.Formatter("  %(levelname)-8s  |  %(name)-15s  |  %(message)s")
+        formatter = logging.Formatter(
+            "  %(levelname)-8s  |  %(name)-15s  |  %(message)s"
+        )
     stream = logging.StreamHandler()
     stream.setLevel(level)
     stream.setFormatter(formatter)
@@ -81,6 +84,11 @@ def _setup_log() -> None:
     logging.getLogger("pymongo").setLevel(logging.WARNING)
     logging.getLogger("pyrogram").setLevel(logging.ERROR)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+async def client_server(loop) -> None:
+    tasks = [Anjani.init_and_run(Config(), loop=loop), web_server()]
+    await asyncio.gather(*tasks)
 
 
 def start() -> None:
@@ -115,4 +123,5 @@ def start() -> None:
     log.info("Initializing bot")
     loop = asyncio.new_event_loop()
 
-    aiorun.run(Anjani.init_and_run(Config(), loop=loop), loop=loop if _uvloop else None)
+    # aiorun.run(Anjani.init_and_run(Config(), loop=loop), loop=loop if _uvloop else None)
+    aiorun(client_server(loop=loop), loop=loop if _uvloop else None)

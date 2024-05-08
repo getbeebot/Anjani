@@ -45,7 +45,7 @@ networks:
   beebot:
     name: beebot
     driver: bridge
-    external: true
+    # external: true
     ipam:
       config:
         - subnet: 192.168.101.0/24

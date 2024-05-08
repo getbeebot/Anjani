@@ -49,7 +49,9 @@ def _get_event_data(event: Any) -> MutableMapping[str, Any]:
         return {
             "chat_title": event.chat.title,
             "chat_id": event.chat.id,
-            "user_name": event.from_user.first_name if event.from_user else event.sender_chat.title,
+            "user_name": event.from_user.first_name
+            if event.from_user
+            else event.sender_chat.title,
             "user_id": event.from_user.id if event.from_user else event.sender_chat.id,
             "input": event.text,
         }
@@ -95,7 +97,10 @@ class EventDispatcher(MixinBase):
         priority: int = 100,
         filters: Optional[Filter] = None,
     ) -> None:
-        if event in {"load", "start", "started", "stop", "stopped"} and filters is not None:
+        if (
+            event in {"load", "start", "started", "stop", "stopped"}
+            and filters is not None
+        ):
             self.log.warning("Built-in Listener can't be use with filters. Removing...")
             filters = None
 
@@ -105,7 +110,9 @@ class EventDispatcher(MixinBase):
             )
 
         if filters:
-            self.log.debug("Registering filter '%s' into '%s'", type(filters).__name__, event)
+            self.log.debug(
+                "Registering filter '%s' into '%s'", type(filters).__name__, event
+            )
 
         listener = Listener(event, func, plug, priority, filters)
 
@@ -163,6 +170,22 @@ class EventDispatcher(MixinBase):
             return None
 
         self.log.debug("Dispatching event '%s' with data %s", event, args)
+
+        # storing group info when bot joined
+        if event == "chat_member_update":
+            event_data = args[0]
+            self.log.info(f"event data: {event_data}")
+            group_id = event_data.chat.id
+            group_name = event_data.chat.title
+
+            if event_data.new_chat_member is not None:
+                user_id = event_data.new_chat_member.user.id
+                if user_id == self.uid:
+                    self.log.info(f"Bot joining {group_name}({group_id})")
+                    await util.db.insert_data(
+                        {"group_id": group_id, "group_name": group_name}
+                    )
+
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():
             match = None
@@ -292,7 +315,9 @@ class EventDispatcher(MixinBase):
                 # 1. Change qts to 0, because we want to get all missed events
                 #    so we have a proper loop going on until DifferenceEmpty
                 diff = await self.client.invoke(
-                    functions.updates.get_difference.GetDifference(pts=pts, date=date, qts=-1)
+                    functions.updates.get_difference.GetDifference(
+                        pts=pts, date=date, qts=-1
+                    )
                 )
                 if isinstance(
                     diff,
@@ -320,11 +345,15 @@ class EventDispatcher(MixinBase):
                             ),
                         )
                     )
-                elif isinstance(diff, raw.types.updates.difference_empty.DifferenceEmpty):
+                elif isinstance(
+                    diff, raw.types.updates.difference_empty.DifferenceEmpty
+                ):
                     self.log.info("Missed event exhausted, you are up to date.")
                     date = diff.date
                     break
-                elif isinstance(diff, raw.types.updates.difference_too_long.DifferenceTooLong):
+                elif isinstance(
+                    diff, raw.types.updates.difference_too_long.DifferenceTooLong
+                ):
                     pts = diff.pts
                     continue
                 else:

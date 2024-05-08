@@ -22,3 +22,9 @@ downloads/
 
 # Generated files
 CHANGELOG.md
+
+# mongo db file
+mongo*
+
+# virtual env files
+venv
