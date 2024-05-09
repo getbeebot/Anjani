@@ -174,7 +174,7 @@ class EventDispatcher(MixinBase):
         # storing group info when bot joined
         if event == "chat_member_update":
             event_data = args[0]
-            self.log.info(f"event data: {event_data}")
+            # self.log.info(f"event data: {event_data}")
             group_id = event_data.chat.id
             group_name = event_data.chat.title
 
@@ -182,9 +182,12 @@ class EventDispatcher(MixinBase):
                 user_id = event_data.new_chat_member.user.id
                 if user_id == self.uid:
                     self.log.info(f"Bot joining {group_name}({group_id})")
-                    await util.db.insert_data(
-                        {"group_id": group_id, "group_name": group_name}
-                    )
+                    mysql_client = util.db.AsyncMysqlClient.init_from_env()
+                    await mysql_client.connect()
+                    await mysql_client.insert_group_info({
+                        "group_id": group_id,
+                        "group_name": group_name
+                    })
 
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():

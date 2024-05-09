@@ -1,15 +1,19 @@
+import json
+import logging
+from datetime import datetime, timezone
+
 from pyrogram.client import Client
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+import aiohttp
 import aiohttp.web as web
 from aiohttp import web_response
 from aiohttp.web import Response
 
+from lxml import etree
+
 from .util.config import Config
-
-import json
-from datetime import datetime, timezone
-
-import logging
+from .util.db.mysql import AsyncMysqlClient
 
 config = Config()
 
@@ -40,8 +44,9 @@ async def start_server() -> None:
 
     member_check_router = web.post("/is_member", member_check_handler)
     get_nickname_router = web.post("/users", get_users_handler)
+    update_user_avatar_router = web.get("/update_user", get_user_avatar_handler)
     send_message_router = web.post("/sendmsg", send_message_handler)
-    routers = [member_check_router, get_nickname_router, send_message_router]
+    routers = [member_check_router, get_nickname_router, send_message_router, update_user_avatar_router]
 
     app.add_routes(routers)
 
@@ -96,6 +101,36 @@ async def get_users_handler(request) -> Response:
 
     return response
 
+async def get_user_avatar_handler(request) -> Response:
+    ret_data = { "ok": False }
+    try:
+        user_id = int(request.query.get("user_id"))
+
+        user = await client.get_users(user_id)
+        username = user.username if user.username else None
+        avatar = ""
+        if username is not None:
+            tg_user_uri = f"https://t.me/{user.username}"
+            avatar = await retrieve_avatar_uri(tg_user_uri)
+
+        mysql_client = AsyncMysqlClient.init_from_env()
+        user_info = {
+                "tg_user_id": user_id,
+                "username": username if username else "",
+                "nickname": user.first_name,
+                "avatar": avatar,
+        }
+        await mysql_client.update_user_info(**user_info)
+        ret_data.update({
+            "ok": True,
+            "data": user_info,
+        })
+
+    except  (web.HTTPBadRequest, ValueError) as e:
+        ret_data.update({ "ok": False, "error": str(e)})
+
+    return web_response.json_response(ret_data, status=200)
+
 
 async def send_message_handler(request) -> Response:
     try:
@@ -103,9 +138,11 @@ async def send_message_handler(request) -> Response:
         log.info(f"Incoming request: {payloads}")
 
         chat_id = int(payloads.get("group_id"))
-        user_id = int(payloads.get("user_id"))
-        uri = payloads.get("uri")
-        prize = payloads.get("prize")
+        _cate = int(payloads.get("type"))
+        data = json.loads(payloads.get("data"))
+        user_id = data.get("user_id")
+        uri = data.get("uri")
+        prize = data.get("prize")
 
         user = await client.get_users(user_id)
         username = user.username
@@ -150,3 +187,12 @@ async def is_member(group_id, user_id) -> bool:
             return False
     except:  # noqa: E722
         return False
+
+async def retrieve_avatar_uri(uri) -> str:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(uri) as resp:
+            html_body = await resp.text()
+            xpath = "/html/head/meta[@property='og:image']/@content"
+            html = etree.HTML(html_body)
+            avatar_uri = html.xpath(xpath)[0]
+            return avatar_uri
