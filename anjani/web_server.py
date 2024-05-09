@@ -74,9 +74,7 @@ async def member_check_handler(request) -> Response:
         group_id = int(payloads.get("group_id"))
         user_id = int(payloads.get("user_id"))
 
-        log.debug(f"group_id: {group_id}, user_id: {user_id}")
         res = await is_member(group_id, user_id)
-        log.debug(f"is_member res: {res}")
 
         ret_data = {"res": res}
         response = web_response.json_response(ret_data, status=200)

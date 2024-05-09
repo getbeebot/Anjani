@@ -176,7 +176,7 @@ class EventDispatcher(MixinBase):
         if event == "chat_member_update":
             event_data = args[0]
 
-            self.log.debug("event data: %", "".join(str(event_data).split()))
+            self.log.debug("event data: %s", "".join(str(event_data).split()))
 
             group_id = event_data.chat.id
             group_name = event_data.chat.title
