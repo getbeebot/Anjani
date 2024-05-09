@@ -1,4 +1,8 @@
-from os import getenv
+import json
+import os
+from datetime import datetime, timezone
+
+import aiofiles
 from typing import ClassVar
 
 from pyrogram import filters
@@ -11,8 +15,6 @@ class RepeaterPlugin(plugin.Plugin):
     name: ClassVar[str] = "Repeater Plugin"
     helpable: ClassVar[bool] = True
 
-    java_api = getenv("JAVA_API")
-
     async def cmd_hi(self, ctx: command.Context) -> None:
         await ctx.respond("hola")
 
@@ -20,11 +22,15 @@ class RepeaterPlugin(plugin.Plugin):
     async def on_message(self, message: Message) -> None:
         payloads = "".join(str(message).split())
         self.log.debug(f"Receiving message: {payloads}")
+        payloads = json.loads(payloads)
+        await self.save_message(payloads)
 
-        async with self.bot.http.post(
-            base_url=self.java_api,
-            # headers={},
-            json=payloads,
-        ) as r:
-            res = await r.json()
-            self.log.debug(f"Java api response: {res}")
+    async def save_message(self, message) -> None:
+        target_dir = "messages"
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+
+        now = int(datetime.now(timezone.utc).timestamp())
+        async with aiofiles.open(f"{target_dir}/{now}.json", mode="w") as f:
+            for line in json.dumps(message, indent=4).splitlines(True):
+                await f.write(line)

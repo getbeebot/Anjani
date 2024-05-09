@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone
 
 from pyrogram.client import Client
+from pyrogram.errors import PeerIdInvalid
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import aiohttp
@@ -106,7 +107,15 @@ async def get_user_avatar_handler(request) -> Response:
     try:
         user_id = int(request.query.get("user_id"))
 
-        user = await client.get_users(user_id)
+        try:
+            user = await client.get_users(user_id)
+        except PeerIdInvalid:
+            ret_data.update({ "ok": False, "error": f"User {user_id} not exist"})
+            return web_response.json_response(ret_data, status=200)
+        except Exception as e:
+            ret_data.update({ "ok": False, "error": str(e) })
+            return web_response.json_response(ret_data, status=200)
+
         username = user.username if user.username else None
         avatar = ""
         if username is not None:

@@ -17,6 +17,7 @@
 
 import asyncio
 import bisect
+import json
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, MutableMapping, MutableSequence, Optional, Tuple
@@ -174,7 +175,9 @@ class EventDispatcher(MixinBase):
         # storing group info when bot joined
         if event == "chat_member_update":
             event_data = args[0]
-            # self.log.info(f"event data: {event_data}")
+
+            self.log.debug("event data: %", "".join(str(event_data).split()))
+
             group_id = event_data.chat.id
             group_name = event_data.chat.title
 
