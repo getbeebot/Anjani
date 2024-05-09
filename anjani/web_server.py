@@ -76,6 +76,8 @@ async def member_check_handler(request) -> Response:
 
         res = await is_member(group_id, user_id)
 
+        log.debug(f"is member res: {res}")
+
         ret_data = {"res": res}
         response = web_response.json_response(ret_data, status=200)
 
@@ -189,7 +191,7 @@ async def send_message_handler(request) -> Response:
 async def is_member(group_id, user_id) -> bool:
     try:
         member = await client.get_chat_member(group_id, user_id)
-        log.debug("get member: %s", member)
+        log.debug(f"get member: {member}")
         if member.is_member is None or member.is_member:
             return True
         else:
