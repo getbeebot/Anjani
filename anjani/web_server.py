@@ -190,16 +190,16 @@ async def send_message_handler(request) -> Response:
 
 async def is_member(group_id: int, user_id: int) -> bool:
     try:
-        log.debug("Entering is_member try")
-
         member = await client.get_chat_member(group_id, user_id)
 
         log.debug("Get member: %s", "".join(str(member).split()))
+
         if member.is_member or member.is_member is None:
             return True
         else:
             return False
-    except:  # noqa: E722
+    except Exception as e:  # noqa: E722
+        log.error(f"Get chat member error: {str(e)}")
         return False
 
 async def retrieve_avatar_uri(uri) -> str:
