@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from pyrogram.client import Client
 from pyrogram.errors import PeerIdInvalid
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import User, InlineKeyboardMarkup, InlineKeyboardButton
 
 import aiohttp
 import aiohttp.web as web
@@ -67,6 +67,7 @@ async def start_server() -> None:
 
 
 async def member_check_handler(request) -> Response:
+    ret_data = { "ok": False }
     try:
         payloads = await request.json()
         log.info(f"Incoming request: {payloads}")
@@ -76,16 +77,23 @@ async def member_check_handler(request) -> Response:
 
         res = await is_member(group_id, user_id)
 
-        ret_data = {"res": res}
-        response = web_response.json_response(ret_data, status=200)
+        ret_data.update({
+            "ok": True,
+            "res": res,
+        })
 
-    except (web.HTTPBadRequest, ValueError) as e:
-        return web_response.json_response({"error": str(e)}, status=400)
+    except Exception as e:
+        log.error(f"Member check error: {str(e)}")
+        ret_data.update({
+            "ok": False,
+            "error": str(e),
+        })
 
-    return response
+    return web_response.json_response(ret_data, status=200)
 
 
 async def get_users_handler(request) -> Response:
+    ret_data = { "ok": False }
     try:
         payloads = await request.json()
         log.info(f"Incoming request: {payloads}")
@@ -94,27 +102,26 @@ async def get_users_handler(request) -> Response:
         users = await client.get_users(user_ids)
         log.info("Geting users: %s", users)
 
-        ret_data = {"data": json.dumps(users)}
-        response = web_response.json_response(ret_data, status=200)
+        ret_data.update({
+            "ok": True,
+            "data": json.dumps(users)
+        })
 
-    except (web.HTTPBadRequest, ValueError) as e:
-        return web_response.json_response({"error": str(e)}, status=400)
+    except Exception as e:
+        ret_data.update({
+            "oK": False,
+            "error": str(e),
+        })
 
-    return response
+    return web_response.json_response(ret_data, status=200)
+
 
 async def get_user_avatar_handler(request) -> Response:
     ret_data = { "ok": False }
     try:
         user_id = int(request.query.get("user_id"))
 
-        try:
-            user = await client.get_users(user_id)
-        except PeerIdInvalid:
-            ret_data.update({ "ok": False, "error": f"User {user_id} not exist"})
-            return web_response.json_response(ret_data, status=200)
-        except Exception as e:
-            ret_data.update({ "ok": False, "error": str(e) })
-            return web_response.json_response(ret_data, status=200)
+        user = await client.get_users(user_id)
 
         username = user.username if user.username else None
         avatar = ""
@@ -129,19 +136,26 @@ async def get_user_avatar_handler(request) -> Response:
                 "nickname": user.first_name,
                 "avatar": avatar,
         }
+
         await mysql_client.update_user_info(**user_info)
+
         ret_data.update({
             "ok": True,
             "data": user_info,
         })
 
-    except  (web.HTTPBadRequest, ValueError) as e:
-        ret_data.update({ "ok": False, "error": str(e)})
+    except Exception as e:
+        log.error(f"Get user avatar error: {str(e)}")
+        ret_data.update({
+            "ok": False,
+            "error": str(e)
+        })
 
     return web_response.json_response(ret_data, status=200)
 
 
 async def send_message_handler(request) -> Response:
+    ret_data = { "ok": False }
     try:
         payloads = await request.json()
         log.info(f"Incoming request: {payloads}")
@@ -179,11 +193,15 @@ async def send_message_handler(request) -> Response:
         )
 
         ret_data = {"res": "ok"}
-        response = web_response.json_response(ret_data, status=200)
-    except (web.HTTPBadRequest, ValueError) as e:
-        return web_response.json_response({"error": str(e)}, status=400)
 
-    return response
+    except Exception as e:
+        log.error(f"Sending occurs error: {str(e)}")
+        ret_data.update({
+            "ok": False,
+            "error": str(e),
+        })
+
+    return web_response.json_response(ret_data, status=200)
 
 
 async def is_member(group_id: int, user_id: int) -> bool:
@@ -196,9 +214,10 @@ async def is_member(group_id: int, user_id: int) -> bool:
             return True
         else:
             return False
-    except Exception as e:  # noqa: E722
+    except Exception as e:
         log.error(f"Get chat member error: {str(e)}")
         return False
+
 
 async def retrieve_avatar_uri(uri) -> str:
     async with aiohttp.ClientSession() as session:

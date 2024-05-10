@@ -295,7 +295,7 @@ class Main(plugin.Plugin):
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot_name),
                 reply_markup=InlineKeyboardMarkup(buttons),
-                disable_web_page_preview=True,
+                disable_web_page_preview=False,
                 parse_mode=ParseMode.MARKDOWN,
             )
             return None
