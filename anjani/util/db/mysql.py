@@ -63,7 +63,7 @@ class AsyncMysqlClient:
         finally:
             await cursor.close()
 
-    async def insert(self, sql: str):
+    async def update(self, sql: str):
         if not self.conn:
             await self.connect()
 
@@ -81,15 +81,20 @@ class AsyncMysqlClient:
         finally:
             await cursor.close()
 
-    async def insert_group_info(self, data):
-        group_name = data.get("group_name")
-        group_id = int(data.get("group_id"))
-        sql = f"SELECT * FROM tz_user_tg_group WHERE group_name = '{group_name}' AND group_id = {group_id} AND user_id = 1"
+    async def update_chat_info(self, data):
+        chat_type = int(data.get("chat_type"))
+        chat_name = data.get("chat_name")
+        chat_id = int(data.get("chat_id"))
+        invite_link = data.get("invite_link")
+        sql = f"SELECT * FROM tz_user_tg_group WHERE group_name = '{chat_name}' AND group_id = {chat_id} AND user_id = 1"
         res = await self.query_one(sql)
 
         if res is None:
-            sql = f"INSERT INTO tz_user_tg_group (user_id, group_name, group_id) VALUES (1, '{group_name}', {group_id})"
-            await self.insert(sql)
+            sql = f"INSERT INTO tz_user_tg_group (user_id, group_name, group_id, chat_type, invite_link) VALUES (1, '{chat_name}', {chat_id}, '{chat_type}', '{invite_link}')"
+            await self.update(sql)
+        else:
+            sql = f"UPDATE tz_user_tg_group SET group_name='{chat_name}', chat_type={chat_type}, invite_link='{invite_link}' WHERE group_id='{chat_id}' AND user_id=1"
+            await self.update(sql)
 
     async def update_user_info(self, **data):
         tg_user_id = int(data.get("tg_user_id"))
@@ -102,4 +107,4 @@ class AsyncMysqlClient:
 
         if user_id is not None:
             sql = f"UPDATE tz_user SET user_name='{username}', nick_name='{nickname}', pic='{avatar}' WHERE user_id='{user_id}'"
-            await self.insert(sql)
+            await self.update(sql)

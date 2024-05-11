@@ -26,6 +26,7 @@ from pyrogram import raw
 from pyrogram.filters import Filter
 from pyrogram.raw import functions
 from pyrogram.types import CallbackQuery, InlineQuery, Message
+from pyrogram.enums import ChatType
 
 from anjani import plugin, util
 from anjani.error import EventDispatchError
@@ -178,18 +179,28 @@ class EventDispatcher(MixinBase):
 
             self.log.debug("event data: %s", "".join(str(event_data).split()))
 
-            group_id = event_data.chat.id
-            group_name = event_data.chat.title
+            chat_id = event_data.chat.id
+            chat_name = event_data.chat.title
+            ctype = event_data.chat.type
+
+            if ctype == ChatType.CHANNEL:
+                chat_type = 1
+
+            if ctype == ChatType.GROUP or ctype == ChatType.SUPERGROUP:
+                chat_type = 0
 
             if event_data.new_chat_member is not None:
                 user_id = event_data.new_chat_member.user.id
                 if user_id == self.uid:
-                    self.log.info(f"Bot joining {group_name}({group_id})")
+                    invite_link = await self.client.export_chat_invite_link(chat_id)
+                    self.log.info(f"Bot joining {chat_type} {chat_name}({chat_id}) {invite_link}")
                     mysql_client = util.db.AsyncMysqlClient.init_from_env()
                     await mysql_client.connect()
-                    await mysql_client.insert_group_info({
-                        "group_id": group_id,
-                        "group_name": group_name
+                    await mysql_client.update_chat_info({
+                        "chat_type": chat_type,
+                        "chat_id": chat_id,
+                        "chat_name": chat_name,
+                        "invite_link": invite_link if invite_link else ""
                     })
 
         EventCount.labels(event).inc()
