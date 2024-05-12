@@ -155,13 +155,14 @@ async def get_user_avatar_handler(request) -> Response:
 
 
 async def send_message_handler(request) -> Response:
+    log.debug(f"{request}")
     ret_data = { "ok": False }
     try:
         payloads = await request.json()
         log.info(f"Incoming request: {payloads}")
 
         chat_id = int(payloads.get("group_id"))
-        _cate = int(payloads.get("type"))
+        chat_type = int(payloads.get("type"))
         data = json.loads(payloads.get("data"))
         user_id = data.get("user_id")
         uri = data.get("uri")
