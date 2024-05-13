@@ -213,6 +213,8 @@ Join the excitement
             content = f"""
 🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
 """
+
+        # sending message
         log.debug(f"sending message {content}")
         await client.send_message(
             chat_id,
@@ -224,15 +226,6 @@ Join the excitement
 
         # now = datetime.now(timezone.utc)
         # date_str = now.strftime("%Y/%m/%d %H:%M UTC")
-
-        log.debug(f"sending message {content}")
-        await client.send_message(
-            chat_id,
-            content,
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("Enter", url=uri)]]
-            ),
-        )
 
         ret_data = {"res": "ok"}
 
