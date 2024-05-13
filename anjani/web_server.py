@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 from datetime import datetime, timezone
@@ -6,6 +7,7 @@ from pyrogram.client import Client
 from pyrogram.errors import PeerIdInvalid
 from pyrogram.types import User, InlineKeyboardMarkup, InlineKeyboardButton
 
+import asyncio
 import aiohttp
 import aiohttp.web as web
 from aiohttp import web_response
@@ -14,7 +16,7 @@ from aiohttp.web import Response
 from lxml import etree
 
 from .util.config import Config
-from .util.db.mysql import AsyncMysqlClient
+# from .util.db.mysql import AsyncMysqlClient
 
 config = Config()
 
@@ -129,7 +131,7 @@ async def get_user_avatar_handler(request) -> Response:
             tg_user_uri = f"https://t.me/{user.username}"
             avatar = await retrieve_avatar_uri(tg_user_uri)
 
-        mysql_client = AsyncMysqlClient.init_from_env()
+        # mysql_client = AsyncMysqlClient.init_from_env()
         user_info = {
                 "tg_user_id": user_id,
                 "username": username if username else "",
@@ -137,7 +139,7 @@ async def get_user_avatar_handler(request) -> Response:
                 "avatar": avatar,
         }
 
-        await mysql_client.update_user_info(**user_info)
+        # await mysql_client.update_user_info(**user_info)
 
         ret_data.update({
             "ok": True,
@@ -173,21 +175,10 @@ async def send_message_handler(request) -> Response:
 
         chat_id = int(chat_id)
 
-        nick_names = data.get("nickNames")
-        # type check
-        if not isinstance(nick_names, list) and not isinstance(nick_names, str):
-            return web_response.json_response({
-                "ok": False,
-                "error": "nick_names should be a list or string",
-            })
-
-        if isinstance(nick_names, list):
-            nick_names = ", ".join(nick_names)
-
         uri = data.get("uri", "")
         prize = data.get("prize", "")
-        end_time = data.get("endTime")
-        community_name = data.get("communityName")
+        end_time = data.get("endTime", "")
+        community_name = data.get("communityName", "")
 
         notify_type = data.get("notifyType")
         # create lottery task
@@ -201,6 +192,17 @@ Join the excitement
 
         # user entered the draw
         if notify_type == 2:
+            nick_names = data.get("nickNames")
+            # type check
+            if not isinstance(nick_names, list) and not isinstance(nick_names, str):
+                return web_response.json_response({
+                    "ok": False,
+                    "error": "nick_names should be a list or string",
+                })
+
+            if isinstance(nick_names, list):
+                nick_names = ", ".join(nick_names)
+
             content = f"""
 {nick_names} has entered the luckydraw
 
@@ -213,6 +215,23 @@ Join the excitement
             content = f"""
 🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
 """
+
+        # sending file to community admin
+        if notify_type == 4:
+            filename = data.get("fileName")
+            filepath = f"./lottery/{filename}"
+            try:
+                log.debug(f"sending file {filename} to {chat_id}")
+                await client.send_document(chat_id, document=filepath)
+
+                ret_data.update({"ok": True})
+            except Exception as e:
+                ret_data.update({"error": str(e)})
+
+            # remove the file after sending
+            await asyncio.to_thread(os.remove, filepath)
+
+            return web_response.json_response(ret_data)
 
         # sending message
         log.debug(f"sending message {content}")
