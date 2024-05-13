@@ -160,30 +160,72 @@ async def send_message_handler(request) -> Response:
         payloads = await request.json()
         log.info(f"Incoming request: {payloads}")
 
-        chat_id = int(payloads.get("chat_id"))
         chat_type = int(payloads.get("type"))
+
         data = json.loads(payloads.get("data"))
-        user_id = data.get("user_id")
-        uri = data.get("uri")
-        prize = data.get("prize")
 
-        user = await client.get_users(user_id)
-        username = user.username
+        chat_id = payloads.get("chat_id", None) if payloads.get("chat_id", None) else data.get("owner", None)
+        if chat_id is None:
+            return web_response.json_response({
+                "ok": False,
+                "error": "No chat_id or owner, please checkout the request arguments.",
+            })
 
-        now = datetime.now(timezone.utc)
-        date_str = now.strftime("%Y/%m/%d %H:%M UTC")
+        chat_id = int(chat_id)
 
-        content = f"""
-@{username} has entered the luckydraw
+        nick_names = data.get("nick_names")
+        # type check
+        if not isinstance(nick_names, list) and not isinstance(nick_names, str):
+            return web_response.json_response({
+                "ok": False,
+                "error": "nick_names should be a list or string",
+            })
 
-🎉  Draw Time: {date_str}
+        if isinstance(nick_names, list):
+            nick_names = ", ".join(nick_names)
+
+        uri = data.get("uri", "")
+        prize = data.get("prize", "")
+        end_time = data.get("end_time")
+        community_name = data.get("community_name")
+
+        notify_type = data.get("notifyType")
+        # create lottery task
+        if notify_type == 1:
+            content = f"""
+Attention {community_name} Community Luck Draw launched!
+Prize: {prize}
+End time: {end_time}
+Join the excitement
+"""
+
+        # user entered the draw
+        if notify_type == 2:
+            content = f"""
+{nick_names} has entered the luckydraw
+
+🎉  Draw Time: {end_time}
 🎁  Prize Details: {prize}
 """
 
-        chat = await client.get_chat(chat_id)
-        group_name = chat.title
+        # lottory draw winner announce
+        if notify_type == 3:
+            content = f"""
+🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
+"""
+        log.debug(f"sending message {content}")
+        await client.send_message(
+            chat_id,
+            content,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Enter", url=uri)]]
+            ),
+        )
 
-        log.debug(f"sending message {content} to {group_name}")
+        # now = datetime.now(timezone.utc)
+        # date_str = now.strftime("%Y/%m/%d %H:%M UTC")
+
+        log.debug(f"sending message {content}")
         await client.send_message(
             chat_id,
             content,
