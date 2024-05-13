@@ -164,7 +164,7 @@ async def send_message_handler(request) -> Response:
 
         data = json.loads(payloads.get("data"))
 
-        chat_id = payloads.get("chat_id", None) if payloads.get("chat_id", None) else data.get("owner", None)
+        chat_id = payloads.get("chatId", None) if payloads.get("chatId", None) else data.get("owner", None)
         if chat_id is None:
             return web_response.json_response({
                 "ok": False,
@@ -173,7 +173,7 @@ async def send_message_handler(request) -> Response:
 
         chat_id = int(chat_id)
 
-        nick_names = data.get("nick_names")
+        nick_names = data.get("nickNames")
         # type check
         if not isinstance(nick_names, list) and not isinstance(nick_names, str):
             return web_response.json_response({
@@ -186,8 +186,8 @@ async def send_message_handler(request) -> Response:
 
         uri = data.get("uri", "")
         prize = data.get("prize", "")
-        end_time = data.get("end_time")
-        community_name = data.get("community_name")
+        end_time = data.get("endTime")
+        community_name = data.get("communityName")
 
         notify_type = data.get("notifyType")
         # create lottery task
