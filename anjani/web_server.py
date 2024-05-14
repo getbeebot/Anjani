@@ -185,8 +185,11 @@ async def send_message_handler(request) -> Response:
 
         uri = data.get("uri", "")
         prize = data.get("prize", "")
-        end_time_ts = data.get("endTime", "")
+
+        end_time_ms = data.get("endTime", "")
+        end_time_ts = end_time_ms / 1000
         end_time = datetime.fromtimestamp(timestamp=end_time_ts, tz=timezone.utc).strftime("%Y/%m/%d %H:%M UTC")
+
         community_name = data.get("communityName", "")
 
         notify_type = data.get("notifyType")
