@@ -188,7 +188,7 @@ async def send_message_handler(request) -> Response:
 
         end_time_ms = data.get("endTime", "")
         end_time_ts = end_time_ms / 1000
-        end_time = datetime.fromtimestamp(timestamp=end_time_ts, tz=timezone.utc).strftime("%Y/%m/%d %H:%M UTC")
+        end_time = datetime.fromtimestamp(timestamp=end_time_ts, tz=timezone.utc).strftime("%Y/%m/%d %H:%M (UTC)")
 
         community_name = data.get("communityName", "")
 
