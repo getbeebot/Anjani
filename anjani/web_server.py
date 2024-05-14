@@ -159,8 +159,8 @@ async def get_user_avatar_handler(request) -> Response:
 async def send_message_handler(request) -> Response:
     ret_data = { "ok": False }
     try:
-        payloads = await request.post()
-        log.info(f"Incoming request: {str(request)}")
+        payloads = await request.json()
+        log.info(f"Incoming request: {str(payloads)}")
 
         chat_type = int(payloads.get("type"))
 
@@ -247,7 +247,7 @@ Join the excitement
             chat_id,
             content,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("Enter", url=uri)]]
+                [[InlineKeyboardButton("🕹 Enter", url=uri)]]
             ),
         )
 
