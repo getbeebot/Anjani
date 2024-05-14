@@ -160,7 +160,7 @@ async def send_message_handler(request) -> Response:
     ret_data = { "ok": False }
     try:
         payloads = await request.post()
-        log.info(f"Incoming request: {str(payloads)}")
+        log.info(f"Incoming request: {str(request)}")
 
         chat_type = int(payloads.get("type"))
 
