@@ -160,18 +160,26 @@ async def send_message_handler(request) -> Response:
     ret_data = { "ok": False }
     try:
         payloads = await request.post()
-        log.info(f"Incoming request: {payloads}")
+        log.info(f"Incoming request: {str(payloads)}")
 
         chat_type = int(payloads.get("type"))
 
+        assert chat_type == 88, "Not support type"
+
         data = payloads.get("data")
 
-        chat_id = payloads.get("chatId", None) if payloads.get("chatId", None) else data.get("owner", None)
+        chat_id = payloads.get("chatId")
+
+        if chat_id is None:
+            chat_id = data.get("owner")
+
         if chat_id is None:
             return web_response.json_response({
                 "ok": False,
                 "error": "No chat_id or owner, please checkout the request arguments.",
             })
+
+        assert isinstance(chat_id, str) or isinstance(chat_id, int), "chatId/data.owner not found or not correct type"
 
         chat_id = int(chat_id)
 
