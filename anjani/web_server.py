@@ -185,7 +185,8 @@ async def send_message_handler(request) -> Response:
 
         uri = data.get("uri", "")
         prize = data.get("prize", "")
-        end_time = data.get("endTime", "")
+        end_time_ts = data.get("endTime", "")
+        end_time = datetime.fromtimestamp(timestamp=end_time_ts, tz=timezone.utc).strftime("%Y/%m/%d %H:%M UTC")
         community_name = data.get("communityName", "")
 
         notify_type = data.get("notifyType")
@@ -209,10 +210,10 @@ Join the excitement
                 })
 
             if isinstance(nick_names, list):
-                nick_names = ", ".join(nick_names)
+                nick_names = ", @".join(nick_names)
 
             content = f"""
-{nick_names} has entered the luckydraw
+@{nick_names} has entered the luckydraw
 
 🎉  Draw Time: {end_time}
 🎁  Prize Details: {prize}
@@ -250,9 +251,6 @@ Join the excitement
                 [[InlineKeyboardButton("🕹 Enter", url=uri)]]
             ),
         )
-
-        # now = datetime.now(timezone.utc)
-        # date_str = now.strftime("%Y/%m/%d %H:%M UTC")
 
         ret_data = {"res": "ok"}
 
