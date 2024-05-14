@@ -158,15 +158,13 @@ async def get_user_avatar_handler(request) -> Response:
 
 async def send_message_handler(request) -> Response:
     ret_data = { "ok": False }
-    req_args = await request.post()
-    log.debug(f"Incoming request {str(request)}, {req_args}")
     try:
-        payloads = await request.json()
+        payloads = await request.post()
         log.info(f"Incoming request: {payloads}")
 
         chat_type = int(payloads.get("type"))
 
-        data = json.loads(payloads.get("data"))
+        data = payloads.get("data")
 
         chat_id = payloads.get("chatId", None) if payloads.get("chatId", None) else data.get("owner", None)
         if chat_id is None:
