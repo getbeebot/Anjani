@@ -146,6 +146,7 @@ class Greeting(plugin.Plugin):
             return
 
         new_members = message.new_chat_members
+
         is_bulk_welcome = len(new_members) > 1
         for idx, new_member in enumerate(new_members):
             try:
@@ -156,6 +157,8 @@ class Greeting(plugin.Plugin):
                     #     await self.text(chat.id, "bot-added"),
                     #     reply_to_message_id=reply_to,
                     # )
+                elif new_member.is_bot: # ignore bot
+                    pass
                 else:
                     text, button, msg_type, file_id = await self.welc_message(chat.id)
                     msg_type = Types(msg_type) if msg_type else Types.TEXT
