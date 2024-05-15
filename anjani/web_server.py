@@ -236,6 +236,7 @@ Join the excitement
         # sending file to community admin
         if notify_type == 4:
             filename = data.get("lotteryFileName")
+            chat_id = data.get("owner")
             filepath = f"./lottery/{filename}"
             try:
                 log.info(f"sending file {filename} to {chat_id}")
@@ -246,7 +247,7 @@ Join the excitement
                 ret_data.update({"error": str(e)})
 
             # remove the file after sending
-            await asyncio.to_thread(os.remove, filepath)
+            # await asyncio.to_thread(os.remove, filepath)
 
             return web_response.json_response(ret_data)
 
