@@ -16,7 +16,7 @@ from aiohttp.web import Response
 from lxml import etree
 
 from .util.config import Config
-# from .util.db.mysql import AsyncMysqlClient
+from .util.db.mysql import AsyncMysqlClient
 
 config = Config()
 
@@ -131,7 +131,7 @@ async def get_user_avatar_handler(request) -> Response:
             tg_user_uri = f"https://t.me/{user.username}"
             avatar = await retrieve_avatar_uri(tg_user_uri)
 
-        # mysql_client = AsyncMysqlClient.init_from_env()
+        mysql_client = AsyncMysqlClient.init_from_env()
 
         firstname = user.first_name or ""
         lastname = user.last_name
@@ -144,7 +144,7 @@ async def get_user_avatar_handler(request) -> Response:
                 "avatar": avatar,
         }
 
-        # await mysql_client.update_user_info(**user_info)
+        await mysql_client.update_user_info(**user_info)
 
         ret_data.update({
             "ok": True,
