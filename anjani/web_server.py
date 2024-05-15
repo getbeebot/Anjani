@@ -132,10 +132,15 @@ async def get_user_avatar_handler(request) -> Response:
             avatar = await retrieve_avatar_uri(tg_user_uri)
 
         # mysql_client = AsyncMysqlClient.init_from_env()
+
+        firstname = user.first_name or ""
+        lastname = user.last_name
+        fullname = firstname + " " + lastname if lastname else firstname
+
         user_info = {
                 "tg_user_id": user_id,
                 "username": username if username else "",
-                "nickname": user.first_name,
+                "nickname": fullname,
                 "avatar": avatar,
         }
 

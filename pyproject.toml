@@ -55,6 +55,7 @@ prometheus-client = "^0.20.0"
 mysql-connector-python = "^8.4.0"
 lxml = "^5.2.1"
 aiofiles = "^23.2.1"
+msgpack = "^1.0.8"
 
 [tool.poetry.extras]
 all = ["uvloop"]

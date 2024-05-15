@@ -287,7 +287,6 @@ language-help: |
   You can choose your language preference!\n
   **Available languages:**
   - 🇺🇸 English.
-  - 🇮🇩 Indonesia.\n
   Commands:
   ×  /setlang | /lang | /language : set your preferred language.\n
   **Note**
@@ -574,10 +573,8 @@ greetings-topic-default: |
   Forum chat detected. Bot will use the default action topic for greetings.
   To set a default action topic, please set a default action topic as mentioned in this [topic help]({}).
 greetings-no-input: Please provide the text you want to set!
-bot-added: |
-  Hi... Thanks for inviting me.
-  To see available commands type /help.
-default-welcome: Hey {first}, how are you?\nWelcome to {chatname}
+bot-added: ""
+default-welcome: Welcome {first} to join {chatname}.\nCheckout current community rewards available! 👇
 clean-serv-set: Turned {} service messages cleaning.
 welcome-set: Welcome turned {} on new member join.
 welcome-message-expired: File ID for the media message got expired.\n__This might have occured because you must have changed the bot token. Please re-add the welcome media.__

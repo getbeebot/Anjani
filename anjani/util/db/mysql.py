@@ -108,3 +108,8 @@ class AsyncMysqlClient:
         if user_id is not None:
             sql = f"UPDATE tz_user SET user_name='{username}', nick_name='{nickname}', pic='{avatar}' WHERE user_id='{user_id}'"
             await self.update(sql)
+
+    async def query_project_id_by_chat_id(self, chat_id: int) -> int:
+        sql = f"SELECT id FROM bot_project WHERE target_id={chat_id}"
+        (project_id, ) = await self.query_one(sql)
+        return project_id

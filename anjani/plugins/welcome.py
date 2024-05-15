@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import asyncio
 from html import escape
 from typing import (
@@ -40,6 +41,10 @@ from pyrogram.errors import (
 from pyrogram.types import Chat, Message, User
 from pyrogram.types.messages_and_media.message import Str
 
+import msgpack
+
+from anjani.util.db import AsyncMysqlClient
+
 from anjani import command, filters, plugin, util
 from anjani.util.tg import (
     Button,
@@ -58,6 +63,9 @@ class Greeting(plugin.Plugin):
     db: util.db.AsyncCollection
     chat_db: util.db.AsyncCollection
     SEND: MutableMapping[int, Callable[..., Coroutine[Any, Any, Optional[Message]]]]
+
+    TWA_LINK = os.getenv("TWA_LINK")
+    mysql_client = AsyncMysqlClient.init_from_env()
 
     async def on_load(self) -> None:
         self.db = self.bot.db.get_collection("WELCOME")
@@ -98,8 +106,8 @@ class Greeting(plugin.Plugin):
         if message.new_chat_members:
             return await self._member_join(message, reply_to, thread_id)
 
-        if message.left_chat_member:
-            return await self._member_leave(message, reply_to, thread_id)
+        # if message.left_chat_member:
+        #     return await self._member_leave(message, reply_to, thread_id)
 
     async def _member_leave(
         self, message: Message, reply_to: int, thread_id: Optional[int]
@@ -141,11 +149,12 @@ class Greeting(plugin.Plugin):
         for idx, new_member in enumerate(new_members):
             try:
                 if new_member.id == self.bot.uid:
-                    await self.bot.client.send_message(
-                        chat.id,
-                        await self.text(chat.id, "bot-added"),
-                        reply_to_message_id=reply_to,
-                    )
+                    pass
+                    # await self.bot.client.send_message(
+                    #     chat.id,
+                    #     await self.text(chat.id, "bot-added"),
+                    #     reply_to_message_id=reply_to,
+                    # )
                 else:
                     text, button, msg_type, file_id = await self.welc_message(chat.id)
                     msg_type = Types(msg_type) if msg_type else Types.TEXT
@@ -161,7 +170,22 @@ class Greeting(plugin.Plugin):
                     if button:
                         button = build_button(button)
                     else:
-                        button = None
+                        url = None
+                        try:
+                            await self.mysql_client.connect()
+
+                            project_id = await self.mysql_client.query_project_id_by_chat_id(chat.id)
+
+                            args = msgpack.packb({
+                                "target": "projectDetail",
+                                "id": project_id,
+                            })
+                            url = f"{self.TWA_LINK}={args}"
+                        except Exception as e:
+                            self.log.error(str(e))
+                        if url is None:
+                            url = self.TWA_LINK
+                        button = build_button([("🕹 Enter", url, False)])
                     msg = None
                     try:
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
