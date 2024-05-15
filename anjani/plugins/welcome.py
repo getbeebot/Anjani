@@ -42,6 +42,7 @@ from pyrogram.types import Chat, Message, User
 from pyrogram.types.messages_and_media.message import Str
 
 import msgpack
+import base58
 
 from anjani.util.db import AsyncMysqlClient
 
@@ -180,11 +181,17 @@ class Greeting(plugin.Plugin):
                                 "target": "projectDetail",
                                 "id": project_id,
                             })
+
+                            args = base58.b58encode(args).decode("utf-8")
+
                             url = f"{self.TWA_LINK}={args}"
                         except Exception as e:
                             self.log.error(str(e))
                         if url is None:
                             url = self.TWA_LINK
+
+                        self.log.info(f"Welcome butten url in {chat.title}: {url}")
+
                         button = build_button([("🕹 Enter", url, False)])
                     msg = None
                     try:
