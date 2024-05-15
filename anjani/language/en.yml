@@ -574,7 +574,7 @@ greetings-topic-default: |
   To set a default action topic, please set a default action topic as mentioned in this [topic help]({}).
 greetings-no-input: Please provide the text you want to set!
 bot-added: ""
-default-welcome: Welcome {first} to join {chatname}.\nCheckout current community rewards available! 👇
+default-welcome: Welcome @{first} to join {chatname}.\nCheckout current community rewards available! 👇
 clean-serv-set: Turned {} service messages cleaning.
 welcome-set: Welcome turned {} on new member join.
 welcome-message-expired: File ID for the media message got expired.\n__This might have occured because you must have changed the bot token. Please re-add the welcome media.__
