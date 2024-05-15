@@ -235,10 +235,10 @@ Join the excitement
 
         # sending file to community admin
         if notify_type == 4:
-            filename = data.get("fileName")
+            filename = data.get("lotteryFileName")
             filepath = f"./lottery/{filename}"
             try:
-                log.debug(f"sending file {filename} to {chat_id}")
+                log.info(f"sending file {filename} to {chat_id}")
                 await client.send_document(chat_id, document=filepath)
 
                 ret_data.update({"ok": True})
@@ -251,7 +251,7 @@ Join the excitement
             return web_response.json_response(ret_data)
 
         # sending message
-        log.debug(f"sending message {content}")
+        log.info(f"sending message {content}")
         await client.send_message(
             chat_id,
             content,
