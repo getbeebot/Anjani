@@ -4,10 +4,8 @@ import logging
 from datetime import datetime, timezone
 
 from pyrogram.client import Client
-from pyrogram.errors import PeerIdInvalid
 from pyrogram.types import User, InlineKeyboardMarkup, InlineKeyboardButton
 
-import asyncio
 import aiohttp
 import aiohttp.web as web
 from aiohttp import web_response
@@ -16,7 +14,7 @@ from aiohttp.web import Response
 from lxml import etree
 
 from .util.config import Config
-from .util.db.mysql import AsyncMysqlClient
+from .templates import get_template
 
 config = Config()
 
@@ -161,6 +159,12 @@ async def get_user_avatar_handler(request) -> Response:
     return web_response.json_response(ret_data, status=200)
 
 
+class InvalidArgumentError(Exception):
+    pass
+
+class ArgumentTypeError(Exception):
+    pass
+
 async def send_message_handler(request) -> Response:
     ret_data = { "ok": False }
     try:
@@ -175,63 +179,36 @@ async def send_message_handler(request) -> Response:
 
         chat_id = payloads.get("chatId")
 
-        if chat_id is None:
+        if not chat_id:
             chat_id = data.get("owner")
 
-        if chat_id is None:
-            return web_response.json_response({
-                "ok": False,
-                "error": "No chat_id or owner, please checkout the request arguments.",
-            })
+        if not chat_id:
+            raise InvalidArgumentError("No chat_id or owner, please checkout the request arguments.")
 
         assert isinstance(chat_id, str) or isinstance(chat_id, int), "chatId/data.owner not found or not correct type"
 
         chat_id = int(chat_id)
 
-        uri = data.get("uri", "")
-        prize = data.get("prize", "")
+        uri = data.get("uri")
 
-        end_time_ms = data.get("endTime", "")
-        end_time_ts = end_time_ms / 1000
-        end_time = datetime.fromtimestamp(timestamp=end_time_ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
-
-        community_name = data.get("communityName", "")
+        if not uri:
+            uri = os.getenv("TWA_LINK")
 
         notify_type = data.get("notifyType")
         # create lottery task
         if notify_type == 1:
-            content = f"""
-Attention {community_name} Community Luck Draw launched!
-Prize: {prize}
-End time: {end_time}
-Join the excitement
-"""
+            template = await get_template("lottery-create")
+            content = build_lottery_create_msg(template, **data)
 
         # user entered the draw
         if notify_type == 2:
-            nick_names = data.get("nickNames")
-            # type check
-            if not isinstance(nick_names, list) and not isinstance(nick_names, str):
-                return web_response.json_response({
-                    "ok": False,
-                    "error": "nick_names should be a list or string",
-                })
-
-            if isinstance(nick_names, list):
-                nick_names = ", @".join(nick_names)
-
-            content = f"""
-@{nick_names} has entered the luckydraw
-
-🎉  Draw Time: {end_time}
-🎁  Prize Details: {prize}
-"""
+            template = await get_template("lottery-join")
+            content = build_lottery_join_msg(template, **data)
 
         # lottory draw winner announce
         if notify_type == 3:
-            content = f"""
-🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
-"""
+            template = await get_template("lottery-end")
+            content = build_lottery_end_msg(template, **data)
 
         # sending file to community admin
         if notify_type == 4:
@@ -296,3 +273,37 @@ async def retrieve_avatar_uri(uri) -> str:
             html = etree.HTML(html_body)
             avatar_uri = html.xpath(xpath)[0]
             return avatar_uri
+
+
+
+def build_lottery_create_msg(template: str, **args) -> str:
+    community_name = args.get("communityName", "")
+    prize = args.get("prize")
+
+    end_time_ms = args.get("endTime", 0)
+    end_time = format_timestamp(end_time_ms)
+
+    return template.format(community_name=community_name, prize=prize, end_time=end_time)
+
+def build_lottery_join_msg(template: str, **args) -> str:
+    nick_names = args.get("nickNames")
+    # type check
+    if not isinstance(nick_names, list) and not isinstance(nick_names, str):
+        raise ArgumentTypeError("nick_names should be a list or string")
+
+    if isinstance(nick_names, list):
+        nick_names = ", @".join(nick_names)
+
+    end_time_ms = args.get("endTime", 0)
+    end_time = format_timestamp(end_time_ms)
+
+    prize = args.get("prize")
+
+    return template.format(nick_names=nick_names, end_time=end_time, prize=prize)
+
+def build_lottery_end_msg(template: str, **args) -> str:
+    community_name = args.get("communityName", "")
+    return template.format(community_name=community_name)
+
+def format_timestamp(ts: int) -> str:
+    return datetime.fromtimestamp(timestamp=ts/1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")

@@ -33,7 +33,7 @@ from anjani import command, filters, listener, plugin, util
 
 LANG_FLAG = {
     "en": f"{emoji.FLAG_UNITED_STATES} English",
-    "id": f"{emoji.FLAG_INDONESIA} Indonesia",
+    # "id": f"{emoji.FLAG_INDONESIA} Indonesia",
 }
 
 
