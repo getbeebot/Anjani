@@ -171,7 +171,12 @@ async def send_message_handler(request) -> Response:
         payloads = await request.json()
         log.info(f"Incoming request: {str(payloads)}")
 
-        chat_type = int(payloads.get("type"))
+        chat_type = payloads.get("type")
+
+        if not chat_type:
+            raise InvalidArgumentError("No type argument, please checkout the request arguments.")
+
+        assert isinstance(chat_type, int), "type argument should be int, but got an non-int, please check it out"
 
         assert chat_type == 88, "Not support type"
 
@@ -194,39 +199,32 @@ async def send_message_handler(request) -> Response:
         if not uri:
             uri = os.getenv("TWA_LINK")
 
+        content: str = ""
         notify_type = data.get("notifyType")
-        # create lottery task
-        if notify_type == 1:
+
+        if notify_type == 1:    # create lottery task
             template = await get_template("lottery-create")
             content = build_lottery_create_msg(template, **data)
-
-        # user entered the draw
-        if notify_type == 2:
+        elif notify_type == 2:  # user entered the draw
             template = await get_template("lottery-join")
             content = build_lottery_join_msg(template, **data)
-
-        # lottory draw winner announce
-        if notify_type == 3:
+        elif notify_type == 3:  # lottory draw winner announce
             template = await get_template("lottery-end")
             content = build_lottery_end_msg(template, **data)
-
-        # sending file to community admin
-        if notify_type == 4:
+        elif notify_type == 4:  # sending file to community admin
             filename = data.get("lotteryFileName")
             chat_id = data.get("owner")
-            filepath = f"./lottery/{filename}"
-            try:
-                log.info(f"sending file {filename} to {chat_id}")
-                await client.send_document(chat_id, document=filepath)
+            base_link = os.getenv("WEBSITE", "https://getbeebot.com")
+            download_link = f"{base_link}/downloads/{filename}"
+            content = f"Please download the winners data via {download_link}"
 
-                ret_data.update({"ok": True})
-            except Exception as e:
-                ret_data.update({"error": str(e)})
+            await client.send_message(chat_id, content)
+            log.info(f"send {download_link} to {chat_id}")
 
-            # remove the file after sending
-            # await asyncio.to_thread(os.remove, filepath)
-
+            ret_data.update({"ok": True})
             return web_response.json_response(ret_data)
+        else:
+            raise InvalidArgumentError("Not support notifyType")
 
         # sending message
         log.info(f"sending message {content}")
@@ -275,7 +273,6 @@ async def retrieve_avatar_uri(uri) -> str:
             return avatar_uri
 
 
-
 def build_lottery_create_msg(template: str, **args) -> str:
     community_name = args.get("communityName", "")
     prize = args.get("prize")
@@ -284,6 +281,7 @@ def build_lottery_create_msg(template: str, **args) -> str:
     end_time = format_timestamp(end_time_ms)
 
     return template.format(community_name=community_name, prize=prize, end_time=end_time)
+
 
 def build_lottery_join_msg(template: str, **args) -> str:
     nick_names = args.get("nickNames")
@@ -301,9 +299,11 @@ def build_lottery_join_msg(template: str, **args) -> str:
 
     return template.format(nick_names=nick_names, end_time=end_time, prize=prize)
 
+
 def build_lottery_end_msg(template: str, **args) -> str:
     community_name = args.get("communityName", "")
     return template.format(community_name=community_name)
+
 
 def format_timestamp(ts: int) -> str:
     return datetime.fromtimestamp(timestamp=ts/1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")

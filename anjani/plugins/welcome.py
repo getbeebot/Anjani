@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import asyncio
 from html import escape
 from typing import (
@@ -41,9 +40,6 @@ from pyrogram.errors import (
 from pyrogram.types import Chat, Message, User
 from pyrogram.types.messages_and_media.message import Str
 
-import msgpack
-import base58
-
 from anjani.util.db import AsyncMysqlClient
 
 from anjani import command, filters, plugin, util
@@ -55,6 +51,7 @@ from anjani.util.tg import (
     parse_button,
     revert_button,
 )
+from anjani.util.twa import TWA
 
 
 class Greeting(plugin.Plugin):
@@ -65,7 +62,6 @@ class Greeting(plugin.Plugin):
     chat_db: util.db.AsyncCollection
     SEND: MutableMapping[int, Callable[..., Coroutine[Any, Any, Optional[Message]]]]
 
-    TWA_LINK = os.getenv("TWA_LINK")
     mysql_client = AsyncMysqlClient.init_from_env()
 
     async def on_load(self) -> None:
@@ -177,23 +173,14 @@ class Greeting(plugin.Plugin):
                         url = None
                         try:
                             await self.mysql_client.connect()
-
                             project_id = await self.mysql_client.query_project_id_by_chat_id(chat.id)
-
-                            args = msgpack.packb({
-                                "target": "projectDetail",
-                                "id": project_id,
-                            })
-
-                            args = base58.b58encode(args).decode("utf-8")
-
-                            url = f"{self.TWA_LINK}={args}"
+                            url = TWA.generate_project_detail_link(TWA(), project_id)
                         except Exception as e:
                             self.log.error(str(e))
                         if url is None:
-                            url = self.TWA_LINK
+                            url = TWA.TWA_LINK
 
-                        self.log.info(f"Welcome butten url in {chat.title}: {url}")
+                        self.log.info(f"Welcome button url in {chat.title}: {url}")
 
                         button = build_button([("🕹 Enter", url, False)])
                     msg = None
