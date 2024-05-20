@@ -270,7 +270,6 @@ class Main(plugin.Plugin):
                         self.switch_lang(chat.id, "en"),
                         ctx.respond(await self.text(chat.id, "language-set-succes", LANG_FLAG["en"])),
                     )
-                return None
 
             if ctx.input:
                 rules_re = re.compile(r"rules_(.*)")
