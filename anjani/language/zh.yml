@@ -1,0 +1,11 @@
+start-pm: |
+  🙋‍♀️ 为了帮你自动识别群友任务的完成状态，请将我 @beecon_bot 添加到您管理的群组，并指定为管理员。
+add-to-group-button: + 把我加进群组 +
+#region language
+language-set-succes: 已将语言设置为 {}
+#endregion
+#region beecon
+faq-button: 💬 FAQ
+channel-button: 💎 官方频道
+language-button: 🇨🇳 切换语言 🇨🇳
+#endregion
