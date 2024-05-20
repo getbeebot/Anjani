@@ -7,8 +7,6 @@ from mysql.connector.aio import connect
 
 from anjani import DEFAULT_CONFIG_PATH
 
-# todo: making it OOP
-
 class AsyncMysqlClient:
     def __init__(self, host: str, port: int, user: str, password: str, database: str) -> None:
         self.conn = None
