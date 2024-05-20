@@ -1,8 +1,9 @@
 import json
-import os
 from datetime import datetime, timezone
 
 import aiofiles
+import aiofiles.os as aio_os
+from os.path import join
 from typing import ClassVar
 
 from pyrogram import filters
@@ -26,15 +27,39 @@ class BeeconPlugin(plugin.Plugin):
         await self.save_message(payloads)
 
     async def save_message(self, message) -> None:
-        # TODO: saving in every single 10MiB file classified with group id
         target_dir = "messages"
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir)
+        await self.create_if_not_exist(target_dir)
 
-        now = int(datetime.now(timezone.utc).timestamp())
-        async with aiofiles.open(f"{target_dir}/{now}.json", mode="w") as f:
+        chat_id = message.get("chat").get("id", "-0")
+        chat_dir_name = str(chat_id)[1:]
+        chat_path = join(target_dir, chat_dir_name)
+        await self.create_if_not_exist(chat_path)
+
+        target_file = await self.get_target_file(chat_path)
+        if not target_file:
+            ts = int(datetime.now(timezone.utc).timestamp())
+            target_file = join(chat_path, f"{str(ts)}.json")
+
+        async with aiofiles.open(target_file, mode="a") as f:
             for line in json.dumps(message, indent=4).splitlines(True):
                 await f.write(line)
+            f.write("\n")
+
+    async def create_if_not_exist(self, path):
+        result = await aio_os.path.exists(path)
+        if not result:
+            await aio_os.mkdir(path)
+
+    async def get_target_file(self, directory):
+        try:
+            dirs = await aio_os.listdir(directory)
+            for file in dirs:
+                filepath = join(directory, file)
+                size = await aio_os.path.getsize(filepath)
+                if size and size <= 20 * 1024 * 1024:
+                    return filepath
+        except Exception:
+            return None
 
     @listener.filters(filters.group)
     async def on_chat_action(self, message: Message) -> None:
