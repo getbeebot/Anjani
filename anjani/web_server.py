@@ -10,6 +10,8 @@ import aiohttp.web as web
 from aiohttp import web_response
 from aiohttp.web import Response
 
+import aiofiles.os as aio_os
+
 import boto3
 
 from .util.config import Config
@@ -127,11 +129,9 @@ async def get_user_info_handler(request) -> Response:
 
         avatar = await download_avatar(user_id)
 
-
         if avatar:
             await upload_avatar(avatar)
-            log.info(avatar)
-            # os.remove(avatar)
+            await aio_os.remove(avatar)
         else:
             avatar = "default.jpg"
         avatar_link = f"https://{config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{avatar}"
@@ -311,11 +311,9 @@ async def download_avatar(chat_id: int):
         photos = client.get_chat_photos(chat_id)
         photo = await photos.__anext__()
 
-        log.info(photo)
         if photo.file_id:
             avatar = f"../B{chat_id}.jpg"
             await client.download_media(photo.file_id, file_name=avatar)
-            log.info("finish downloading")
             return os.path.basename(avatar)
     except Exception as e:
         log.error(f"Downloading avatar from telegram server failed: {str(e)}")
