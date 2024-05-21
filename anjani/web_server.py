@@ -1,20 +1,21 @@
 import os
 import json
 import logging
-from datetime import datetime, timezone
 
 from pyrogram.client import Client
-from pyrogram.types import User, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-import aiohttp
 import aiohttp.web as web
 from aiohttp import web_response
 from aiohttp.web import Response
 
-from lxml import etree
+import aiofiles.os as aio_os
+
+import boto3
 
 from .util.config import Config
 from .templates import get_template
+from .server.notification import build_lottery_create_msg, build_lottery_end_msg, build_lottery_join_msg
 
 config = Config()
 
@@ -45,9 +46,9 @@ async def start_server() -> None:
 
     member_check_router = web.post("/is_member", member_check_handler)
     get_nickname_router = web.post("/users", get_users_handler)
-    update_user_avatar_router = web.get("/update_user", get_user_avatar_handler)
+    update_user_router = web.get("/update_user", get_user_info_handler)
     send_message_router = web.post("/sendmsg", send_message_handler)
-    routers = [member_check_router, get_nickname_router, send_message_router, update_user_avatar_router]
+    routers = [member_check_router, get_nickname_router, send_message_router, update_user_router]
 
     app.add_routes(routers)
 
@@ -59,8 +60,8 @@ async def start_server() -> None:
 
     await runner.setup()
 
-    host = "0.0.0.0"
-    port = 8080
+    host = config.WEBSERVER_HOST
+    port = config.WEBSERVER_PORT
     site = web.TCPSite(runner, host, port)
     await site.start()
     log.info(f"Web server listening on http://{host}:{port}")
@@ -116,7 +117,8 @@ async def get_users_handler(request) -> Response:
     return web_response.json_response(ret_data, status=200)
 
 
-async def get_user_avatar_handler(request) -> Response:
+
+async def get_user_info_handler(request) -> Response:
     ret_data = { "ok": False }
     try:
         user_id = int(request.query.get("user_id"))
@@ -124,10 +126,15 @@ async def get_user_avatar_handler(request) -> Response:
         user = await client.get_users(user_id)
 
         username = user.username if user.username else None
-        avatar = ""
-        if username is not None:
-            tg_user_uri = f"https://t.me/{user.username}"
-            avatar = await retrieve_avatar_uri(tg_user_uri)
+
+        avatar = await download_avatar(user_id)
+
+        avatar_link = ""
+
+        if avatar:
+            await upload_avatar(avatar)
+            await aio_os.remove(avatar)
+            avatar_link = f"https://{config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{avatar}"
 
         # mysql_client = AsyncMysqlClient.init_from_env()
 
@@ -139,7 +146,7 @@ async def get_user_avatar_handler(request) -> Response:
                 "tg_user_id": user_id,
                 "username": username if username else "",
                 "nickname": fullname,
-                "avatar": avatar,
+                "avatar": avatar_link,
         }
 
         # await mysql_client.update_user_info(**user_info)
@@ -162,8 +169,6 @@ async def get_user_avatar_handler(request) -> Response:
 class InvalidArgumentError(Exception):
     pass
 
-class ArgumentTypeError(Exception):
-    pass
 
 async def send_message_handler(request) -> Response:
     ret_data = { "ok": False }
@@ -263,47 +268,29 @@ async def is_member(group_id: int, user_id: int) -> bool:
         return False
 
 
-async def retrieve_avatar_uri(uri) -> str:
-    async with aiohttp.ClientSession() as session:
-        async with session.get(uri) as resp:
-            html_body = await resp.text()
-            xpath = "/html/head/meta[@property='og:image']/@content"
-            html = etree.HTML(html_body)
-            avatar_uri = html.xpath(xpath)[0]
-            return avatar_uri
+async def download_avatar(chat_id: int):
+    try:
+        photos = client.get_chat_photos(chat_id)
+        photo = await photos.__anext__()
+
+        if photo.file_id:
+            avatar = f"../B{chat_id}.jpg"
+            await client.download_media(photo.file_id, file_name=avatar)
+            return os.path.basename(avatar)
+    except Exception as e:
+        log.error(f"Downloading avatar from telegram server failed: {str(e)}")
+
+    return None
 
 
-def build_lottery_create_msg(template: str, **args) -> str:
-    community_name = args.get("communityName", "")
-    prize = args.get("prize")
-
-    end_time_ms = args.get("endTime", 0)
-    end_time = format_timestamp(end_time_ms)
-
-    return template.format(community_name=community_name, prize=prize, end_time=end_time)
-
-
-def build_lottery_join_msg(template: str, **args) -> str:
-    nick_names = args.get("nickNames")
-    # type check
-    if not isinstance(nick_names, list) and not isinstance(nick_names, str):
-        raise ArgumentTypeError("nick_names should be a list or string")
-
-    if isinstance(nick_names, list):
-        nick_names = ", @".join(nick_names)
-
-    end_time_ms = args.get("endTime", 0)
-    end_time = format_timestamp(end_time_ms)
-
-    prize = args.get("prize")
-
-    return template.format(nick_names=nick_names, end_time=end_time, prize=prize)
-
-
-def build_lottery_end_msg(template: str, **args) -> str:
-    community_name = args.get("communityName", "")
-    return template.format(community_name=community_name)
-
-
-def format_timestamp(ts: int) -> str:
-    return datetime.fromtimestamp(timestamp=ts/1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
+async def upload_avatar(filename):
+    ACCESS_KEY = config.AWS_AK
+    SECRET_KEY = config.AWS_SK
+    bucket = config.AWS_S3_BUCKET
+    s3 = boto3.client("s3", aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY)
+    s3.upload_file(
+        filename,
+        bucket,
+        filename,
+        ExtraArgs={"ContentType": "image/jpeg"}
+    )

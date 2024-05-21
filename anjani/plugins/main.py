@@ -14,10 +14,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import asyncio
 import re
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, ClassVar, List, Optional
+
+from functools import partial
+from pymongo.errors import PyMongoError
 
 from aiopath import AsyncPath
 from bson.binary import Binary
@@ -38,6 +42,7 @@ from pyrogram.types import (
 )
 
 from anjani import command, filters, listener, plugin, util
+from .language import LANG_FLAG
 
 if TYPE_CHECKING:
     from .rules import Rules
@@ -50,9 +55,39 @@ class Main(plugin.Plugin):
 
     bot_name: str
     db: util.db.AsyncCollection
+    lang_db: util.db.AsyncCollection
+    _db_stream: asyncio.Task[None]
+
+    def _start_db_stream(self) -> None:
+        try:
+            if not self._db_stream.done():
+                self._db_stream.cancel()
+        except AttributeError:
+            pass
+        self._db_stream = self.bot.loop.create_task(self.db_stream())
+        self._db_stream.add_done_callback(
+            partial(self.bot.loop.call_soon_threadsafe, self._db_stream_callback)
+        )
+
+    def _db_stream_callback(self, future: asyncio.Future) -> None:
+        try:
+            future.result()
+        except asyncio.CancelledError:
+            pass
+        except PyMongoError as e:
+            self.log.error("MongoDB error:", exc_info=e)
+            self._start_db_stream()
+
+    async def db_stream(self) -> None:
+        async with self.lang_db.watch(full_document="updateLookup") as cursor:
+            async for change in cursor:
+                document = change["fullDocument"]
+                self.bot.chats_languages[document["chat_id"]] = document["language"]
 
     async def on_load(self) -> None:
         self.db = self.bot.db.get_collection("SESSION")
+        self.lang_db = self.bot.db.get_collection("LANGUAGE")
+        self._start_db_stream()
 
     async def on_start(self, _: int) -> None:
         self.bot_name = (
@@ -131,6 +166,8 @@ class Main(plugin.Plugin):
                 },
                 upsert=True,
             )
+            # for language db
+            self._db_stream.cancel()
 
     async def send_to_log(self, text: str, *args: Any, **kwargs: Any) -> Optional[Message]:
         if not self.bot.config.LOG_CHANNEL:
@@ -221,6 +258,19 @@ class Main(plugin.Plugin):
                 )
                 return None
 
+            if ctx.input and ctx.input == "language":
+                lang = self.bot.chats_languages.get(chat.id, "en")
+                if lang == "en":
+                    await asyncio.gather(
+                        self.switch_lang(chat.id, "zh"),
+                        ctx.respond(await self.text(chat.id, "language-set-succes", LANG_FLAG["zh"])),
+                    )
+                else:
+                    await asyncio.gather(
+                        self.switch_lang(chat.id, "en"),
+                        ctx.respond(await self.text(chat.id, "language-set-succes", LANG_FLAG["en"])),
+                    )
+
             if ctx.input:
                 rules_re = re.compile(r"rules_(.*)")
                 if rules_re.search(ctx.input):
@@ -266,15 +316,31 @@ class Main(plugin.Plugin):
                 "manage_video_chats",
                 "manage_chat",
             ]
+
+            faq_link = os.getenv("FAQ", "beecon.me")
+            channel_link = os.getenv("CHANNEL", "beecon.me")
             buttons = [
                 [
-                    InlineKeyboardButton(
+                    InlineKeyboardButton(  # Add bot as Admin button
                         text=await self.text(chat.id, "add-to-group-button"),
                         url=f"t.me/{self.bot.user.username}?startgroup=true&admin={'+'.join(permission)}",
                     ),
+                ],
+                [
+                    InlineKeyboardButton(  # FAQ button
+                        text = await self.text(chat.id, "faq-button"),
+                        url=faq_link,
+                    ),
                     InlineKeyboardButton(
-                        text=await self.text(chat.id, "start-help-button"),
-                        url=f"t.me/{self.bot.user.username}?start=help",
+                        text=await self.text(chat.id, "channel-button"),
+                        url=channel_link,
+                    )
+
+                ],
+                [
+                    InlineKeyboardButton(
+                        text=await self.text(chat.id, "language-button"),
+                        url=f"t.me/{self.bot.user.username}?start=language",
                     ),
                 ],
             ]
@@ -302,6 +368,13 @@ class Main(plugin.Plugin):
 
         return await self.text(chat.id, "start-chat")
 
+    async def switch_lang(self, chat_id: int, language: str) -> None:
+        await self.lang_db.update_one(
+            {"chat_id": int(chat_id)},
+            {"$set": {"language": language}},
+            upsert=True,
+        )
+
     async def cmd_help(self, ctx: command.Context) -> None:
         """Bot plugins helper"""
         chat = ctx.chat
@@ -328,12 +401,12 @@ class Main(plugin.Plugin):
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
-    async def cmd_donate(self, ctx: command.Context) -> None:
-        """Bot donate command"""
-        await ctx.respond(
-            await self.text(ctx.chat.id, "donate"),
-            disable_web_page_preview=True,
-        )
+    # async def cmd_donate(self, ctx: command.Context) -> None:
+    #     """Bot donate command"""
+    #     await ctx.respond(
+    #         await self.text(ctx.chat.id, "donate"),
+    #         disable_web_page_preview=True,
+    #     )
 
     async def cmd_markdownhelp(self, ctx: command.Context) -> None:
         """Send markdown helper."""

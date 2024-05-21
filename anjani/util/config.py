@@ -21,6 +21,17 @@ class Config:
     LOG_CHANNEL: Optional[str]
     ALERT_LOG: Optional[str]
 
+    TWA_LINK: str
+    WEBSITE: str
+
+    WEBSERVER_HOST: str
+    WEBSERVER_PORT: int
+
+    AWS_AK: str
+    AWS_SK: str
+    AWS_S3_BUCKET: str
+
+
     LOGIN_URL: Optional[str]
     PLUGIN_FLAG: list[str]
     FEATURE_FLAG: list[str]
@@ -40,6 +51,17 @@ class Config:
         self.DOWNLOAD_PATH = getenv("DOWNLOAD_PATH", "./downloads")
 
         self.DB_URI = getenv("DB_URI", "")
+
+        self.TWA_LINK = getenv("TWA_LINK")
+        self.WEBSITE = getenv("WEBSITE", "https://getbeebot.com")
+
+        self.WEBSERVER_HOST = getenv("WEBSERVER_HOST", "0.0.0.0")
+        self.WEBSERVER_PORT = int(getenv("WEBSERVER_PORT", 8080))
+
+        # AWS S3
+        self.AWS_AK = getenv("AWS_AK")
+        self.AWS_SK = getenv("AWS_SK")
+        self.AWS_S3_BUCKET = getenv("AWS_S3_BUCKET")
 
         self.LOG_CHANNEL = getenv("LOG_CHANNEL")
         self.ALERT_LOG = getenv("ALERT_LOG")
