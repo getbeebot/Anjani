@@ -129,12 +129,12 @@ async def get_user_info_handler(request) -> Response:
 
         avatar = await download_avatar(user_id)
 
+        avatar_link = ""
+
         if avatar:
             await upload_avatar(avatar)
             await aio_os.remove(avatar)
-        else:
-            avatar = "default.jpg"
-        avatar_link = f"https://{config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{avatar}"
+            avatar_link = f"https://{config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{avatar}"
 
         # mysql_client = AsyncMysqlClient.init_from_env()
 

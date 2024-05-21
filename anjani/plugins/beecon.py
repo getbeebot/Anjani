@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 import aiofiles
 import aiofiles.os as aio_os
+import os
 from os.path import join
 from typing import ClassVar
 
@@ -11,10 +12,17 @@ from pyrogram.types import Message
 
 from anjani import command, listener, plugin
 
+import boto3
+
 
 class BeeconPlugin(plugin.Plugin):
     name: ClassVar[str] = "Beecon Plugin"
     helpable: ClassVar[bool] = True
+
+    api_url = os.getenv("API_URL")
+    aws_ak = os.getenv("AWS_AK")
+    aws_sk = os.getenv("AWS_SK")
+    aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
 
     async def cmd_hi(self, ctx: command.Context) -> None:
         await ctx.respond("hola")
@@ -63,5 +71,81 @@ class BeeconPlugin(plugin.Plugin):
 
     @listener.filters(filters.group)
     async def on_chat_action(self, message: Message) -> None:
-        # TODO: create project when bot join the group
-        pass
+        self.log.debug(message)
+        try:
+            if not message.new_chat_members:
+                return None
+
+            if not message.from_user:
+                return None
+
+            if not message.chat:
+                return None
+
+            group_owner = message.from_user
+            group = message.chat
+
+            new_members = message.new_chat_members
+            for member in new_members:
+                if member.id == self.bot.uid:
+                    owner_id = group_owner.id
+                    username = group_owner.username or ""
+                    first_name = group_owner.first_name or ""
+                    last_name = group_owner.last_name
+                    nick_name = first_name + ' ' + last_name if last_name else first_name
+
+                    group_id = group.id
+                    group_name = group.title
+                    group_invite_link = await self.bot.client.export_chat_invite_link(group.id) if group.username is None else f"https://t.me/{group.username}"
+                    group_desc = group.description or ""
+
+                    logo_url = ""
+                    if group.photo:
+                        file_id = group.photo.big_file_id
+                        logo_url = await self.get_group_avatar_link(group_id, file_id)
+
+                    payloads = {
+                        "description": group_desc, # group description
+                        "firstName": first_name, # group owner first name
+                        "lastName": last_name, # group owner last name
+                        "logoUrl": logo_url, # group avatar
+                        "name": group_name, # group name
+                        "nickName": nick_name, # group owner nick name
+                        "ownerTgId": owner_id, # group owner telegram id
+                        "remark": "", # reserved remark
+                        "shareLink": group_invite_link,  # group invite link
+                        "slogan": "", # slogan, empty string
+                        "status": 1, # project status, default to 1
+                        "targetId":  group_id, # group id
+                        "targetType": 0, # 0 for group, 1 for channel
+                        "userName": username, # group owner username
+                    }
+                    headers = {'Content-Type': 'application/json'}
+                    self.log.info(json.dumps(payloads))
+                    async with self.bot.http.put(self.api_url, json=payloads, headers=headers) as resp:
+                        res = await resp.text()
+                        self.log.info(f"response status: {resp.status}, {res}")
+        except Exception as e:
+            self.log.error(f"Create project error: {str(e)}")
+
+
+    async def get_group_avatar_link(self, group_id: int, file_id: int) -> str:
+        try:
+            filename = f"G{group_id}.jpg"
+            filepath = join("downloads", filename)
+
+            await self.bot.client.download_media(file_id, file_name=f"../downloads/{filename}")
+
+            s3 = boto3.client("s3", aws_access_key_id=self.aws_ak, aws_secret_access_key=self.aws_sk)
+            s3.upload_file(
+                filepath,
+                self.aws_s3_bucket,
+                filename,
+                ExtraArgs={"ContentType": "image/jpeg"}
+            )
+
+            await aio_os.remove(filepath)
+
+            return f"https://{self.aws_s3_bucket}.s3.ap-southeast-1.amazonaws.com/{filename}"
+        except Exception as e:
+            self.log.error(f"retrieving group pic failed: {str(e)}")
