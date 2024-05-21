@@ -1,10 +1,9 @@
 import os
 import json
 import logging
-from datetime import datetime, timezone
 
 from pyrogram.client import Client
-from pyrogram.types import User, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import aiohttp.web as web
 from aiohttp import web_response
@@ -16,6 +15,7 @@ import boto3
 
 from .util.config import Config
 from .templates import get_template
+from .server.notification import build_lottery_create_msg, build_lottery_end_msg, build_lottery_join_msg
 
 config = Config()
 
@@ -169,8 +169,6 @@ async def get_user_info_handler(request) -> Response:
 class InvalidArgumentError(Exception):
     pass
 
-class ArgumentTypeError(Exception):
-    pass
 
 async def send_message_handler(request) -> Response:
     ret_data = { "ok": False }
@@ -268,42 +266,6 @@ async def is_member(group_id: int, user_id: int) -> bool:
     except Exception as e:
         log.error(f"Get chat member error: {str(e)}")
         return False
-
-
-def build_lottery_create_msg(template: str, **args) -> str:
-    community_name = args.get("communityName", "")
-    prize = args.get("prize")
-
-    end_time_ms = args.get("endTime", 0)
-    end_time = format_timestamp(end_time_ms)
-
-    return template.format(community_name=community_name, prize=prize, end_time=end_time)
-
-
-def build_lottery_join_msg(template: str, **args) -> str:
-    nick_names = args.get("nickNames")
-    # type check
-    if not isinstance(nick_names, list) and not isinstance(nick_names, str):
-        raise ArgumentTypeError("nick_names should be a list or string")
-
-    if isinstance(nick_names, list):
-        nick_names = ", @".join(nick_names)
-
-    end_time_ms = args.get("endTime", 0)
-    end_time = format_timestamp(end_time_ms)
-
-    prize = args.get("prize")
-
-    return template.format(nick_names=nick_names, end_time=end_time, prize=prize)
-
-
-def build_lottery_end_msg(template: str, **args) -> str:
-    community_name = args.get("communityName", "")
-    return template.format(community_name=community_name)
-
-
-def format_timestamp(ts: int) -> str:
-    return datetime.fromtimestamp(timestamp=ts/1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
 
 
 async def download_avatar(chat_id: int):
