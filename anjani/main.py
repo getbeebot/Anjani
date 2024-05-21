@@ -28,7 +28,7 @@ import dotenv
 from . import DEFAULT_CONFIG_PATH
 from .core import Anjani
 from .util.config import Config
-from .server import web_server
+from .web_server import web_server
 
 log = logging.getLogger("launch")
 
