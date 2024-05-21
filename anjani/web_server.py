@@ -14,7 +14,7 @@ import aiofiles.os as aio_os
 import boto3
 
 from .util.config import Config
-from .templates import get_template
+from .language import get_template
 from .server.notification import build_lottery_create_msg, build_lottery_end_msg, build_lottery_join_msg
 
 config = Config()
