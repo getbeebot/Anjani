@@ -4,8 +4,7 @@ lottery-create: |
   End time: {end_time}
   Join the excitement
 lottery-join: |
-  @{nick_names} has entered the luckydraw
-
+  {joined_users}
   🎉  Draw Time: {end_time}
   🎁  Prize Details: {prize}
 lottery-end: |
