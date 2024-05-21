@@ -51,7 +51,7 @@ class BeeconPlugin(plugin.Plugin):
         async with aiofiles.open(target_file, mode="a") as f:
             for line in json.dumps(message, indent=4).splitlines(True):
                 await f.write(line)
-            f.write("\n")
+            await f.write("\n")
 
     async def create_if_not_exist(self, path):
         result = await aio_os.path.exists(path)
