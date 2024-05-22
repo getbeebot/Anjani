@@ -42,6 +42,7 @@ from pyrogram.types import (
 )
 
 from anjani import command, filters, listener, plugin, util
+from anjani.util.twa import TWA
 from .language import LANG_FLAG
 
 if TYPE_CHECKING:
@@ -366,7 +367,26 @@ class Main(plugin.Plugin):
             )
             return None
 
-        return await self.text(chat.id, "start-chat")
+        # group start message
+        project_link = await TWA.get_chat_project_link(chat.id)
+
+        buttons = [
+            [
+                InlineKeyboardButton(
+                    text=await self.text(chat.id, "create-project-button"),
+                    url=project_link
+                )
+            ]
+        ]
+
+        group_context = await self.text(chat.id, "start-chat")
+
+        await ctx.respond(
+            group_context,
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return None
 
     async def switch_lang(self, chat_id: int, language: str) -> None:
         await self.lang_db.update_one(

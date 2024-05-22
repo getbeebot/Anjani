@@ -152,6 +152,13 @@ class BeeconPlugin(plugin.Plugin):
                             msg_context,
                             reply_markup=button
                         )
+
+                        group_context = await self.text(group_id, "start-chat")
+                        await self.bot.client.send_message(
+                            group_id,
+                            group_context,
+                            reply_markup=button
+                        )
         except Exception as e:
             self.log.error(f"Create project error: {str(e)}")
 
