@@ -98,7 +98,7 @@ class BeeconPlugin(plugin.Plugin):
             for member in new_members:
                 if member.id == self.bot.uid:
                     owner_id = group_owner.id
-                    username = group_owner.username or None
+                    user_name = group_owner.username or None
                     first_name = group_owner.first_name or ""
                     last_name = group_owner.last_name
                     nick_name = first_name + ' ' + last_name if last_name else first_name
@@ -114,21 +114,24 @@ class BeeconPlugin(plugin.Plugin):
                         logo_url = await self.get_group_avatar_link(group_id, file_id)
 
                     payloads = {
-                        "description": group_desc, # group description
                         "firstName": first_name, # group owner first name
-                        "lastName": last_name, # group owner last name
-                        "logoUrl": logo_url, # group avatar
                         "name": group_name, # group name
                         "nickName": nick_name, # group owner nick name
                         "ownerTgId": owner_id, # group owner telegram id
-                        "remark": None, # reserved remark
                         "shareLink": group_invite_link,  # group invite link
-                        "slogan": None, # slogan, empty string
                         "status": 1, # project status, default to 1
                         "targetId":  group_id, # group id
                         "targetType": 0, # 0 for group, 1 for channel
-                        "userName": username, # group owner username
                     }
+
+                    if group_desc:
+                        payloads.update({"description": group_desc})
+                    if last_name:
+                        payloads.update({"lastName": last_name})
+                    if logo_url:
+                        payloads.update({"logoUrl": logo_url})
+                    if user_name:
+                        payloads.update({"userName": user_name})
 
                     headers = {'Content-Type': 'application/json'}
 
