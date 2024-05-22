@@ -11,7 +11,7 @@ class TWA:
     def __init__(self):
         pass
 
-    @staticmethod
+    @classmethod
     def generate_project_detail_link(cls, project_id: int):
         args = msgpack.packb({
             "target": "projectDetail",

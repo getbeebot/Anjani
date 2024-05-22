@@ -98,7 +98,7 @@ class BeeconPlugin(plugin.Plugin):
             for member in new_members:
                 if member.id == self.bot.uid:
                     owner_id = group_owner.id
-                    username = group_owner.username or ""
+                    username = group_owner.username or None
                     first_name = group_owner.first_name or ""
                     last_name = group_owner.last_name
                     nick_name = first_name + ' ' + last_name if last_name else first_name
@@ -106,9 +106,9 @@ class BeeconPlugin(plugin.Plugin):
                     group_id = group.id
                     group_name = group.title
                     group_invite_link = await self.bot.client.export_chat_invite_link(group.id) if group.username is None else f"https://t.me/{group.username}"
-                    group_desc = group.description or ""
+                    group_desc = group.description or None
 
-                    logo_url = ""
+                    logo_url = None
                     if group.photo:
                         file_id = group.photo.big_file_id
                         logo_url = await self.get_group_avatar_link(group_id, file_id)
@@ -121,9 +121,9 @@ class BeeconPlugin(plugin.Plugin):
                         "name": group_name, # group name
                         "nickName": nick_name, # group owner nick name
                         "ownerTgId": owner_id, # group owner telegram id
-                        "remark": "", # reserved remark
+                        "remark": None, # reserved remark
                         "shareLink": group_invite_link,  # group invite link
-                        "slogan": "", # slogan, empty string
+                        "slogan": None, # slogan, empty string
                         "status": 1, # project status, default to 1
                         "targetId":  group_id, # group id
                         "targetType": 0, # 0 for group, 1 for channel

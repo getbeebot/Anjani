@@ -174,7 +174,7 @@ class Greeting(plugin.Plugin):
                         try:
                             await self.mysql_client.connect()
                             project_id = await self.mysql_client.query_project_id_by_chat_id(chat.id)
-                            url = TWA.generate_project_detail_link(TWA(), project_id)
+                            url = TWA.generate_project_detail_link(project_id)
                         except Exception as e:
                             self.log.error(str(e))
                         if url is None:
