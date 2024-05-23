@@ -8,6 +8,6 @@ language-set-succes: 已将语言设置为 {}
 faq-button: 💬 FAQ
 channel-button: 💎 官方频道
 language-button: 🇨🇳 切换语言 🇨🇳
-create-project: 查看最新 {group_name} 群组的活动
+create-project: 查看最新 **{group_name}** 群组的活动
 create-project-button: 👉 请进入社群活动页面 👈
 #endregion

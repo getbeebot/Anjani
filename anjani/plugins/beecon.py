@@ -10,10 +10,9 @@ from typing import ClassVar
 from pyrogram import filters
 from pyrogram.types import Message
 
-from anjani import command, listener, plugin
+from anjani import listener, plugin
 from anjani.util.tg import build_button
 from anjani.util.twa import TWA
-from anjani.util.db import AsyncCollection
 
 import boto3
 
@@ -26,10 +25,6 @@ class BeeconPlugin(plugin.Plugin):
     aws_ak = os.getenv("AWS_AK")
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
-
-    db: AsyncCollection
-
-
 
 
     @listener.filters(filters.group | filters.channel)
@@ -137,31 +132,38 @@ class BeeconPlugin(plugin.Plugin):
 
                     self.log.debug(f"Request payloads: {json.dumps(payloads)}")
 
-                    async with self.bot.http.put(self.api_url, json=payloads, headers=headers) as resp:
-                        res = await resp.json()
+                    try:
+                        async with self.bot.http.put(self.api_url, json=payloads, headers=headers) as resp:
+                            res = await resp.json()
 
-                        self.log.info(f"response from Server, status: {resp.status}, data: {res}")
+                            self.log.info(f"response from Server, status: {resp.status}, data: {res}")
+                    except Exception as e:
+                        self.log.error(f"Create new project error: {str(e)}")
 
-                        project_id = int(res.get("data").get("id"))
-                        url = TWA.generate_project_detail_link(TWA(), project_id)
 
-                        msg_text = await self.text(owner_id, "create-project")
-                        msg_context = msg_text.format(group_name=group_name)
-                        button_text = await self.text(owner_id, "create-project-button")
-                        button = build_button([(button_text, url, False)])
+                    url = await TWA.get_chat_project_link(group_id)
 
-                        await self.bot.client.send_message(
-                            owner_id,
-                            msg_context,
-                            reply_markup=button
-                        )
+                    msg_text = await self.text(group_id, "create-project", noformat=True)
+                    msg_context = msg_text.format(group_name=group_name)
+                    button_text = await self.text(owner_id, "create-project-button")
+                    button = build_button([(button_text, url, False)])
 
-                        group_context = await self.text(group_id, "start-chat")
-                        await self.bot.client.send_message(
-                            group_id,
-                            group_context,
-                            reply_markup=button
-                        )
+                    await self.bot.client.send_message(
+                        owner_id,
+                        msg_context,
+                        reply_markup=button
+                    )
+
+                    # TODO: This would cause duplicate message when bot re-join a group
+                    # Solution: project-create api to return a flag to determine where a project is created
+                    group_msg_context = await self.text(group_id, "start-chat")
+
+                    await self.bot.client.send_message(
+                        group_id,
+                        group_msg_context,
+                        reply_markup=button
+                    )
+
         except Exception as e:
             self.log.error(f"Create project error: {str(e)}")
 

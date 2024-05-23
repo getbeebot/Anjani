@@ -652,7 +652,7 @@ err-illegal-trigger: "Illegal character in trigger!\n'.' and '$' are not allowed
 #region beecon
 faq-button: 💬 FAQ
 channel-button: 💎 Channel
-create-project: Please checkout the latest activities for {group_name}
+create-project: Please checkout the latest activities for **{group_name}**
 create-project-button: 👉 Please enter community 👈
 #endregion
 

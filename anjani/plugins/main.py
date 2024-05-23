@@ -306,14 +306,14 @@ class Main(plugin.Plugin):
                     return
 
             permission = [
-                "change_info",
+                # "change_info",
                 "post_messages",
                 "edit_messages",
                 "delete_messages",
                 "restrict_members",
                 "invite_users",
                 "pin_messages",
-                "promote_members",
+                # "promote_members",
                 "manage_video_chats",
                 "manage_chat",
             ]
@@ -369,6 +369,9 @@ class Main(plugin.Plugin):
 
         # group start message
         project_link = await TWA.get_chat_project_link(chat.id)
+
+        if (project_link == TWA.TWA_LINK ):
+            return None
 
         buttons = [
             [
