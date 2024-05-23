@@ -120,7 +120,7 @@ class BeeconPlugin(plugin.Plugin):
                     }
 
                     if group_desc:
-                        payloads.update({"description": group_desc})
+                        payloads.update({"slogan": group_desc})
                     if last_name:
                         payloads.update({"lastName": last_name})
                     if logo_url:
