@@ -120,7 +120,7 @@ async def member_check_handler(request: BaseRequest) -> Response:
         group_id = int(payloads.get("group_id"))
         user_id = int(payloads.get("user_id"))
 
-        res = await tgclient.is_member(group_id, user_id)
+        res = await tgclient.is_member(user_id, group_id)
 
         ret_data.update({
             "ok": True,
