@@ -101,7 +101,7 @@ class BeeconPlugin(plugin.Plugin):
                     group_id = group.id
                     group_name = group.title
                     group_invite_link = await self.bot.client.export_chat_invite_link(group.id) if group.username is None else f"https://t.me/{group.username}"
-                    group_desc = group.description or None
+                    group_desc = await self.get_group_description(group_id)
 
                     logo_url = None
                     if group.photo:
@@ -188,3 +188,14 @@ class BeeconPlugin(plugin.Plugin):
             return f"https://{self.aws_s3_bucket}.s3.ap-southeast-1.amazonaws.com/{filename}"
         except Exception as e:
             self.log.error(f"retrieving group pic failed: {str(e)}")
+
+
+    async def get_group_description(self, group_id: int) -> str | None:
+        try:
+            chat = await self.bot.client.get_chat(group_id)
+            if chat.description:
+                return chat.description
+
+        except Exception as e:
+            self.log.error(str(e))
+        return None
