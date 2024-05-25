@@ -10,13 +10,13 @@ from anjani.util.db import AsyncMysqlClient
 
 class TWA:
     log: logging.Logger
-    mysql_client: AsyncMysqlClient
+    mysql: AsyncMysqlClient
 
     TWA_LINK = os.getenv("TWA_LINK")
 
     def __init__(self):
         self.log = logging.getLogger("twa")
-        self.mysql_client = AsyncMysqlClient.init_from_env()
+        self.mysql= AsyncMysqlClient.init_from_env()
 
 
     def generate_project_detail_link(self, project_id: int):
@@ -32,12 +32,24 @@ class TWA:
         twa = cls()
         url = twa.TWA_LINK
         try:
-            await twa.mysql_client.connect()
-            project_id = await twa.mysql_client.query_project_id_by_chat_id(chat_id)
+            await twa.mysql.connect()
+            project_id = await twa.mysql.query_project_id_by_chat_id(chat_id)
             url = twa.generate_project_detail_link(project_id)
         except Exception as e:
             twa.log.error(str(e))
         finally:
-            await twa.mysql_client.close()
+            await twa.mysql.close()
 
         return url
+
+    async def get_user_owned_groups(self, user_id: int):
+        try:
+            await self.mysql.connect()
+            rows = await self.mysql.query_user_owned_groups(user_id)
+            return rows
+        except Exception as e:
+            self.log.error(str(e))
+        finally:
+            await self.mysql.close()
+
+        return None

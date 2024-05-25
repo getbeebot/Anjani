@@ -134,3 +134,16 @@ class AsyncMysqlClient:
         sql = "SELECT id, target_id FROM bot_project WHERE target_id IS NOT NULL AND target_type IS NOT NULL"
         res = await self.query(sql)
         return res
+
+    async def query_user_owned_groups(self, user_id: int):
+        sql = f"""
+SELECT
+  bp.id AS project_id,
+  tutg.chat_name
+FROM bot_project AS bp
+JOIN tz_app_connect AS tac ON bp.owner_id = tac.user_id
+JOIN tz_user_tg_group AS tutg on bp.target_id = tutg.chat_id
+WHERE biz_user_id = '{user_id}'
+"""
+        res = await self.query(sql)
+        return res
