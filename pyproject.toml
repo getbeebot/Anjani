@@ -58,6 +58,7 @@ msgpack = "^1.0.8"
 base58 = "^2.1.1"
 boto3 = "^1.34.108"
 awscrt = "^0.20.9"
+apscheduler = "^3.10.4"
 
 [tool.poetry.extras]
 all = ["uvloop"]

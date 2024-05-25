@@ -31,6 +31,8 @@ class Config:
     AWS_SK: str
     AWS_S3_BUCKET: str
 
+    AUTO_NOTIFY_INTERVAL: int
+
 
     LOGIN_URL: Optional[str]
     PLUGIN_FLAG: list[str]
@@ -62,6 +64,10 @@ class Config:
         self.AWS_AK = getenv("AWS_AK")
         self.AWS_SK = getenv("AWS_SK")
         self.AWS_S3_BUCKET = getenv("AWS_S3_BUCKET")
+
+        # Auto push notification to group interval
+        self.AUTO_NOTIFY_INTERVAL = int(getenv("AUTO_NOTIFY_INTERVAL", 4))
+
 
         self.LOG_CHANNEL = getenv("LOG_CHANNEL")
         self.ALERT_LOG = getenv("ALERT_LOG")

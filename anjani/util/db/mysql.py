@@ -45,6 +45,24 @@ class AsyncMysqlClient:
         if self.conn:
             await self.conn.close()
 
+    async def query(self, sql:str):
+        if not self.conn:
+            await self.connect()
+
+        if not self.conn:
+            return None
+
+        try:
+            cursor = await self.conn.cursor()
+            await cursor.execute(sql)
+            rows = await cursor.fetchall()
+            return rows
+        except Exception as e:
+            self.log.error("Error executing query %s: %s", sql, e)
+            return None
+        finally:
+            await cursor.close()
+
     async def query_one(self, sql: str):
         if not self.conn:
             await self.connect()
@@ -111,3 +129,8 @@ class AsyncMysqlClient:
         sql = f"SELECT id FROM bot_project WHERE target_id={chat_id}"
         (project_id, ) = await self.query_one(sql)
         return project_id
+
+    async def retrieve_group_id_with_project(self):
+        sql = "SELECT id, target_id FROM bot_project WHERE target_id IS NOT NULL AND target_type IS NOT NULL"
+        res = await self.query(sql)
+        return res
