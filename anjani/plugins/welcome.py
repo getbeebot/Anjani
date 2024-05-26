@@ -40,8 +40,6 @@ from pyrogram.errors import (
 from pyrogram.types import Chat, Message, User
 from pyrogram.types.messages_and_media.message import Str
 
-from anjani.util.db import AsyncMysqlClient
-
 from anjani import command, filters, plugin, util
 from anjani.util.tg import (
     Button,
@@ -61,8 +59,6 @@ class Greeting(plugin.Plugin):
     db: util.db.AsyncCollection
     chat_db: util.db.AsyncCollection
     SEND: MutableMapping[int, Callable[..., Coroutine[Any, Any, Optional[Message]]]]
-
-    mysql_client = AsyncMysqlClient.init_from_env()
 
     async def on_load(self) -> None:
         self.db = self.bot.db.get_collection("WELCOME")
@@ -174,15 +170,7 @@ class Greeting(plugin.Plugin):
                     if button:
                         button = build_button(button)
                     else:
-                        url = None
-                        try:
-                            await self.mysql_client.connect()
-                            project_id = await self.mysql_client.query_project_id_by_chat_id(chat.id)
-                            url = TWA.generate_project_detail_link(TWA(), project_id)
-                        except Exception as e:
-                            self.log.error(str(e))
-                        if url is None:
-                            url = TWA.TWA_LINK
+                        url = await TWA.get_chat_project_link(chat.id)
 
                         self.log.info(f"Welcome button url in {chat.title}: {url}")
 

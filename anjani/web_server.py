@@ -1,40 +1,47 @@
-import os
-import json
 import logging
 
-from pyrogram.client import Client
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import aiohttp.web as web
 from aiohttp import web_response
-from aiohttp.web import Response
+from aiohttp.web import Response, BaseRequest
 
-import aiofiles.os as aio_os
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+# from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
-import boto3
-
+from .util.db.mysql import AsyncMysqlClient
 from .util.config import Config
-from .templates import get_template
-from .server.notification import build_lottery_create_msg, build_lottery_end_msg, build_lottery_join_msg
+from .util.twa import TWA
+from .language import get_template
+
+from .server.tgclient import TGClient
+from .server.notification import (
+    build_lottery_create_msg,
+    build_lottery_end_msg,
+    build_lottery_join_msg
+)
+
 
 config = Config()
 
-client = Client(
-    "web-server",
-    api_id=config.API_ID,
-    api_hash=config.API_HASH,
-    bot_token=config.BOT_TOKEN,
-)
+tgclient = TGClient(config)
+mysql = AsyncMysqlClient.init_from_env()
 
 log = logging.getLogger("web-server")
 
 
-async def start_tg_client(app) -> None:
-    await client.start()
+async def start_tgclient(app) -> None:
+    await tgclient.start()
 
 
-async def stop_tg_client(app) -> None:
-    await client.stop()
+async def stop_tgclient(app) -> None:
+    await tgclient.stop()
+
+async def stop_scheduler(app) -> None:
+    scheduler = app['scheduler']
+    if scheduler:
+        await scheduler.shutdown()
 
 
 async def web_server() -> None:
@@ -45,16 +52,17 @@ async def start_server() -> None:
     app = web.Application()
 
     member_check_router = web.post("/is_member", member_check_handler)
-    get_nickname_router = web.post("/users", get_users_handler)
     update_user_router = web.get("/update_user", get_user_info_handler)
     send_message_router = web.post("/sendmsg", send_message_handler)
-    routers = [member_check_router, get_nickname_router, send_message_router, update_user_router]
+    routers = [member_check_router, send_message_router, update_user_router]
 
     app.add_routes(routers)
 
     # start pyrogram client with web server start
-    app.on_startup.append(start_tg_client)
-    app.on_cleanup.append(stop_tg_client)
+    app.on_startup.append(start_tgclient)
+
+    app.on_cleanup.append(stop_scheduler)
+    app.on_cleanup.append(stop_tgclient)
 
     runner = web.AppRunner(app)
 
@@ -66,8 +74,44 @@ async def start_server() -> None:
     await site.start()
     log.info(f"Web server listening on http://{host}:{port}")
 
+    cron_job()
 
-async def member_check_handler(request) -> Response:
+
+def cron_job():
+    scheduler = AsyncIOScheduler()
+
+    # TODO: more flexible configuration
+    # trigger = CronTrigger(minute="*", second="*/10")
+    # trigger = IntervalTrigger(hours=4)
+    interval = config.AUTO_NOTIFY_INTERVAL
+
+    trigger = IntervalTrigger(hours=interval)
+    scheduler.add_job(auto_push_notification, trigger=trigger)
+    scheduler.start()
+
+async def auto_logging():
+    log.info("hello")
+
+async def auto_push_notification():
+    try:
+        await mysql.connect()
+        twa = TWA()
+        rows = await mysql.retrieve_group_id_with_project()
+        for row in rows:
+            (project_id, group_id) = row
+            project_link = twa.generate_project_detail_link(project_id)
+            button = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
+            )
+
+            await tgclient.send_message(group_id, "Please checkout our community's activities", button)
+
+    except Exception as e:
+        pass
+    finally:
+        await mysql.close()
+
+async def member_check_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }
     try:
         payloads = await request.json()
@@ -76,7 +120,7 @@ async def member_check_handler(request) -> Response:
         group_id = int(payloads.get("group_id"))
         user_id = int(payloads.get("user_id"))
 
-        res = await is_member(group_id, user_id)
+        res = await tgclient.is_member(user_id, group_id)
 
         ret_data.update({
             "ok": True,
@@ -93,48 +137,19 @@ async def member_check_handler(request) -> Response:
     return web_response.json_response(ret_data, status=200)
 
 
-async def get_users_handler(request) -> Response:
-    ret_data = { "ok": False }
-    try:
-        payloads = await request.json()
-        log.info(f"Incoming request: {payloads}")
-
-        user_ids = payloads.get("user_ids")
-        users = await client.get_users(user_ids)
-        log.info("Geting users: %s", users)
-
-        ret_data.update({
-            "ok": True,
-            "data": json.dumps(users)
-        })
-
-    except Exception as e:
-        ret_data.update({
-            "oK": False,
-            "error": str(e),
-        })
-
-    return web_response.json_response(ret_data, status=200)
-
-
-
-async def get_user_info_handler(request) -> Response:
+async def get_user_info_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }
     try:
         user_id = int(request.query.get("user_id"))
 
-        user = await client.get_users(user_id)
+        user = await tgclient.get_user(user_id)
 
         username = user.username if user.username else None
 
-        avatar = await download_avatar(user_id)
+        avatar_link = await tgclient.get_avatar_link(user_id)
 
-        avatar_link = ""
-
-        if avatar:
-            await upload_avatar(avatar)
-            await aio_os.remove(avatar)
-            avatar_link = f"https://{config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{avatar}"
+        if not avatar_link:
+            avatar_link = ""
 
         # mysql_client = AsyncMysqlClient.init_from_env()
 
@@ -170,7 +185,7 @@ class InvalidArgumentError(Exception):
     pass
 
 
-async def send_message_handler(request) -> Response:
+async def send_message_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }
     try:
         payloads = await request.json()
@@ -202,7 +217,7 @@ async def send_message_handler(request) -> Response:
         uri = data.get("uri")
 
         if not uri:
-            uri = os.getenv("TWA_LINK")
+            uri = config.TWA_LINK
 
         content: str = ""
         notify_type = data.get("notifyType")
@@ -219,11 +234,11 @@ async def send_message_handler(request) -> Response:
         elif notify_type == 4:  # sending file to community admin
             filename = data.get("lotteryFileName")
             chat_id = data.get("owner")
-            base_link = os.getenv("WEBSITE", "https://getbeebot.com")
+            base_link = config.WEBSITE
             download_link = f"{base_link}/downloads/{filename}"
             content = f"Please download the winners data via {download_link}"
 
-            await client.send_message(chat_id, content)
+            await tgclient.send_message(chat_id, content)
             log.info(f"send {download_link} to {chat_id}")
 
             ret_data.update({"ok": True})
@@ -233,7 +248,7 @@ async def send_message_handler(request) -> Response:
 
         # sending message
         log.info(f"sending message {content}")
-        await client.send_message(
+        await tgclient.send_message(
             chat_id,
             content,
             reply_markup=InlineKeyboardMarkup(
@@ -251,46 +266,3 @@ async def send_message_handler(request) -> Response:
         })
 
     return web_response.json_response(ret_data, status=200)
-
-
-async def is_member(group_id: int, user_id: int) -> bool:
-    try:
-        member = await client.get_chat_member(group_id, user_id)
-
-        log.debug("Get member: %s", "".join(str(member).split()))
-
-        if member.is_member or member.is_member is None:
-            return True
-        else:
-            return False
-    except Exception as e:
-        log.error(f"Get chat member error: {str(e)}")
-        return False
-
-
-async def download_avatar(chat_id: int):
-    try:
-        photos = client.get_chat_photos(chat_id)
-        photo = await photos.__anext__()
-
-        if photo.file_id:
-            avatar = f"../B{chat_id}.jpg"
-            await client.download_media(photo.file_id, file_name=avatar)
-            return os.path.basename(avatar)
-    except Exception as e:
-        log.error(f"Downloading avatar from telegram server failed: {str(e)}")
-
-    return None
-
-
-async def upload_avatar(filename):
-    ACCESS_KEY = config.AWS_AK
-    SECRET_KEY = config.AWS_SK
-    bucket = config.AWS_S3_BUCKET
-    s3 = boto3.client("s3", aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY)
-    s3.upload_file(
-        filename,
-        bucket,
-        filename,
-        ExtraArgs={"ContentType": "image/jpeg"}
-    )

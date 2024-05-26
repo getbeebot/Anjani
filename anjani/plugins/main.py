@@ -42,6 +42,7 @@ from pyrogram.types import (
 )
 
 from anjani import command, filters, listener, plugin, util
+from anjani.util.twa import TWA
 from .language import LANG_FLAG
 
 if TYPE_CHECKING:
@@ -304,22 +305,46 @@ class Main(plugin.Plugin):
                     )
                     return
 
+
+            buttons: List[InlineKeyboardButton] = []
+
+            group_buttons = []
+            twa = TWA()
+            group_projects = await twa.get_user_owned_groups(chat.id)
+            if not group_projects:
+                pass
+            else:
+                line_buttons = []
+                for row in group_projects:
+                    (project_id, group_name) = row
+                    project_link = twa.generate_project_detail_link(project_id)
+                    group_button = InlineKeyboardButton(
+                        text=group_name,
+                        url=project_link
+                    )
+                    line_buttons.append(group_button)
+                # Two group button one line
+                group_buttons = [line_buttons[i * 2: (i+1) * 2] for i in range((len(line_buttons) + 2 - 1) // 2)]
+
+            buttons.extend(group_buttons)
+
             permission = [
-                "change_info",
+                # "change_info",
                 "post_messages",
                 "edit_messages",
                 "delete_messages",
                 "restrict_members",
                 "invite_users",
                 "pin_messages",
-                "promote_members",
+                # "promote_members",
                 "manage_video_chats",
                 "manage_chat",
             ]
 
             faq_link = os.getenv("FAQ", "beecon.me")
             channel_link = os.getenv("CHANNEL", "beecon.me")
-            buttons = [
+
+            buttons.extend([
                 [
                     InlineKeyboardButton(  # Add bot as Admin button
                         text=await self.text(chat.id, "add-to-group-button"),
@@ -343,7 +368,7 @@ class Main(plugin.Plugin):
                         url=f"t.me/{self.bot.user.username}?start=language",
                     ),
                 ],
-            ]
+            ])
             if "Canonical" in self.bot.plugins:
                 buttons.append(
                     [
@@ -366,7 +391,29 @@ class Main(plugin.Plugin):
             )
             return None
 
-        return await self.text(chat.id, "start-chat")
+        # group start message
+        project_link = await TWA.get_chat_project_link(chat.id)
+
+        if (project_link == TWA.TWA_LINK ):
+            return None
+
+        buttons = [
+            [
+                InlineKeyboardButton(
+                    text=await self.text(chat.id, "create-project-button"),
+                    url=project_link
+                )
+            ]
+        ]
+
+        group_context = await self.text(chat.id, "start-chat")
+
+        await ctx.respond(
+            group_context,
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return None
 
     async def switch_lang(self, chat_id: int, language: str) -> None:
         await self.lang_db.update_one(

@@ -4,18 +4,52 @@ For Telegram Web App share link generating
 import msgpack
 import base58
 import os
+import logging
 
+from anjani.util.db import AsyncMysqlClient
 
 class TWA:
-    TWA_LINK = os.getenv("TWA_LINK")
-    def __init__(self):
-        pass
+    log: logging.Logger
+    mysql: AsyncMysqlClient
 
-    @staticmethod
-    def generate_project_detail_link(cls, project_id: int):
+    TWA_LINK = os.getenv("TWA_LINK")
+
+    def __init__(self):
+        self.log = logging.getLogger("twa")
+        self.mysql= AsyncMysqlClient.init_from_env()
+
+
+    def generate_project_detail_link(self, project_id: int):
         args = msgpack.packb({
             "target": "projectDetail",
             "id": project_id,
         })
         args = base58.b58encode(args).decode("utf-8")
-        return f"{cls.TWA_LINK}={args}"
+        return f"{self.TWA_LINK}={args}"
+
+    @classmethod
+    async def get_chat_project_link(cls, chat_id: int):
+        twa = cls()
+        url = twa.TWA_LINK
+        try:
+            await twa.mysql.connect()
+            project_id = await twa.mysql.query_project_id_by_chat_id(chat_id)
+            url = twa.generate_project_detail_link(project_id)
+        except Exception as e:
+            twa.log.error(str(e))
+        finally:
+            await twa.mysql.close()
+
+        return url
+
+    async def get_user_owned_groups(self, user_id: int):
+        try:
+            await self.mysql.connect()
+            rows = await self.mysql.query_user_owned_groups(user_id)
+            return rows
+        except Exception as e:
+            self.log.error(str(e))
+        finally:
+            await self.mysql.close()
+
+        return None

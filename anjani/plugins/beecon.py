@@ -10,7 +10,9 @@ from typing import ClassVar
 from pyrogram import filters
 from pyrogram.types import Message
 
-from anjani import command, listener, plugin
+from anjani import listener, plugin
+from anjani.util.tg import build_button
+from anjani.util.twa import TWA
 
 import boto3
 
@@ -24,8 +26,6 @@ class BeeconPlugin(plugin.Plugin):
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
 
-    async def cmd_hi(self, ctx: command.Context) -> None:
-        await ctx.respond("hola")
 
     @listener.filters(filters.group | filters.channel)
     async def on_message(self, message: Message) -> None:
@@ -33,6 +33,7 @@ class BeeconPlugin(plugin.Plugin):
         self.log.debug(f"Receiving message: {payloads}")
         payloads = json.loads(payloads)
         await self.save_message(payloads)
+
 
     async def save_message(self, message) -> None:
         target_dir = "messages"
@@ -52,11 +53,16 @@ class BeeconPlugin(plugin.Plugin):
             for line in json.dumps(message, indent=4).splitlines(True):
                 await f.write(line)
             await f.write("\n")
+<<<<<<< HEAD
+=======
+
+>>>>>>> alpha
 
     async def create_if_not_exist(self, path):
         result = await aio_os.path.exists(path)
         if not result:
             await aio_os.mkdir(path)
+
 
     async def get_target_file(self, directory):
         try:
@@ -68,6 +74,7 @@ class BeeconPlugin(plugin.Plugin):
                     return filepath
         except Exception:
             return None
+
 
     @listener.filters(filters.group)
     async def on_chat_action(self, message: Message) -> None:
@@ -89,7 +96,7 @@ class BeeconPlugin(plugin.Plugin):
             for member in new_members:
                 if member.id == self.bot.uid:
                     owner_id = group_owner.id
-                    username = group_owner.username or ""
+                    user_name = group_owner.username or None
                     first_name = group_owner.first_name or ""
                     last_name = group_owner.last_name
                     nick_name = first_name + ' ' + last_name if last_name else first_name
@@ -97,34 +104,69 @@ class BeeconPlugin(plugin.Plugin):
                     group_id = group.id
                     group_name = group.title
                     group_invite_link = await self.bot.client.export_chat_invite_link(group.id) if group.username is None else f"https://t.me/{group.username}"
-                    group_desc = group.description or ""
+                    group_desc = await self.get_group_description(group_id)
 
-                    logo_url = ""
+                    logo_url = None
                     if group.photo:
                         file_id = group.photo.big_file_id
                         logo_url = await self.get_group_avatar_link(group_id, file_id)
 
                     payloads = {
-                        "description": group_desc, # group description
                         "firstName": first_name, # group owner first name
-                        "lastName": last_name, # group owner last name
-                        "logoUrl": logo_url, # group avatar
                         "name": group_name, # group name
                         "nickName": nick_name, # group owner nick name
                         "ownerTgId": owner_id, # group owner telegram id
-                        "remark": "", # reserved remark
                         "shareLink": group_invite_link,  # group invite link
-                        "slogan": "", # slogan, empty string
                         "status": 1, # project status, default to 1
                         "targetId":  group_id, # group id
                         "targetType": 0, # 0 for group, 1 for channel
-                        "userName": username, # group owner username
                     }
+
+                    if group_desc:
+                        payloads.update({"slogan": group_desc})
+                    if last_name:
+                        payloads.update({"lastName": last_name})
+                    if logo_url:
+                        payloads.update({"logoUrl": logo_url})
+                    if user_name:
+                        payloads.update({"userName": user_name})
+
                     headers = {'Content-Type': 'application/json'}
-                    self.log.info(json.dumps(payloads))
-                    async with self.bot.http.put(self.api_url, json=payloads, headers=headers) as resp:
-                        res = await resp.text()
-                        self.log.info(f"response status: {resp.status}, {res}")
+
+                    self.log.debug(f"Request payloads: {json.dumps(payloads)}")
+
+                    try:
+                        async with self.bot.http.put(self.api_url, json=payloads, headers=headers) as resp:
+                            res = await resp.json()
+
+                            self.log.info(f"response from Server, status: {resp.status}, data: {res}")
+                    except Exception as e:
+                        self.log.error(f"Create new project error: {str(e)}")
+
+
+                    url = await TWA.get_chat_project_link(group_id)
+
+                    msg_text = await self.text(group_id, "create-project", noformat=True)
+                    msg_context = msg_text.format(group_name=group_name)
+                    button_text = await self.text(owner_id, "create-project-button")
+                    button = build_button([(button_text, url, False)])
+
+                    await self.bot.client.send_message(
+                        owner_id,
+                        msg_context,
+                        reply_markup=button
+                    )
+
+                    # TODO: This would cause duplicate message when bot re-join a group
+                    # Solution: project-create api to return a flag to determine where a project is created
+                    group_msg_context = await self.text(group_id, "start-chat")
+
+                    await self.bot.client.send_message(
+                        group_id,
+                        group_msg_context,
+                        reply_markup=button
+                    )
+
         except Exception as e:
             self.log.error(f"Create project error: {str(e)}")
 
@@ -149,3 +191,14 @@ class BeeconPlugin(plugin.Plugin):
             return f"https://{self.aws_s3_bucket}.s3.ap-southeast-1.amazonaws.com/{filename}"
         except Exception as e:
             self.log.error(f"retrieving group pic failed: {str(e)}")
+
+
+    async def get_group_description(self, group_id: int) -> str | None:
+        try:
+            chat = await self.bot.client.get_chat(group_id)
+            if chat.description:
+                return chat.description
+
+        except Exception as e:
+            self.log.error(str(e))
+        return None

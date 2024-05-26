@@ -10,7 +10,8 @@ help-pm: |
   - /donate: Get information on how to support me.
 
   Anjani settings are also configurable on our dashboard, [click here](https://userbotindo.com/dashboard?ref=anjani) to open dashboard.
-start-chat: Sending you a warm hi & wishing your day is a happy one!
+# start-chat: Sending you a warm hi & wishing your day is a happy one!
+start-chat: To assist in automatically identifying the completion status of community tasks, please ensure that @beecon_bot has granted default admin permissions
 help-chat: Contact me in PM to get the list of possible commands.
 # add-to-group-button: Add to Group 👥
 add-to-group-button: + Add Bot as Admin +
@@ -651,4 +652,20 @@ err-illegal-trigger: "Illegal character in trigger!\n'.' and '$' are not allowed
 #region beecon
 faq-button: 💬 FAQ
 channel-button: 💎 Channel
+create-project: Please checkout the latest activities for **{group_name}**
+create-project-button: 👉 Please enter community 👈
+#endregion
+
+#region server notification
+lottery-create: |
+  Attention {community_name} Community Lucky Draw launched!
+  Prize: {prize}
+  End time: {end_time}
+  Join the excitement
+lottery-join: |
+  {joined_users}
+  🎉  Draw Time: {end_time}
+  🎁  Prize Details: {prize}
+lottery-end: |
+  🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
 #endregion
