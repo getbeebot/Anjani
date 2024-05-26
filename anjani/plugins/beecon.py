@@ -53,10 +53,7 @@ class BeeconPlugin(plugin.Plugin):
             for line in json.dumps(message, indent=4).splitlines(True):
                 await f.write(line)
             await f.write("\n")
-<<<<<<< HEAD
-=======
 
->>>>>>> alpha
 
     async def create_if_not_exist(self, path):
         result = await aio_os.path.exists(path)

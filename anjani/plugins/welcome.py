@@ -137,10 +137,6 @@ class Greeting(plugin.Plugin):
         if not await self.is_welcome(chat.id):
             return
 
-        # temp disable group notice for 万物岛
-        if chat.id == -1002125507569:
-            return
-
         new_members = message.new_chat_members
 
         is_bulk_welcome = len(new_members) > 1
