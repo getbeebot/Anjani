@@ -328,18 +328,18 @@ class Main(plugin.Plugin):
 
             buttons.extend(group_buttons)
 
-            permission = [
-                # "change_info",
-                "post_messages",
-                "edit_messages",
-                "delete_messages",
-                "restrict_members",
-                "invite_users",
-                "pin_messages",
-                # "promote_members",
-                "manage_video_chats",
-                "manage_chat",
-            ]
+            # permission = [
+            #     # "change_info",
+            #     "post_messages",
+            #     "edit_messages",
+            #     "delete_messages",
+            #     "restrict_members",
+            #     "invite_users",
+            #     "pin_messages",
+            #     # "promote_members",
+            #     "manage_video_chats",
+            #     "manage_chat",
+            # ]
 
             faq_link = os.getenv("FAQ", "beecon.me")
             channel_link = os.getenv("CHANNEL", "beecon.me")
@@ -348,7 +348,7 @@ class Main(plugin.Plugin):
                 [
                     InlineKeyboardButton(  # Add bot as Admin button
                         text=await self.text(chat.id, "add-to-group-button"),
-                        url=f"t.me/{self.bot.user.username}?startgroup=true&admin={'+'.join(permission)}",
+                        url=f"t.me/{self.bot.user.username}?startgroup=true",
                     ),
                 ],
                 [
