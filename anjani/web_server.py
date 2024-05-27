@@ -91,8 +91,6 @@ def cron_job():
     scheduler.add_job(auto_push_notification, trigger=trigger)
     scheduler.start()
 
-async def auto_logging():
-    log.info("hello")
 
 async def auto_push_notification():
     try:
@@ -105,8 +103,20 @@ async def auto_push_notification():
             button = InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
             )
+            tasks = await twa.get_chat_tasks(group_id)
+            participants = await twa.get_chat_activity_participants(group_id)
+            if tasks and participants:
+                group_context = await get_template("group-start-pm")
+                group_notify_msg = group_context.format(tasks=tasks,participants=participants)
+            else:
+                group_notify_msg = "We're initiating, just give us some time..."
 
-            await tgclient.send_message(group_id, "Please checkout our community's activities", button)
+            await tgclient.client.send_photo(
+                group_id,
+                "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                caption=group_notify_msg,
+                reply_markup=button,
+            )
 
     except Exception as e:
         pass

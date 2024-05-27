@@ -3,7 +3,7 @@ start-pm: |
 group-start-pm: |
   🌟 现在社区中有 {tasks} 个奖励，已有 {participants} 成员参与，快来看看吧！👇
 default-welcome: |
-  👏 {username}.
+  👏 欢迎{username}.
   参与社群活动，领取奖励.
 add-to-group-button: + 把我加进群组 +
 #region language

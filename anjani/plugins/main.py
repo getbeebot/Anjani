@@ -392,9 +392,10 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        project_link = await TWA.get_chat_project_link(chat.id)
+        twa = TWA()
+        project_link = await twa.get_chat_project_link(chat.id)
 
-        if (project_link == TWA.TWA_LINK ):
+        if (project_link == twa.TWA_LINK ):
             return None
 
         buttons = [
@@ -406,15 +407,14 @@ class Main(plugin.Plugin):
             ]
         ]
 
-        twa = TWA()
         tasks = await twa.get_chat_tasks(chat.id)
         participants = await twa.get_chat_activity_participants(chat.id)
-        if tasks and participants:
-            group_context = await self.text(chat.id, "group-start", noformat=True)
-            group_start_msg = group_context.format(tasks=tasks, participants=participants)
 
+        if tasks and participants:
+            group_context = await self.text(chat.id, "group-start-pm", noformat=True)
+            group_start_msg = group_context.format(tasks=tasks, participants=participants)
         else:
-            group_start_msg = "We just initiate, just give us some time..."
+            group_start_msg = "We're initiating, just give us some time..."
 
         await ctx.respond(
             group_start_msg,
