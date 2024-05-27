@@ -2,6 +2,7 @@ import logging
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+import aiohttp
 import aiohttp.web as web
 from aiohttp import web_response
 from aiohttp.web import Response, BaseRequest
@@ -54,7 +55,8 @@ async def start_server() -> None:
     member_check_router = web.post("/is_member", member_check_handler)
     update_user_router = web.get("/update_user", get_user_info_handler)
     send_message_router = web.post("/sendmsg", send_message_handler)
-    routers = [member_check_router, send_message_router, update_user_router]
+    ws_router = web.get("/ws", community_creation_notify)
+    routers = [member_check_router, send_message_router, update_user_router, ws_router]
 
     app.add_routes(routers)
 
@@ -266,3 +268,31 @@ async def send_message_handler(request: BaseRequest) -> Response:
         })
 
     return web_response.json_response(ret_data, status=200)
+
+
+connected_clients = set()
+async def community_creation_notify(request):
+    ws = web.WebSocketResponse()
+    try:
+        await ws.prepare(request)
+
+        connected_clients.add(ws)
+        async for msg in ws:
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                log.info(msg.data)
+                if msg.data == "close":
+                    await ws.close()
+                else:
+                    for wsc in connected_clients.difference({ws}):
+                        if wsc.closed:
+                            connected_clients.remove(wsc)
+                            continue
+                        await wsc.send_str(f"{msg.data}")
+                    await ws.close()
+            elif msg.type == aiohttp.WSMsgType.ERROR:
+                log.error(f"ws connection closed with exception {ws.exception()}")
+                break
+    except Exception as e:
+        log.error(f"Websocket connection closed, {e}")
+
+    return ws

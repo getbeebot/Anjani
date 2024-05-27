@@ -1,6 +1,9 @@
 import json
 from datetime import datetime, timezone
 
+import websockets
+from websockets.client import connect
+
 import aiofiles
 import aiofiles.os as aio_os
 import os
@@ -132,9 +135,16 @@ class BeeconPlugin(plugin.Plugin):
 
                     self.log.debug(f"Request payloads: {json.dumps(payloads)}")
 
+                    is_success = False
+                    project_id = None
+
                     try:
                         async with self.bot.http.put(self.api_url, json=payloads, headers=headers) as resp:
                             res = await resp.json()
+                            if resp.status == 200 and res.get("success"):
+                                is_success = True
+                            data = res.get("data")
+                            project_id = data.get("id") if data else None
 
                             self.log.info(f"response from Server, status: {resp.status}, data: {res}")
                     except Exception as e:
@@ -164,6 +174,12 @@ class BeeconPlugin(plugin.Plugin):
                         reply_markup=button
                     )
 
+                    if is_success and project_id:
+                        await self.send_ws_notify(json.dumps({
+                            "project_id": project_id,
+                            "owner_tg_id": owner_id
+                        }))
+
         except Exception as e:
             self.log.error(f"Create project error: {str(e)}")
 
@@ -188,3 +204,12 @@ class BeeconPlugin(plugin.Plugin):
             return f"https://{self.aws_s3_bucket}.s3.ap-southeast-1.amazonaws.com/{filename}"
         except Exception as e:
             self.log.error(f"retrieving group pic failed: {str(e)}")
+
+    async def send_ws_notify(self, data) -> None:
+        async with connect("ws://127.0.0.1:8080/ws") as ws:
+            try:
+                await ws.send(data)
+                msg = await ws.recv()
+                self.log.info(msg)
+            except websockets.ConnectionClosed:
+                pass
