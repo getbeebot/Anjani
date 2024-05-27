@@ -147,3 +147,15 @@ WHERE biz_user_id = '{user_id}'
 """
         res = await self.query(sql)
         return res
+
+    async def query_project_tasks(self, chat_id: int):
+        project_id = await self.query_project_id_by_chat_id(chat_id)
+        sql = f"SELECT COUNT(*) FROM beebot.bot_task WHERE project_id = '{project_id}'"
+        (count, )= await self.query_one(sql)
+        return count
+
+    async def query_project_participants(self, chat_id: int):
+        project_id = await self.query_project_id_by_chat_id(chat_id)
+        sql = f"SELECT COUNT(*) FROM beebot.bot_user_action WHERE project_id = '{project_id}'"
+        (count, ) = await self.query_one(sql)
+        return count

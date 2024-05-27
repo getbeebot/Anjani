@@ -107,7 +107,10 @@ class BeeconPlugin(plugin.Plugin):
                     if group.username:
                         group_invite_link = f"https://t.me/{group.username}"
                     else:
-                        group_invite_link = await self.bot.client.export_chat_invite_link(group.id)
+                        try:
+                            group_invite_link = await self.bot.client.export_chat_invite_link(group.id)
+                        except Exception as e:
+                            group_invite_link = None
 
                     group_desc = await self.get_group_description(group_id)
                     logo_url = None

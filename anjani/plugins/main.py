@@ -406,10 +406,19 @@ class Main(plugin.Plugin):
             ]
         ]
 
-        group_context = await self.text(chat.id, "start-chat")
+        twa = TWA()
+        tasks = await twa.get_chat_tasks(chat.id)
+        participants = await twa.get_chat_activity_participants(chat.id)
+        if tasks and participants:
+            group_context = await self.text(chat.id, "group-start", noformat=True)
+            group_start_msg = group_context.format(tasks=tasks, participants=participants)
+
+        else:
+            group_start_msg = "We just initiate, just give us some time..."
 
         await ctx.respond(
-            group_context,
+            group_start_msg,
+            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN
         )
