@@ -193,8 +193,17 @@ class EventDispatcher(MixinBase):
             if event_data.new_chat_member is not None:
                 user_id = event_data.new_chat_member.user.id
                 if user_id == self.uid:
-                    invite_link = await self.client.export_chat_invite_link(chat_id) if chat_username is None else f"https://t.me/{chat_username}"
+                    try:
+                        if chat_username:
+                            invite_link = f"https://t.me/{chat_username}"
+                        else:
+                            invite_link = await self.client.export_chat_invite_link(chat_id)
+                    except Exception as e:
+                        self.log.error(e)
+                        invite_link = ""
+
                     self.log.info(f"Bot joining {chat_type} {chat_name}({chat_id}) {invite_link}")
+
                     mysql_client = util.db.AsyncMysqlClient.init_from_env()
                     try:
                         await mysql_client.connect()
@@ -202,10 +211,10 @@ class EventDispatcher(MixinBase):
                             "chat_type": chat_type,
                             "chat_id": chat_id,
                             "chat_name": chat_name,
-                            "invite_link": invite_link if invite_link else ""
+                            "invite_link": invite_link
                         })
                     except Exception as e:
-                        pass
+                        self.log.error(e)
                     finally:
                         await mysql_client.close()
 
