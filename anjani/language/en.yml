@@ -77,7 +77,6 @@ admins-help: |
   × /setgpic : Changes the group's display picture to the replied images
   × /zombies : Clean deleted account from your group.
   × /promote <user_id/username> : Promote member to administrator
-  × /demote <user_id/username> : Demote administrator to members.
 gpic-no-photo: Give me a photo!
 gpic-success-changed: Group picture changed successfully!.
 finding-zombie: "`Finding zombies account...`"
@@ -290,6 +289,7 @@ language-help: |
   You can choose your language preference!\n
   **Available languages:**
   - 🇺🇸 English.
+  - 🇨🇳 中文
   Commands:
   ×  /setlang | /lang | /language : set your preferred language.\n
   **Note**

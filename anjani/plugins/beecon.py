@@ -22,7 +22,7 @@ import boto3
 
 class BeeconPlugin(plugin.Plugin):
     name: ClassVar[str] = "Beecon Plugin"
-    helpable: ClassVar[bool] = True
+    helpable: ClassVar[bool] = False
 
     api_url = os.getenv("API_URL")
     aws_ak = os.getenv("AWS_AK")
