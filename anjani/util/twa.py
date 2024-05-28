@@ -30,13 +30,16 @@ class TWA:
     @classmethod
     async def get_chat_project_link(cls, chat_id: int):
         twa = cls()
-        url = twa.TWA_LINK
         try:
             await twa.mysql.connect()
             project_id = await twa.mysql.query_project_id_by_chat_id(chat_id)
-            url = twa.generate_project_detail_link(project_id)
+            if project_id:
+                url = twa.generate_project_detail_link(project_id)
+            else:
+                url = twa.TWA_LINK
         except Exception as e:
             twa.log.error(e)
+            url = twa.TWA_LINK
         finally:
             await twa.mysql.close()
 

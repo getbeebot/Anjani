@@ -395,9 +395,6 @@ class Main(plugin.Plugin):
         twa = TWA()
         project_link = await twa.get_chat_project_link(chat.id)
 
-        if (project_link == twa.TWA_LINK ):
-            return None
-
         buttons = [
             [
                 InlineKeyboardButton(
@@ -416,12 +413,14 @@ class Main(plugin.Plugin):
         else:
             group_start_msg = "We're initiating, just give us some time..."
 
-        await ctx.respond(
+        msg = await ctx.respond(
             group_start_msg,
             photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN
         )
+        if project_link == twa.TWA_LINK:
+            await msg.delete()
         return None
 
     async def switch_lang(self, chat_id: int, language: str) -> None:
