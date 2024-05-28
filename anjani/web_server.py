@@ -125,7 +125,7 @@ async def auto_push_notification():
             )
 
     except Exception as e:
-        pass
+        log.error(e)
     finally:
         await mysql.close()
 

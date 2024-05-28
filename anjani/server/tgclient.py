@@ -47,9 +47,9 @@ class TGClient:
     async def send_photo(self, chat_id, photo, caption, reply_markup=None) -> None:
         try:
             if reply_markup:
-                await self.client.send_photo(chat_id, photo, caption=caption)
-            else:
                 await self.client.send_photo(chat_id, photo, caption=caption, reply_markup=reply_markup)
+            else:
+                await self.client.send_photo(chat_id, photo, caption=caption)
         except Exception as e:
             self.log.error(e)
 

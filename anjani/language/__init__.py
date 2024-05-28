@@ -27,7 +27,7 @@ async def get_lang_file() -> AsyncIterator[AsyncPath]:
 
 
 async def get_template_files() -> AsyncIterator[AsyncPath]:
-    async for language_file in AsyncPath("anjani/templates").iterdir():
+    async for language_file in AsyncPath("anjani/language").iterdir():
         if language_file.suffix == ".yml":
             yield language_file
 
