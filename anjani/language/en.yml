@@ -1,6 +1,8 @@
 #region Main
 start-pm: |
   To assist in automatically identifying the completion status of community tasks, please add @beecon_bot to your managed group and designate it as an administrator.
+group-notify-no-participants: |
+  🌟 There are {tasks} tasks in our community. Let's get involved! 👇
 group-start-pm: |
   🌟 There are {tasks} tasks in our community, and {participants} members already joined. Let's get involved! 👇
 help-pm: |

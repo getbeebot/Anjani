@@ -105,11 +105,15 @@ async def auto_push_notification():
             )
             tasks = await twa.get_chat_tasks(group_id)
             participants = await twa.get_chat_activity_participants(group_id)
-            if tasks and participants:
+
+            if tasks and participants > 7:
                 group_context = await get_template("group-start-pm")
                 group_notify_msg = group_context.format(tasks=tasks,participants=participants)
+            elif tasks and 0 < participants <= 7:
+                group_context = await get_template("group-notify-no-participants")
+                group_notify_msg = group_context.format(tasks=tasks)
             else:
-                group_notify_msg = "We're initiating, just give us some time..."
+                return None
 
             await tgclient.client.send_photo(
                 group_id,

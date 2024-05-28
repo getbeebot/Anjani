@@ -1,5 +1,7 @@
 start-pm: |
   🙋‍♀️ 为了帮你自动识别群友任务的完成状态，请将我 @beecon_bot 添加到您管理的群组，并指定为管理员。
+group-notify-no-participants: |
+  🌟 There are {tasks} tasks in our community. Let's get involved! 👇
 group-start-pm: |
   🌟 现在社区中有 {tasks} 个奖励，已有 {participants} 成员参与，快来看看吧！👇
 default-welcome: |
