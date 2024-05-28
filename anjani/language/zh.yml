@@ -14,25 +14,25 @@ language-set-succes: 已将语言设置为 {}
 #region beecon
 faq-button: 💬 FAQ
 channel-button: 💎 官方频道
-language-button: 🇨🇳 切换语言 🇨🇳
+# language-button: 🇨🇳 切换语言 🇨🇳
 create-project: 查看最新 **{group_name}** 群组的活动
 create-project-button: 👉 请进入社群活动页面 👈
 #endregion
 
 #region help button text
-admins-button: 管理
-backups-button: 备份
-federations-button:
-filters-button: 过滤
-greetings-button: 欢迎语
-lockings-button: 锁定
-misc-button: 其他
-muting-button: 禁言
-notes-button: 备忘
-purges-button: 消息清除
-reporting-button: 举报
-restrictions-button: 管制
-rules-button: 规则
-spamshield-button: 反垃圾
-topic-button: 话题
+# admins-button: 管理
+# backups-button: 备份
+# federations-button:
+# filters-button: 过滤
+# greetings-button: 欢迎语
+# lockings-button: 锁定
+# misc-button: 其他
+# muting-button: 禁言
+# notes-button: 备忘
+# purges-button: 消息清除
+# reporting-button: 举报
+# restrictions-button: 管制
+# rules-button: 规则
+# spamshield-button: 反垃圾
+# topic-button: 话题
 #endregion
