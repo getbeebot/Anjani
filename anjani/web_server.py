@@ -87,7 +87,8 @@ def cron_job():
     # trigger = IntervalTrigger(hours=4)
     interval = config.AUTO_NOTIFY_INTERVAL
 
-    trigger = IntervalTrigger(hours=interval)
+    # trigger = IntervalTrigger(hours=interval)
+    trigger = IntervalTrigger(minutes=1)
     scheduler.add_job(auto_push_notification, trigger=trigger)
     scheduler.start()
 
@@ -105,7 +106,6 @@ async def auto_push_notification():
             )
             tasks = await twa.get_chat_tasks(group_id)
             participants = await twa.get_chat_activity_participants(group_id)
-
             if tasks and participants > 7:
                 group_context = await get_template("group-start-pm")
                 group_notify_msg = group_context.format(tasks=tasks,participants=participants)
@@ -113,14 +113,16 @@ async def auto_push_notification():
                 group_context = await get_template("group-notify-no-participants")
                 group_notify_msg = group_context.format(tasks=tasks)
             else:
-                return None
-
-            await tgclient.client.send_photo(
-                group_id,
-                "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
-                caption=group_notify_msg,
-                reply_markup=button,
-            )
+                continue
+            try:
+                await tgclient.client.send_photo(
+                    group_id,
+                    "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                    caption=group_notify_msg,
+                    reply_markup=button,
+                )
+            except Exception as e:
+                log.error(e)
 
     except Exception as e:
         pass
