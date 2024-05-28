@@ -41,7 +41,7 @@ class Language(plugin.Plugin):
     """Bot language plugin"""
 
     name: ClassVar[str] = "Language"
-    helpable: ClassVar[bool] = True
+    helpable: ClassVar[bool] = False
 
     db: util.db.AsyncCollection
     _db_stream: asyncio.Task[None]
