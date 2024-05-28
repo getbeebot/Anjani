@@ -107,7 +107,10 @@ class BeeconPlugin(plugin.Plugin):
                     if group.username:
                         group_invite_link = f"https://t.me/{group.username}"
                     else:
-                        group_invite_link = await self.bot.client.export_chat_invite_link(group.id)
+                        try:
+                            group_invite_link = await self.bot.client.export_chat_invite_link(group.id)
+                        except Exception as e:
+                            group_invite_link = None
 
                     group_desc = await self.get_group_description(group_id)
                     logo_url = None
@@ -172,10 +175,16 @@ class BeeconPlugin(plugin.Plugin):
                     # Solution: project-create api to return a flag to determine where a project is created
                     group_msg_context = await self.text(group_id, "start-chat")
 
-                    await self.bot.client.send_message(
+                    # await self.bot.client.send_message(
+                    #     group_id,
+                    #     group_msg_context,
+                    #     reply_markup=button
+                    # )
+                    await self.bot.client.send_photo(
                         group_id,
-                        group_msg_context,
-                        reply_markup=button
+                        "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                        caption=group_msg_context,
+                        reply_markup=button,
                     )
 
                     if is_success and project_id:

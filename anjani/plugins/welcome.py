@@ -174,13 +174,21 @@ class Greeting(plugin.Plugin):
                     msg = None
                     try:
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
-                            msg = await self.SEND[msg_type](
+                            # msg = await self.SEND[msg_type](
+                            #     message.chat.id,
+                            #     formatted_text,
+                            #     message_thread_id=thread_id,
+                            #     reply_to_message_id=reply_to,
+                            #     reply_markup=button,
+                            #     disable_web_page_preview=True,
+                            # )
+                            msg = await self.bot.client.send_photo(
                                 message.chat.id,
-                                formatted_text,
+                                "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                                caption=formatted_text,
                                 message_thread_id=thread_id,
                                 reply_to_message_id=reply_to,
                                 reply_markup=button,
-                                disable_web_page_preview=True,
                             )
                         elif msg_type in {Types.STICKER, Types.ANIMATION}:
                             msg = await self.SEND[msg_type](

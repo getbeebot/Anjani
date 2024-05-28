@@ -30,13 +30,16 @@ class TWA:
     @classmethod
     async def get_chat_project_link(cls, chat_id: int):
         twa = cls()
-        url = twa.TWA_LINK
         try:
             await twa.mysql.connect()
             project_id = await twa.mysql.query_project_id_by_chat_id(chat_id)
-            url = twa.generate_project_detail_link(project_id)
+            if project_id:
+                url = twa.generate_project_detail_link(project_id)
+            else:
+                url = twa.TWA_LINK
         except Exception as e:
-            twa.log.error(str(e))
+            twa.log.error(e)
+            url = twa.TWA_LINK
         finally:
             await twa.mysql.close()
 
@@ -48,7 +51,31 @@ class TWA:
             rows = await self.mysql.query_user_owned_groups(user_id)
             return rows
         except Exception as e:
-            self.log.error(str(e))
+            self.log.error(e)
+        finally:
+            await self.mysql.close()
+
+        return None
+
+    async def get_chat_tasks(self, chat_id: int) -> int:
+        try:
+            await self.mysql.connect()
+            res = await self.mysql.query_project_tasks(chat_id)
+            return res
+        except Exception as e:
+            self.log.error(e)
+        finally:
+            await self.mysql.close()
+
+        return None
+
+    async def get_chat_activity_participants(self, chat_id: int) -> int:
+        try:
+            await self.mysql.connect()
+            res = await self.mysql.query_project_participants(chat_id)
+            return res
+        except Exception as e:
+            self.log.error(e)
         finally:
             await self.mysql.close()
 

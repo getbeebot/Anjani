@@ -392,10 +392,8 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        project_link = await TWA.get_chat_project_link(chat.id)
-
-        if (project_link == TWA.TWA_LINK ):
-            return None
+        twa = TWA()
+        project_link = await twa.get_chat_project_link(chat.id)
 
         buttons = [
             [
@@ -406,13 +404,23 @@ class Main(plugin.Plugin):
             ]
         ]
 
-        group_context = await self.text(chat.id, "start-chat")
+        tasks = await twa.get_chat_tasks(chat.id)
+        participants = await twa.get_chat_activity_participants(chat.id)
 
-        await ctx.respond(
-            group_context,
+        if tasks and participants:
+            group_context = await self.text(chat.id, "group-start-pm", noformat=True)
+            group_start_msg = group_context.format(tasks=tasks, participants=participants)
+        else:
+            group_start_msg = "We're initiating, just give us some time..."
+
+        msg = await ctx.respond(
+            group_start_msg,
+            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN
         )
+        if project_link == twa.TWA_LINK:
+            await msg.delete()
         return None
 
     async def switch_lang(self, chat_id: int, language: str) -> None:

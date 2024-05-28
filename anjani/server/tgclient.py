@@ -44,6 +44,15 @@ class TGClient:
         except Exception as e:
             self.log.error(str(e))
 
+    async def send_photo(self, chat_id, photo, caption, reply_markup=None) -> None:
+        try:
+            if reply_markup:
+                await self.client.send_photo(chat_id, photo, caption=caption)
+            else:
+                await self.client.send_photo(chat_id, photo, caption=caption, reply_markup=reply_markup)
+        except Exception as e:
+            self.log.error(e)
+
 
     async def get_avatar_link(self, chat_id: int) -> str:
         try:

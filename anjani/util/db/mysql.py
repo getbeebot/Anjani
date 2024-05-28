@@ -127,8 +127,12 @@ class AsyncMysqlClient:
 
     async def query_project_id_by_chat_id(self, chat_id: int) -> int:
         sql = f"SELECT id FROM bot_project WHERE target_id={chat_id}"
-        (project_id, ) = await self.query_one(sql)
-        return project_id
+        row = await self.query_one(sql)
+        if row:
+            (project_id, ) =  row
+            return project_id
+        else:
+            return None
 
     async def retrieve_group_id_with_project(self):
         sql = "SELECT id, target_id FROM bot_project WHERE target_id IS NOT NULL AND target_type IS NOT NULL"
@@ -147,3 +151,15 @@ WHERE biz_user_id = '{user_id}'
 """
         res = await self.query(sql)
         return res
+
+    async def query_project_tasks(self, chat_id: int):
+        project_id = await self.query_project_id_by_chat_id(chat_id)
+        sql = f"SELECT COUNT(*) FROM beebot.bot_task WHERE project_id = '{project_id}'"
+        (count, )= await self.query_one(sql)
+        return count
+
+    async def query_project_participants(self, chat_id: int):
+        project_id = await self.query_project_id_by_chat_id(chat_id)
+        sql = f"SELECT COUNT(*) FROM beebot.bot_user_action WHERE project_id = '{project_id}'"
+        (count, ) = await self.query_one(sql)
+        return count

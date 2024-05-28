@@ -1,6 +1,10 @@
 #region Main
 start-pm: |
   To assist in automatically identifying the completion status of community tasks, please add @beecon_bot to your managed group and designate it as an administrator.
+group-notify-no-participants: |
+  🌟 There are {tasks} tasks in our community. Let's get involved! 👇
+group-start-pm: |
+  🌟 There are {tasks} tasks in our community, and {participants} members already joined. Let's get involved! 👇
 help-pm: |
   Beecon offers every group an exceptional management bot, enabling community moderators to effortlessly issue their own community's incentive tokens, set interactive tasks, track contributions, and automate reward distribution.
   **Main** commands available:
@@ -575,7 +579,9 @@ greetings-topic-default: |
   To set a default action topic, please set a default action topic as mentioned in this [topic help]({}).
 greetings-no-input: Please provide the text you want to set!
 bot-added: ""
-default-welcome: Welcome {username} to join {chatname}.\nCheckout current community rewards available! 👇
+default-welcome: |
+  👏 Welcome {username}.
+  Join the community's activities and get rewards.
 clean-serv-set: Turned {} service messages cleaning.
 welcome-set: Welcome turned {} on new member join.
 welcome-message-expired: File ID for the media message got expired.\n__This might have occured because you must have changed the bot token. Please re-add the welcome media.__
