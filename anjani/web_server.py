@@ -111,7 +111,7 @@ async def auto_push_notification():
             if tasks and participants > 7:
                 group_context = await get_template("group-start-pm")
                 group_notify_msg = group_context.format(tasks=tasks,participants=participants)
-            elif tasks and 0 < participants <= 7:
+            elif tasks:
                 group_context = await get_template("group-notify-no-participants")
                 group_notify_msg = group_context.format(tasks=tasks)
             else:
