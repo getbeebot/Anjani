@@ -216,8 +216,6 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         assert isinstance(chat_type, int), "type argument should be int, but got an non-int, please check it out"
 
-        assert chat_type == 88, "Not support type"
-
         data = payloads.get("data")
 
         chat_id = payloads.get("chatId")
