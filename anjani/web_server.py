@@ -20,7 +20,7 @@ from .server.tgclient import TGClient
 from .server.notification import (
     build_lottery_create_msg,
     build_lottery_end_msg,
-    build_lottery_join_msg
+    build_lottery_join_msg,
 )
 
 
@@ -237,6 +237,12 @@ async def send_message_handler(request: BaseRequest) -> Response:
         if not uri:
             uri = config.TWA_LINK
 
+        button = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🕹 Enter", url=uri)]
+            ]
+        )
+
         content: str = ""
         notify_type = data.get("notifyType")
 
@@ -261,6 +267,16 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
             ret_data.update({"ok": True})
             return web_response.json_response(ret_data)
+        elif notify_type == 5:
+            content = await get_template("task-creation")
+            await tgclient.send_photo(
+                chat_id,
+                "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                caption=content,
+                reply_markup=button,
+            )
+            ret_data.update({"ok": True})
+            return web_response.json_response(ret_data)
         else:
             raise InvalidArgumentError("Not support notifyType")
 
@@ -269,9 +285,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
         await tgclient.send_message(
             chat_id,
             content,
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🕹 Enter", url=uri)]]
-            ),
+            reply_markup=button,
         )
 
         ret_data = {"res": "ok"}

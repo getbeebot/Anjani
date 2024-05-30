@@ -27,6 +27,15 @@ class TWA:
         args = base58.b58encode(args).decode("utf-8")
         return f"{self.TWA_LINK}={args}"
 
+    def generate_task_detail_link(self, project_id: int, task_id: int):
+        args = msgpack.packb({
+            "target": "taskShare",
+            "id": project_id,
+            "subid": task_id,
+        })
+        args = base58.b58encode(args).decode("utf-8")
+        return f"{self.TWA_LINK}={args}"
+
     @classmethod
     async def get_chat_project_link(cls, chat_id: int):
         twa = cls()
