@@ -11,13 +11,15 @@ from os.path import join
 from typing import ClassVar
 
 from pyrogram import filters
-from pyrogram.types import Message
+from pyrogram.types import Message, ChatMemberUpdated
 
 from anjani import listener, plugin
 from anjani.util.tg import build_button
 from anjani.util.twa import TWA
 
 import boto3
+
+import re
 
 
 class BeeconPlugin(plugin.Plugin):
@@ -36,6 +38,55 @@ class BeeconPlugin(plugin.Plugin):
         self.log.debug(f"Receiving message: {payloads}")
         payloads = json.loads(payloads)
         await self.save_message(payloads)
+
+
+    @listener.filters(filters.private)
+    async def on_message(self, message: Message) -> None:
+        self.log.debug(message)
+
+        context = message.text
+
+        # return if no text message
+        if not context:
+            return None
+
+        api_uri = f"{self.api_url}/p/distribution/code/getInviteLink"
+        from_user = message.from_user
+
+        headers = {'Content-Type': 'application/json'}
+        payloads = {
+            "user_id": from_user.id,
+            "group_id": message.chat.id,
+        }
+
+        code = None
+        if len(context) == 4:
+            code = context
+        else:
+            pattern = re.compile("\x1f\w{4}\x1f")
+            match = pattern.search(context)
+
+            if match:
+                target = match.group()
+                code = target[1:-1]
+
+        if code:
+            payloads.update({"inviteCode": code})
+            try:
+                # query for invite link based on code
+                async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
+                    res = await resp.json()
+                    self.log.debug(res)
+                    invite_link = res.get("inviteLink")
+                    reply_context = f"🎁 Join our community to get rewards\n\n{invite_link}"
+                    await self.bot.client.send_message(
+                        from_user.id,
+                        reply_context,
+                        disable_web_page_preview=False,
+                    )
+            except Exception as e:
+                self.log.error(e)
+
 
 
     async def save_message(self, message) -> None:
@@ -146,7 +197,8 @@ class BeeconPlugin(plugin.Plugin):
                     project_id = None
 
                     try:
-                        async with self.bot.http.put(self.api_url, json=payloads, headers=headers) as resp:
+                        api_uri = f"{self.api_url}/p/task/bot-project/init"
+                        async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
                             res = await resp.json()
                             if resp.status == 200 and res.get("success"):
                                 is_success = True
@@ -218,6 +270,7 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(f"retrieving group pic failed: {str(e)}")
 
+
     async def get_group_description(self, group_id: int) -> str | None:
         try:
             chat = await self.bot.client.get_chat(group_id)
@@ -227,6 +280,7 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(str(e))
         return None
+
 
     async def send_ws_notify(self, data) -> None:
         async with connect("ws://127.0.0.1:8080/ws") as ws:

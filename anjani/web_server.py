@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -23,6 +24,8 @@ from .server.notification import (
     build_lottery_join_msg,
 )
 
+# Sun Jun 04 2034 01:00:00 GMT+0000
+EXPIRE_TS: int = 2032995600
 
 config = Config()
 
@@ -55,8 +58,13 @@ async def start_server() -> None:
     member_check_router = web.post("/is_member", member_check_handler)
     update_user_router = web.get("/update_user", get_user_info_handler)
     send_message_router = web.post("/sendmsg", send_message_handler)
+    get_invite_link_router = web.post("/get_invite_link", create_invite_link_handler)
     ws_router = web.get("/ws", community_creation_notify)
-    routers = [member_check_router, send_message_router, update_user_router, ws_router]
+
+    routers = [
+        member_check_router, send_message_router, update_user_router,
+        get_invite_link_router, ws_router
+    ]
 
     app.add_routes(routers)
 
@@ -324,3 +332,45 @@ async def community_creation_notify(request):
         log.error(f"Websocket connection closed, {e}")
 
     return ws
+
+async def create_invite_link_handler(request: BaseRequest) -> Response:
+    ret_data = { "ok": False }
+    try:
+        payloads = await request.json()
+        log.info(f"Incoming request: {payloads}")
+
+        group_id = int(payloads.get("groupId"))
+        user_id = int(payloads.get("userId"))
+
+        user = await tgclient.get_user(user_id)
+        user_nick = user.first_name
+
+        expire = datetime.fromtimestamp(EXPIRE_TS, timezone.utc)
+
+        link = await tgclient.client.create_chat_invite_link(
+            chat_id=group_id,
+            name=user_nick,
+            expire_date=expire,
+            member_limit=99999,
+        )
+
+        invite_link = link.invite_link
+
+        res = {
+            "group_id": group_id,
+            "user_id": user_id,
+            "invite_link": invite_link,
+        }
+        ret_data.update({
+            "ok": True,
+            "data": res,
+        })
+
+    except Exception as e:
+        log.error(e)
+        ret_data.update({
+            "ok": False,
+            "error": str(e),
+        })
+
+    return web_response.json_response(ret_data, status=200)
