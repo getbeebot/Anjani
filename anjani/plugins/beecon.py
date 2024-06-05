@@ -63,7 +63,7 @@ class BeeconPlugin(plugin.Plugin):
         if len(context) == 4:
             code = context
         else:
-            pattern = re.compile("\x1f\w{4}\x1f")
+            pattern = re.compile("\u200b\w{4}\u200b")
             match = pattern.search(context)
 
             if match:
