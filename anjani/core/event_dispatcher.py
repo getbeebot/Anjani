@@ -240,7 +240,8 @@ class EventDispatcher(MixinBase):
                     ) as resp:
                         res = await resp.json()
                         self.log.debug(res)
-                        awards = res.get("awardsDes")
+                        data = res.get("data")
+                        awards = data.get("awardsDes")
                         # project_id = res.get("projectId")
                         # project_url = res.get("projectUrl")
                         mention_user = f"@{from_user.username}" if from_user.username else f"[{from_user.first_name}](tg://user?id={from_user.id})"

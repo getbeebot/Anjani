@@ -74,7 +74,6 @@ class BeeconPlugin(plugin.Plugin):
                 self.log.info(f"Payloads: {payloads}")
                 # query for invite link based on code
                 async with self.bot.http.get(api_uri, params=payloads) as resp:
-                    self.log.info(resp)
                     res = await resp.json()
                     self.log.debug(res)
                     invite_link = res.get("inviteLink")
