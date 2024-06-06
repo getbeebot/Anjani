@@ -60,10 +60,10 @@ class BeeconPlugin(plugin.Plugin):
         }
 
         code = None
-        if len(context) == 4:
+        if len(context) == 6:
             code = context
         else:
-            pattern = re.compile("\u200b\w{4}\u200b")
+            pattern = re.compile("\u200b\w{6}\u200b")
             match = pattern.search(context)
 
             if match:
