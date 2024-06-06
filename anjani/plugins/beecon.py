@@ -53,28 +53,28 @@ class BeeconPlugin(plugin.Plugin):
         api_uri = f"{self.api_url}/p/distribution/code/getInviteLink"
         from_user = message.from_user
 
-        headers = {'Content-Type': 'application/json'}
-        payloads = {
-            "user_id": from_user.id,
-            "group_id": message.chat.id,
-        }
+        payloads = {}
 
         code = None
         if len(context) == 6:
             code = context
         else:
-            pattern = re.compile("\u200b\w{6}\u200b")
+            pattern = re.compile("\u200b\w+\u200b")
             match = pattern.search(context)
 
             if match:
                 target = match.group()
                 code = target[1:-1]
 
+        self.log.info(f"Invitation code: {code}")
+
         if code:
             payloads.update({"inviteCode": code})
             try:
+                self.log.info(f"Payloads: {payloads}")
                 # query for invite link based on code
-                async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
+                async with self.bot.http.get(api_uri, params=payloads) as resp:
+                    self.log.info(resp)
                     res = await resp.json()
                     self.log.debug(res)
                     invite_link = res.get("inviteLink")
