@@ -77,12 +77,13 @@ class BeeconPlugin(plugin.Plugin):
                     res = await resp.json()
                     self.log.debug(res)
                     invite_link = res.get("inviteLink")
-                    reply_context = f"🎁 Join our community to get rewards\n\n{invite_link}"
-                    await self.bot.client.send_message(
-                        from_user.id,
-                        reply_context,
-                        disable_web_page_preview=False,
-                    )
+                    if invite_link:
+                        reply_context = f"🎁 Join our community to get rewards\n\n{invite_link}"
+                        await self.bot.client.send_message(
+                            from_user.id,
+                            reply_context,
+                            disable_web_page_preview=False,
+                        )
             except Exception as e:
                 self.log.error(e)
 
