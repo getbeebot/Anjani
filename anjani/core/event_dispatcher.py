@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import asyncio
 import bisect
-import json
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, MutableMapping, MutableSequence, Optional, Tuple
@@ -82,6 +82,7 @@ def _unpack_args(args: Tuple[Any, ...]) -> str:
 class EventDispatcher(MixinBase):
     # Initialized during instantiation
     listeners: MutableMapping[str, MutableSequence[Listener]]
+    api_prefix: str = os.getenv("API_URL", "https://api.getbeebot.com")
 
     def __init__(self: "Anjani", **kwargs: Any) -> None:
         # Initialize listener map
@@ -217,6 +218,39 @@ class EventDispatcher(MixinBase):
                         self.log.error(e)
                     finally:
                         await mysql_client.close()
+
+            if event_data.new_chat_member and event_data.invite_link:
+                chat = event_data.chat
+                from_user = event_data.from_user
+                invite_link = event_data.invite_link
+
+                headers = { "Content-Type": "application/json" }
+                payloads = {
+                    "chatId": chat.id,
+                    "tgUserId": from_user.id,
+                    "inviteLink": invite_link.invite_link,
+                }
+                api_uri = f"{self.api_prefix}/p/task/bot-project/join"
+                # call java api
+                try:
+                    async with self.http.put(
+                        api_uri,
+                        json=payloads,
+                        headers=headers
+                    ) as resp:
+                        res = await resp.json()
+                        self.log.debug(res)
+                        data = res.get("data")
+                        awards = data.get("awardsDes")
+                        # project_id = res.get("projectId")
+                        # project_url = res.get("projectUrl")
+                        mention_user = f"@{from_user.username}" if from_user.username else f"[{from_user.first_name}](tg://user?id={from_user.id})"
+                        context = f"🎉🎉🎉 Welcome {mention_user}, there're **{awards}** for your joining"
+                        await self.client.send_message(chat.id, context)
+
+                except Exception as e:
+                    self.log.error(e)
+
 
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():
