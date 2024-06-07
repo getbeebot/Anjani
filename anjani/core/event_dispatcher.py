@@ -245,7 +245,7 @@ class EventDispatcher(MixinBase):
                         # project_id = res.get("projectId")
                         # project_url = res.get("projectUrl")
                         mention_user = f"@{from_user.username}" if from_user.username else f"[{from_user.first_name}](tg://user?id={from_user.id})"
-                        context = f"🎉🎉🎉 Welcome {mention_user}, there're {awards} for your joining"
+                        context = f"🎉🎉🎉 Welcome {mention_user}, there're **{awards}** for your joining"
                         await self.client.send_message(chat.id, context)
 
                 except Exception as e:
