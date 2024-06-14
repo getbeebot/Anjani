@@ -102,7 +102,7 @@ class AsyncMysqlClient:
         chat_name = data.get("chat_name")
         chat_id = int(data.get("chat_id"))
         invite_link = data.get("invite_link")
-        sql = f"SELECT * FROM tz_user_tg_group WHERE chat_name = '{chat_name}' AND chat_id = {chat_id} AND user_id = 1"
+        sql = f"SELECT * FROM tz_user_tg_group WHERE chat_id = {chat_id} AND user_id = 1"
         res = await self.query_one(sql)
 
         if res is None:

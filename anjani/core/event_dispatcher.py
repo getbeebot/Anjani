@@ -174,12 +174,41 @@ class EventDispatcher(MixinBase):
 
         self.log.debug("Dispatching event '%s' with data %s", event, args)
 
+        if event == "message":
+            event_data = args[0]
+            if event_data.new_chat_title:
+                try:
+                    chat = event_data.chat
+                    group_name = event_data.new_chat_title
+                    group_id = chat.id
+                    group_username = chat.username
+                    if group_username:
+                        invite_link = f"https://t.me/{group_username}"
+                    else:
+                        try:
+                            invite_link = await self.client.export_chat_invite_link(group_id)
+                        except Exception as e:
+                            self.log.error("export invite link error: %s", e)
+                            invite_link = ""
+
+                    mysql = util.db.AsyncMysqlClient.init_from_env()
+                    await mysql.connect()
+                    await mysql.update_chat_info({
+                        "chat_type": 0,
+                        "chat_id": group_id,
+                        "chat_name": group_name,
+                        "invite_link": invite_link
+                    })
+
+                    self.log.info(f"Update group info {group_name}, {group_id}, {invite_link}")
+                except Exception as e:
+                    self.log.error("update group info error: %s", e)
+                finally:
+                    await mysql.close()
+
         # storing group info when bot joined
         if event == "chat_member_update":
             event_data = args[0]
-
-            self.log.debug("event data: %s", "".join(str(event_data).split()))
-
             chat_id = event_data.chat.id
             chat_name = event_data.chat.title
             chat_username = event_data.chat.username
@@ -191,33 +220,33 @@ class EventDispatcher(MixinBase):
             if ctype == ChatType.GROUP or ctype == ChatType.SUPERGROUP:
                 chat_type = 0
 
-            if event_data.new_chat_member is not None:
-                user_id = event_data.new_chat_member.user.id
-                if user_id == self.uid:
-                    try:
-                        if chat_username:
-                            invite_link = f"https://t.me/{chat_username}"
-                        else:
-                            invite_link = await self.client.export_chat_invite_link(chat_id)
-                    except Exception as e:
-                        self.log.error(e)
-                        invite_link = ""
+            # only for bot join group
+            if event_data.new_chat_member and event_data.new_chat_member.user.id == self.uid:
+                try:
+                    if chat_username:
+                        invite_link = f"https://t.me/{chat_username}"
+                    else:
+                        invite_link = await self.client.export_chat_invite_link(chat_id)
+                except Exception as e:
+                    self.log.error(e)
+                    invite_link = ""
+
+                try:
+                    mysql = util.db.AsyncMysqlClient.init_from_env()
+                    await mysql.connect()
+                    await mysql.update_chat_info({
+                        "chat_type": chat_type,
+                        "chat_id": chat_id,
+                        "chat_name": chat_name,
+                        "invite_link": invite_link
+                    })
 
                     self.log.info(f"Bot joining {chat_type} {chat_name}({chat_id}) {invite_link}")
+                except Exception as e:
+                    self.log.error("Inserting group record error: %s", e)
+                finally:
+                    mysql.close()
 
-                    mysql_client = util.db.AsyncMysqlClient.init_from_env()
-                    try:
-                        await mysql_client.connect()
-                        await mysql_client.update_chat_info({
-                            "chat_type": chat_type,
-                            "chat_id": chat_id,
-                            "chat_name": chat_name,
-                            "invite_link": invite_link
-                        })
-                    except Exception as e:
-                        self.log.error(e)
-                    finally:
-                        await mysql_client.close()
 
             if event_data.new_chat_member and event_data.invite_link:
                 chat = event_data.chat
