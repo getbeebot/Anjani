@@ -16,6 +16,7 @@ from pyrogram.types import Message, ChatMemberUpdated
 from anjani import listener, plugin
 from anjani.util.tg import build_button
 from anjani.util.twa import TWA
+from anjani.util.db import AsyncMysqlClient
 
 import boto3
 
@@ -42,8 +43,6 @@ class BeeconPlugin(plugin.Plugin):
 
     @listener.filters(filters.private)
     async def on_message(self, message: Message) -> None:
-        self.log.debug(message)
-
         context = message.text
 
         # return if no text message
@@ -129,7 +128,6 @@ class BeeconPlugin(plugin.Plugin):
 
     @listener.filters(filters.group)
     async def on_chat_action(self, message: Message) -> None:
-        self.log.debug(message)
         try:
             if not message.new_chat_members:
                 return None
@@ -227,11 +225,6 @@ class BeeconPlugin(plugin.Plugin):
                     # Solution: project-create api to return a flag to determine where a project is created
                     group_msg_context = await self.text(group_id, "start-chat")
 
-                    # await self.bot.client.send_message(
-                    #     group_id,
-                    #     group_msg_context,
-                    #     reply_markup=button
-                    # )
                     await self.bot.client.send_photo(
                         group_id,
                         "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
