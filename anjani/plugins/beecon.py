@@ -41,6 +41,11 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(e)
 
+    async def on_stop(self):
+        try:
+            await self.mysql.close()
+        except Exception:
+            pass
 
     @listener.filters(filters.group | filters.channel)
     async def on_message(self, message: Message) -> None:

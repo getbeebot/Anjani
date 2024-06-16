@@ -83,6 +83,12 @@ class Greeting(plugin.Plugin):
             Types.ANIMATION.value: self.bot.client.send_animation,
         }
 
+    async def on_stop(self) -> None:
+        try:
+            await self.mysql.colse()
+        except Exception:
+            pass
+
     async def on_chat_action(self, message: Message) -> None:
         chat = message.chat
         reply_to = message.id
