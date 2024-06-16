@@ -245,7 +245,7 @@ class EventDispatcher(MixinBase):
                 except Exception as e:
                     self.log.error("Inserting group record error: %s", e)
                 finally:
-                    mysql.close()
+                    await mysql.close()
 
 
             if event_data.new_chat_member and event_data.invite_link:

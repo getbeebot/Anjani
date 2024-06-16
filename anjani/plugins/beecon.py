@@ -32,6 +32,15 @@ class BeeconPlugin(plugin.Plugin):
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
 
+    mysql: AsyncMysqlClient
+
+    async def on_load(self):
+        self.mysql = AsyncMysqlClient.init_from_env()
+        try:
+            await self.mysql.connect()
+        except Exception as e:
+            self.log.error(e)
+
 
     @listener.filters(filters.group | filters.channel)
     async def on_message(self, message: Message) -> None:
@@ -189,7 +198,8 @@ class BeeconPlugin(plugin.Plugin):
 
                     headers = {'Content-Type': 'application/json'}
 
-                    self.log.debug(f"Request payloads: {json.dumps(payloads)}")
+                    payloads = json.loads(json.dumps(payloads))
+                    self.log.debug(f"Request payloads: %s", payloads)
 
                     is_success = False
                     project_id = None
@@ -208,7 +218,7 @@ class BeeconPlugin(plugin.Plugin):
                         self.log.error(f"Create new project error: {str(e)}")
 
 
-                    url = await TWA.get_chat_project_link(group_id)
+                    url = await TWA.get_chat_project_link(self.mysql, group_id)
 
                     msg_text = await self.text(group_id, "create-project", noformat=True)
                     msg_context = msg_text.format(group_name=group_name)

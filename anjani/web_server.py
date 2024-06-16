@@ -39,7 +39,6 @@ log = logging.getLogger("web-server")
 async def start_tgclient(app) -> None:
     await tgclient.start()
 
-
 async def stop_tgclient(app) -> None:
     await tgclient.stop()
 
@@ -115,8 +114,8 @@ async def auto_push_notification():
             button = InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
             )
-            tasks = await twa.get_chat_tasks(group_id)
-            participants = await twa.get_chat_activity_participants(group_id)
+            tasks = await twa.get_chat_tasks(mysql, group_id)
+            participants = await twa.get_chat_activity_participants(mysql, group_id)
 
             log.info(f"group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}")
 

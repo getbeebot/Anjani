@@ -58,11 +58,17 @@ class Greeting(plugin.Plugin):
 
     db: util.db.AsyncCollection
     chat_db: util.db.AsyncCollection
+    mysql: util.db.AsyncMysqlClient
     SEND: MutableMapping[int, Callable[..., Coroutine[Any, Any, Optional[Message]]]]
 
     async def on_load(self) -> None:
         self.db = self.bot.db.get_collection("WELCOME")
         self.chat_db = self.bot.db.get_collection("CHATS")
+        self.mysql = util.db.AsyncMysqlClient.init_from_env()
+        try:
+            await self.mysql.connect()
+        except Exception as e:
+            self.log.error(e)
 
         self.SEND = {
             Types.TEXT.value: self.bot.client.send_message,
@@ -144,11 +150,6 @@ class Greeting(plugin.Plugin):
             try:
                 if new_member.id == self.bot.uid:
                     pass
-                    # await self.bot.client.send_message(
-                    #     chat.id,
-                    #     await self.text(chat.id, "bot-added"),
-                    #     reply_to_message_id=reply_to,
-                    # )
                 elif new_member.is_bot: # ignore bot
                     pass
                 else:
@@ -166,7 +167,7 @@ class Greeting(plugin.Plugin):
                     if button:
                         button = build_button(button)
                     else:
-                        url = await TWA.get_chat_project_link(chat.id)
+                        url = await TWA.get_chat_project_link(self.mysql, chat.id)
 
                         self.log.info(f"Welcome button url in {chat.title}: {url}")
 
@@ -174,14 +175,6 @@ class Greeting(plugin.Plugin):
                     msg = None
                     try:
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
-                            # msg = await self.SEND[msg_type](
-                            #     message.chat.id,
-                            #     formatted_text,
-                            #     message_thread_id=thread_id,
-                            #     reply_to_message_id=reply_to,
-                            #     reply_markup=button,
-                            #     disable_web_page_preview=True,
-                            # )
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
                                 "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
