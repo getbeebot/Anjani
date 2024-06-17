@@ -341,7 +341,7 @@ class BeeconPlugin(plugin.Plugin):
                 json=payloads,
                 headers={"Content-Type": "application/json"}
             ) as resp:
-                self.log.debug("Java api response: %s", resp)
+                self.log.debug("Java api response: %s", await resp.text())
                 # TODO: reply different message based on api result
                 if resp.status == 200:
                     res = await resp.json()
@@ -359,19 +359,19 @@ class BeeconPlugin(plugin.Plugin):
                     ]
 
                     reply_text = f"Checkin successful, community points awarded: {rewards}."
-                    ctx.respond(
+                    await ctx.respond(
                         reply_text,
                         reply_markup=InlineKeyboardMarkup(button),
                         parse_mode=ParseMode.MARKDOWN,
                         delete_after=20
                     )
                 elif resp.status == 704:
-                    ctx.respond(
+                    await ctx.respond(
                         "Already checked in",
                         delete_after=20
                     )
                 elif resp.status == 706:
-                    ctx.respond(
+                    await ctx.respond(
                         "Checkin task closed",
                         delete_after=20
                     )
