@@ -338,19 +338,6 @@ class Main(plugin.Plugin):
 
             buttons.extend(group_buttons)
 
-            # permission = [
-            #     # "change_info",
-            #     "post_messages",
-            #     "edit_messages",
-            #     "delete_messages",
-            #     "restrict_members",
-            #     "invite_users",
-            #     "pin_messages",
-            #     # "promote_members",
-            #     "manage_video_chats",
-            #     "manage_chat",
-            # ]
-
             faq_link = os.getenv("FAQ", "beecon.me")
             channel_link = os.getenv("CHANNEL", "beecon.me")
 
@@ -464,13 +451,6 @@ class Main(plugin.Plugin):
             await self.text(chat.id, "help-pm", self.bot_name),
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
-
-    # async def cmd_donate(self, ctx: command.Context) -> None:
-    #     """Bot donate command"""
-    #     await ctx.respond(
-    #         await self.text(ctx.chat.id, "donate"),
-    #         disable_web_page_preview=True,
-    #     )
 
     async def cmd_markdownhelp(self, ctx: command.Context) -> None:
         """Send markdown helper."""
