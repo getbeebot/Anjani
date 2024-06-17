@@ -12,9 +12,11 @@ class TWA:
     log: logging.Logger
 
     TWA_LINK = os.getenv("TWA_LINK")
+    mysql: AsyncMysqlClient
 
     def __init__(self):
         self.log = logging.getLogger("twa")
+        self.mysql = AsyncMysqlClient.init_from_env()
 
 
     def generate_project_detail_link(self, project_id: int):
@@ -35,10 +37,11 @@ class TWA:
         return f"{self.TWA_LINK}={args}"
 
     @classmethod
-    async def get_chat_project_link(cls, mysql: AsyncMysqlClient, chat_id: int):
+    async def get_chat_project_link(cls, chat_id: int):
         twa = cls()
         try:
-            project_id = await mysql.query_project_id_by_chat_id(chat_id)
+            await twa.mysql.connect()
+            project_id = await twa.mysql.query_project_id_by_chat_id(chat_id)
             if project_id:
                 url = twa.generate_project_detail_link(project_id)
             else:
@@ -46,32 +49,43 @@ class TWA:
         except Exception as e:
             twa.log.error(e)
             url = twa.TWA_LINK
+        finally:
+            await twa.mysql.close()
 
         return url
 
-    async def get_user_owned_groups(self, mysql: AsyncMysqlClient,user_id: int):
+    async def get_user_owned_groups(self, user_id: int):
+        rows = None
         try:
-            rows = await mysql.query_user_owned_groups(user_id)
-            return rows
+            await self.mysql.connect()
+            rows = await self.mysql.query_user_owned_groups(user_id)
         except Exception as e:
             self.log.error(e)
+        finally:
+            await self.mysql.close()
 
-        return None
+        return rows
 
-    async def get_chat_tasks(self, mysql: AsyncMysqlClient, chat_id: int) -> int:
+    async def get_chat_tasks(self, chat_id: int) -> int:
+        res = None
         try:
-            res = await mysql.query_project_tasks(chat_id)
-            return res
+            await self.mysql.connect()
+            res = await self.mysql.query_project_tasks(chat_id)
         except Exception as e:
             self.log.error(e)
+        finally:
+            await self.mysql.close()
 
-        return None
+        return res
 
-    async def get_chat_activity_participants(self, mysql: AsyncMysqlClient,chat_id: int) -> int:
+    async def get_chat_activity_participants(self, chat_id: int) -> int:
+        res = None
         try:
-            res = await mysql.query_project_participants(chat_id)
-            return res
+            await self.mysql.connect()
+            res = await self.mysql.query_project_participants(chat_id)
         except Exception as e:
             self.log.error(e)
+        finally:
+            await self.mysql.close()
 
-        return None
+        return res

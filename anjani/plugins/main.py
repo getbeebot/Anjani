@@ -59,7 +59,6 @@ class Main(plugin.Plugin):
     lang_db: util.db.AsyncCollection
     _db_stream: asyncio.Task[None]
 
-    mysql: util.db.AsyncMysqlClient
 
     def _start_db_stream(self) -> None:
         try:
@@ -132,11 +131,6 @@ class Main(plugin.Plugin):
         else:
             await self.send_to_log("Starting system...")
 
-        self.mysql = util.db.AsyncMysqlClient.init_from_env()
-        try:
-            await self.mysql.connect()
-        except Exception as e:
-            self.log.error("Connecting to mysql failed: %s", e)
 
     async def on_stop(self) -> None:
         async with asyncio.Lock():
@@ -178,7 +172,6 @@ class Main(plugin.Plugin):
             # for language db
             self._db_stream.cancel()
 
-            await self.mysql.close()
 
     async def send_to_log(self, text: str, *args: Any, **kwargs: Any) -> Optional[Message]:
         if not self.bot.config.LOG_CHANNEL:
@@ -320,7 +313,7 @@ class Main(plugin.Plugin):
             buttons: List[InlineKeyboardButton] = []
 
             group_buttons = []
-            group_projects = await twa.get_user_owned_groups(self.mysql, chat.id)
+            group_projects = await twa.get_user_owned_groups(chat.id)
             if not group_projects:
                 pass
             else:
@@ -366,19 +359,6 @@ class Main(plugin.Plugin):
                     ),
                 ],
             ])
-            if "Canonical" in self.bot.plugins:
-                buttons.append(
-                    [
-                        InlineKeyboardButton(
-                            text=await self.text(chat.id, "status-page-button"),
-                            url="https://status.userbotindo.com",
-                        ),
-                        InlineKeyboardButton(
-                            text=await self.text(chat.id, "dashboard-button"),
-                            url="https://userbotindo.com/dashboard",
-                        ),
-                    ]
-                )
 
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot_name),
@@ -389,7 +369,7 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        project_link = await twa.get_chat_project_link(self.mysql, chat.id)
+        project_link = await twa.get_chat_project_link(chat.id)
 
         buttons = [
             [
@@ -400,8 +380,8 @@ class Main(plugin.Plugin):
             ]
         ]
 
-        tasks = await twa.get_chat_tasks(self.mysql, chat.id)
-        participants = await twa.get_chat_activity_participants(self.mysql, chat.id)
+        tasks = await twa.get_chat_tasks(chat.id)
+        participants = await twa.get_chat_activity_participants(chat.id)
 
         if tasks and participants:
             group_context = await self.text(chat.id, "group-start-pm", noformat=True)

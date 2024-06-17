@@ -105,7 +105,6 @@ def cron_job():
 
 async def auto_push_notification():
     try:
-        await mysql.connect()
         twa = TWA()
         rows = await mysql.retrieve_group_id_with_project()
         for row in rows:
@@ -114,8 +113,8 @@ async def auto_push_notification():
             button = InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
             )
-            tasks = await twa.get_chat_tasks(mysql, group_id)
-            participants = await twa.get_chat_activity_participants(mysql, group_id)
+            tasks = await twa.get_chat_tasks(group_id)
+            participants = await twa.get_chat_activity_participants(group_id)
 
             log.info(f"group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}")
 
@@ -137,8 +136,6 @@ async def auto_push_notification():
 
     except Exception as e:
         log.error(e)
-    finally:
-        await mysql.close()
 
 async def member_check_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }

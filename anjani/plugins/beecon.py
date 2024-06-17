@@ -17,7 +17,6 @@ from pyrogram.enums.parse_mode import ParseMode
 from anjani import listener, plugin, command
 from anjani.util.tg import build_button
 from anjani.util.twa import TWA
-from anjani.util.db import AsyncMysqlClient
 
 import boto3
 
@@ -33,20 +32,6 @@ class BeeconPlugin(plugin.Plugin):
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
 
-    mysql: AsyncMysqlClient
-
-    async def on_load(self):
-        self.mysql = AsyncMysqlClient.init_from_env()
-        try:
-            await self.mysql.connect()
-        except Exception as e:
-            self.log.error(e)
-
-    async def on_stop(self):
-        try:
-            await self.mysql.close()
-        except Exception:
-            pass
 
     @listener.filters(filters.group | filters.channel)
     async def on_message(self, message: Message) -> None:
@@ -54,8 +39,6 @@ class BeeconPlugin(plugin.Plugin):
         self.log.debug(f"Receiving message: {payloads}")
         payloads = json.loads(payloads)
         await self.save_message(payloads)
-
-        # TODO: detect checkin message
 
 
     @listener.filters(filters.private)
@@ -226,8 +209,7 @@ class BeeconPlugin(plugin.Plugin):
                     except Exception as e:
                         self.log.error(f"Create new project error: {str(e)}")
 
-
-                    url = await TWA.get_chat_project_link(self.mysql, group_id)
+                    url = await TWA.get_chat_project_link(group_id)
 
                     msg_text = await self.text(group_id, "create-project", noformat=True)
                     msg_context = msg_text.format(group_name=group_name)
@@ -350,7 +332,7 @@ class BeeconPlugin(plugin.Plugin):
                     project_id = ret_data.get("projectId")
 
                     twa = TWA()
-                    project_link = twa.generate_project_detail_link(project_id)
+                    project_link = twa.generate_project_detail_link(project_id) if project_id else twa.TWA_LINK
 
                     button = [
                         [
