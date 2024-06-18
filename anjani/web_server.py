@@ -390,7 +390,8 @@ async def check_bot_privilege(request: BaseRequest) -> Response:
 
         chat_id = payloads.get("chatId")
         bot = await tgclient.client.get_me()
-        member = await tgclient.client.get_chat_member(chat_id, bot.id)
+
+        member = await tgclient.client.get_chat_member(int(chat_id), bot.id)
         bot_privileges = member.privileges
 
         privileges = [
