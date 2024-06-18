@@ -58,17 +58,11 @@ class Greeting(plugin.Plugin):
 
     db: util.db.AsyncCollection
     chat_db: util.db.AsyncCollection
-    mysql: util.db.AsyncMysqlClient
     SEND: MutableMapping[int, Callable[..., Coroutine[Any, Any, Optional[Message]]]]
 
     async def on_load(self) -> None:
         self.db = self.bot.db.get_collection("WELCOME")
         self.chat_db = self.bot.db.get_collection("CHATS")
-        self.mysql = util.db.AsyncMysqlClient.init_from_env()
-        try:
-            await self.mysql.connect()
-        except Exception as e:
-            self.log.error(e)
 
         self.SEND = {
             Types.TEXT.value: self.bot.client.send_message,
@@ -83,11 +77,6 @@ class Greeting(plugin.Plugin):
             Types.ANIMATION.value: self.bot.client.send_animation,
         }
 
-    async def on_stop(self) -> None:
-        try:
-            await self.mysql.colse()
-        except Exception:
-            pass
 
     async def on_chat_action(self, message: Message) -> None:
         chat = message.chat
@@ -173,7 +162,7 @@ class Greeting(plugin.Plugin):
                     if button:
                         button = build_button(button)
                     else:
-                        url = await TWA.get_chat_project_link(self.mysql, chat.id)
+                        url = await TWA.get_chat_project_link(chat.id)
 
                         self.log.info(f"Welcome button url in {chat.title}: {url}")
 
