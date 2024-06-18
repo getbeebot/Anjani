@@ -8,15 +8,15 @@ import aiofiles
 import aiofiles.os as aio_os
 import os
 from os.path import join
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from pyrogram import filters
-from pyrogram.types import Message, ChatMemberUpdated
+from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.enums.parse_mode import ParseMode
 
-from anjani import listener, plugin
+from anjani import listener, plugin, command
 from anjani.util.tg import build_button
 from anjani.util.twa import TWA
-from anjani.util.db import AsyncMysqlClient
 
 import boto3
 
@@ -33,16 +33,12 @@ class BeeconPlugin(plugin.Plugin):
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
 
 
-    @listener.filters(filters.group | filters.channel)
     async def on_message(self, message: Message) -> None:
         payloads = "".join(str(message).split())
         self.log.debug(f"Receiving message: {payloads}")
         payloads = json.loads(payloads)
         await self.save_message(payloads)
 
-
-    @listener.filters(filters.private)
-    async def on_message(self, message: Message) -> None:
         context = message.text
 
         # return if no text message
@@ -64,6 +60,8 @@ class BeeconPlugin(plugin.Plugin):
             if match:
                 target = match.group()
                 code = target[1:-1]
+            else:
+                return None
 
         self.log.info(f"Invitation code: {code}")
 
@@ -85,7 +83,6 @@ class BeeconPlugin(plugin.Plugin):
                         )
             except Exception as e:
                 self.log.error(e)
-
 
 
     async def save_message(self, message) -> None:
@@ -189,7 +186,8 @@ class BeeconPlugin(plugin.Plugin):
 
                     headers = {'Content-Type': 'application/json'}
 
-                    self.log.debug(f"Request payloads: {json.dumps(payloads)}")
+                    payloads = json.loads(json.dumps(payloads))
+                    self.log.debug(f"Request payloads: %s", payloads)
 
                     is_success = False
                     project_id = None
@@ -197,6 +195,8 @@ class BeeconPlugin(plugin.Plugin):
                     try:
                         api_uri = f"{self.api_url}/p/task/bot-project/init"
                         async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
+                            self.log.info("APIDEBUG: %s", resp.status)
+                            self.log.info("APIDEBUG: %s", await resp.text())
                             res = await resp.json()
                             if resp.status == 200 and res.get("success"):
                                 is_success = True
@@ -206,7 +206,6 @@ class BeeconPlugin(plugin.Plugin):
                             self.log.info(f"response from Server, status: {resp.status}, data: {res}")
                     except Exception as e:
                         self.log.error(f"Create new project error: {str(e)}")
-
 
                     url = await TWA.get_chat_project_link(group_id)
 
@@ -274,7 +273,6 @@ class BeeconPlugin(plugin.Plugin):
             self.log.error(str(e))
         return None
 
-
     async def send_ws_notify(self, data) -> None:
         async with connect("ws://127.0.0.1:8080/ws") as ws:
             try:
@@ -283,3 +281,81 @@ class BeeconPlugin(plugin.Plugin):
                 self.log.info(msg)
             except websockets.ConnectionClosed:
                 pass
+
+
+    @listener.filters(filters.group)
+    async def cmd_checkin(self, ctx: command.Context) -> Optional[str]:
+        msg = ctx.message
+
+        group_id = msg.chat.id
+
+        from_user = msg.from_user
+
+        user_id = from_user.id
+        user_name = from_user.username or None
+        first_name = from_user.first_name
+        last_name = from_user.last_name
+        nick_name = first_name + ' ' + last_name if last_name else first_name
+
+        avatar = await self.get_group_avatar_link(user_id, from_user.photo.big_file_id)
+
+        try:
+            uri = f"{self.api_url}/p/task/bot-task/executeCommand"
+            payloads = {
+                "command": "checkin",
+                "firstName": first_name,
+                "lastName": last_name,
+                "nickName": nick_name,
+                "userName": user_name,
+                "pic": avatar,
+                "targetId": group_id,
+                "targetType": 0,
+                "tgUserId": user_id,
+            }
+
+            payloads = json.loads(json.dumps(payloads))
+            self.log.debug("Request to java api payloads: %s", payloads)
+
+            async with self.bot.http.post(
+                uri,
+                json=payloads,
+                headers={"Content-Type": "application/json"}
+            ) as resp:
+                self.log.debug("Java api response: %s", await resp.text())
+                # TODO: reply different message based on api result
+                if resp.status == 200:
+                    res = await resp.json()
+                    ret_data = res.get("data")
+                    rewards = ret_data.get("awardsDes")
+                    project_id = ret_data.get("projectId")
+
+                    twa = TWA()
+                    project_link = twa.generate_project_detail_link(project_id) if project_id else twa.TWA_LINK
+
+                    button = [
+                        [
+                            InlineKeyboardButton(text="👀 View more reward activities", url=project_link)
+                        ]
+                    ]
+
+                    reply_text = f"Checkin successful, community points awarded: {rewards}."
+                    await ctx.respond(
+                        reply_text,
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
+                        delete_after=20
+                    )
+                elif resp.status == 704:
+                    await ctx.respond(
+                        "Already checked in",
+                        delete_after=20
+                    )
+                elif resp.status == 706:
+                    await ctx.respond(
+                        "Checkin task closed",
+                        delete_after=20
+                    )
+                else:
+                    self.log.error("Java API response error: %s", resp.status)
+        except Exception as e:
+            self.log.error(e)

@@ -39,7 +39,6 @@ log = logging.getLogger("web-server")
 async def start_tgclient(app) -> None:
     await tgclient.start()
 
-
 async def stop_tgclient(app) -> None:
     await tgclient.stop()
 
@@ -106,7 +105,6 @@ def cron_job():
 
 async def auto_push_notification():
     try:
-        await mysql.connect()
         twa = TWA()
         rows = await mysql.retrieve_group_id_with_project()
         for row in rows:
@@ -138,8 +136,6 @@ async def auto_push_notification():
 
     except Exception as e:
         log.error(e)
-    finally:
-        await mysql.close()
 
 async def member_check_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }
@@ -394,7 +390,8 @@ async def check_bot_privilege(request: BaseRequest) -> Response:
 
         chat_id = payloads.get("chatId")
         bot = await tgclient.client.get_me()
-        member = await tgclient.client.get_chat_member(chat_id, bot.id)
+
+        member = await tgclient.client.get_chat_member(int(chat_id), bot.id)
         bot_privileges = member.privileges
 
         privileges = [

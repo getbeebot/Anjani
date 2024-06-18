@@ -59,6 +59,7 @@ class Main(plugin.Plugin):
     lang_db: util.db.AsyncCollection
     _db_stream: asyncio.Task[None]
 
+
     def _start_db_stream(self) -> None:
         try:
             if not self._db_stream.done():
@@ -130,6 +131,7 @@ class Main(plugin.Plugin):
         else:
             await self.send_to_log("Starting system...")
 
+
     async def on_stop(self) -> None:
         async with asyncio.Lock():
             file = AsyncPath("anjani/anjani.session")
@@ -169,6 +171,7 @@ class Main(plugin.Plugin):
             )
             # for language db
             self._db_stream.cancel()
+
 
     async def send_to_log(self, text: str, *args: Any, **kwargs: Any) -> Optional[Message]:
         if not self.bot.config.LOG_CHANNEL:
@@ -250,6 +253,7 @@ class Main(plugin.Plugin):
         """Bot start command"""
         chat = ctx.chat
 
+        twa = TWA()
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
@@ -309,7 +313,6 @@ class Main(plugin.Plugin):
             buttons: List[InlineKeyboardButton] = []
 
             group_buttons = []
-            twa = TWA()
             group_projects = await twa.get_user_owned_groups(chat.id)
             if not group_projects:
                 pass
@@ -327,19 +330,6 @@ class Main(plugin.Plugin):
                 group_buttons = [line_buttons[i * 2: (i+1) * 2] for i in range((len(line_buttons) + 2 - 1) // 2)]
 
             buttons.extend(group_buttons)
-
-            # permission = [
-            #     # "change_info",
-            #     "post_messages",
-            #     "edit_messages",
-            #     "delete_messages",
-            #     "restrict_members",
-            #     "invite_users",
-            #     "pin_messages",
-            #     # "promote_members",
-            #     "manage_video_chats",
-            #     "manage_chat",
-            # ]
 
             faq_link = os.getenv("FAQ", "beecon.me")
             channel_link = os.getenv("CHANNEL", "beecon.me")
@@ -369,19 +359,6 @@ class Main(plugin.Plugin):
                     ),
                 ],
             ])
-            if "Canonical" in self.bot.plugins:
-                buttons.append(
-                    [
-                        InlineKeyboardButton(
-                            text=await self.text(chat.id, "status-page-button"),
-                            url="https://status.userbotindo.com",
-                        ),
-                        InlineKeyboardButton(
-                            text=await self.text(chat.id, "dashboard-button"),
-                            url="https://userbotindo.com/dashboard",
-                        ),
-                    ]
-                )
 
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot_name),
@@ -392,7 +369,6 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        twa = TWA()
         project_link = await twa.get_chat_project_link(chat.id)
 
         buttons = [
@@ -455,13 +431,6 @@ class Main(plugin.Plugin):
             await self.text(chat.id, "help-pm", self.bot_name),
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
-
-    # async def cmd_donate(self, ctx: command.Context) -> None:
-    #     """Bot donate command"""
-    #     await ctx.respond(
-    #         await self.text(ctx.chat.id, "donate"),
-    #         disable_web_page_preview=True,
-    #     )
 
     async def cmd_markdownhelp(self, ctx: command.Context) -> None:
         """Send markdown helper."""

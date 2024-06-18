@@ -77,6 +77,7 @@ class Greeting(plugin.Plugin):
             Types.ANIMATION.value: self.bot.client.send_animation,
         }
 
+
     async def on_chat_action(self, message: Message) -> None:
         chat = message.chat
         reply_to = message.id
@@ -144,11 +145,6 @@ class Greeting(plugin.Plugin):
             try:
                 if new_member.id == self.bot.uid:
                     pass
-                    # await self.bot.client.send_message(
-                    #     chat.id,
-                    #     await self.text(chat.id, "bot-added"),
-                    #     reply_to_message_id=reply_to,
-                    # )
                 elif new_member.is_bot: # ignore bot
                     pass
                 else:
@@ -174,14 +170,6 @@ class Greeting(plugin.Plugin):
                     msg = None
                     try:
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
-                            # msg = await self.SEND[msg_type](
-                            #     message.chat.id,
-                            #     formatted_text,
-                            #     message_thread_id=thread_id,
-                            #     reply_to_message_id=reply_to,
-                            #     reply_markup=button,
-                            #     disable_web_page_preview=True,
-                            # )
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
                                 "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
