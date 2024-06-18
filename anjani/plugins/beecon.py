@@ -33,16 +33,12 @@ class BeeconPlugin(plugin.Plugin):
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
 
 
-    @listener.filters(filters.group | filters.channel)
     async def on_message(self, message: Message) -> None:
         payloads = "".join(str(message).split())
         self.log.debug(f"Receiving message: {payloads}")
         payloads = json.loads(payloads)
         await self.save_message(payloads)
 
-
-    @listener.filters(filters.private)
-    async def on_message(self, message: Message) -> None:
         context = message.text
 
         # return if no text message
@@ -64,6 +60,8 @@ class BeeconPlugin(plugin.Plugin):
             if match:
                 target = match.group()
                 code = target[1:-1]
+            else:
+                return None
 
         self.log.info(f"Invitation code: {code}")
 
