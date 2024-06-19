@@ -673,5 +673,5 @@ lottery-join: |
 lottery-end: |
   🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
 task-creation: |
-  🚀 Thers's a new task created in our community, check it now.
+  🚀 There's a new task created in our community, check it now.
 #endregion
