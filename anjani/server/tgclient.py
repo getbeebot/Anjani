@@ -2,6 +2,8 @@ import logging
 import aiofiles.os as aio_os
 from typing import Any
 
+import asyncio
+
 import boto3
 
 from pyrogram import Client
@@ -35,23 +37,40 @@ class TGClient:
         await self.client.stop()
 
 
-    async def send_message(self, chat_id, content, reply_markup=None) -> None:
+    async def send_message(self, chat_id, content, delete_after=None, reply_markup=None):
         try:
             if reply_markup:
-                await self.client.send_message(chat_id, content, reply_markup=reply_markup)
+                msg = await self.client.send_message(chat_id, content, reply_markup=reply_markup)
             else:
-                await self.client.send_message(chat_id, content)
-        except Exception as e:
-            self.log.error(str(e))
+                msg = await self.client.send_message(chat_id, content)
 
-    async def send_photo(self, chat_id, photo, caption, reply_markup=None) -> None:
-        try:
-            if reply_markup:
-                await self.client.send_photo(chat_id, photo, caption=caption, reply_markup=reply_markup)
-            else:
-                await self.client.send_photo(chat_id, photo, caption=caption)
+            if delete_after:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self.delete_message(msg.chat.id, msg.id, delete_after))
         except Exception as e:
             self.log.error(e)
+
+
+    async def send_photo(self, chat_id, photo, caption, delete_after=None, reply_markup=None):
+        try:
+            if reply_markup:
+                msg = await self.client.send_photo(chat_id, photo, caption=caption, reply_markup=reply_markup)
+            else:
+                msg = await self.client.send_photo(chat_id, photo, caption=caption)
+
+            if delete_after:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self.delete_message(msg.chat.id, msg.id, delete_after))
+
+        except Exception as e:
+            self.log.error(e)
+
+
+    async def delete_message(self, chat_id, msg_id, delay):
+        if not delay:
+            return
+        await asyncio.sleep(delay)
+        await self.client.delete_messages(chat_id, msg_id)
 
 
     async def get_avatar_link(self, chat_id: int) -> str:
@@ -93,6 +112,7 @@ class TGClient:
         except Exception as e:
             self.log.error(f"Chat member verify error: {str(e)}")
             return False
+
 
     async def get_user(self, user_id: int) -> User:
         user = await self.client.get_users(user_id)

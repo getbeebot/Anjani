@@ -9,6 +9,8 @@ import aiohttp.web as web
 from aiohttp import web_response
 from aiohttp.web import Response, BaseRequest
 
+import asyncio
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 # from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -60,13 +62,14 @@ async def start_server() -> None:
     send_message_router = web.post("/sendmsg", send_message_handler)
     get_invite_link_router = web.post("/get_invite_link", create_invite_link_handler)
 
+
     check_bot_privilege_router = web.post("/check_bot_privilege", check_bot_privilege)
 
     ws_router = web.get("/ws", community_creation_notify)
 
     routers = [
         member_check_router, send_message_router, update_user_router,
-        get_invite_link_router, check_bot_privilege_router, ws_router
+        get_invite_link_router, check_bot_privilege_router, ws_router,
     ]
 
     app.add_routes(routers)
@@ -427,3 +430,8 @@ async def check_bot_privilege(request: BaseRequest) -> Response:
         })
 
     return web_response.json_response(ret_data, status=200)
+
+async def delete_test_handler(request: BaseRequest) -> Response:
+    chat_id = -1002207973234
+    await tgclient.send_photo(chat_id, "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png", caption="自毁测试 10s", delete_after=10)
+    return web_response.json_response({"ok": True}, status=200)
