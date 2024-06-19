@@ -316,27 +316,27 @@ class BeeconPlugin(plugin.Plugin):
             payloads = json.loads(json.dumps(payloads))
             self.log.debug("Request to java api payloads: %s", payloads)
 
+            twa = TWA()
+            project_link = twa.get_chat_project_link(group_id)
+            button = [
+                [
+                    InlineKeyboardButton(
+                        text="👀 View more reward activities",
+                        url=project_link
+                    )
+                ]
+            ]
+
             async with self.bot.http.post(
                 uri,
                 json=payloads,
                 headers={"Content-Type": "application/json"}
             ) as resp:
                 self.log.debug("Java api response: %s", await resp.text())
-                # TODO: reply different message based on api result
                 if resp.status == 200:
                     res = await resp.json()
                     ret_data = res.get("data")
                     rewards = ret_data.get("awardsDes")
-                    project_id = ret_data.get("projectId")
-
-                    twa = TWA()
-                    project_link = twa.generate_project_detail_link(project_id) if project_id else twa.TWA_LINK
-
-                    button = [
-                        [
-                            InlineKeyboardButton(text="👀 View more reward activities", url=project_link)
-                        ]
-                    ]
 
                     reply_text = f"Checkin successful, community points awarded: {rewards}."
                     await ctx.respond(
@@ -345,17 +345,34 @@ class BeeconPlugin(plugin.Plugin):
                         parse_mode=ParseMode.MARKDOWN,
                         delete_after=20
                     )
-                elif resp.status == 704:
+                elif resp.status == 702:
                     await ctx.respond(
                         "Already checked in",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
+                        delete_after=20
+                    )
+                elif resp.status == 704:
+                    await ctx.respond(
+                        "Checkin task closed",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
                         delete_after=20
                     )
                 elif resp.status == 706:
                     await ctx.respond(
-                        "Checkin task closed",
+                        "Sorry, there's no checkin task.",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
                         delete_after=20
                     )
                 else:
                     self.log.error("Java API response error: %s", resp.status)
+                    await ctx.respond(
+                        "Engage more, earn more.",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
+                        delete_after=20
+                    )
         except Exception as e:
             self.log.error(e)
