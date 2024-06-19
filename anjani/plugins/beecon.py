@@ -317,7 +317,7 @@ class BeeconPlugin(plugin.Plugin):
             self.log.debug("Request to java api payloads: %s", payloads)
 
             twa = TWA()
-            project_link = twa.get_chat_project_link(group_id)
+            project_link = await twa.get_chat_project_link(group_id)
             button = [
                 [
                     InlineKeyboardButton(
