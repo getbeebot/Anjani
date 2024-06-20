@@ -297,7 +297,12 @@ class BeeconPlugin(plugin.Plugin):
         last_name = from_user.last_name
         nick_name = first_name + ' ' + last_name if last_name else first_name
 
-        avatar = await self.get_group_avatar_link(user_id, from_user.photo.big_file_id)
+        # handle not avatar info
+        try:
+            avatar = await self.get_group_avatar_link(user_id, from_user.photo.big_file_id)
+        except Exception as e:
+            self.log.error(e)
+            avatar = None
 
         try:
             uri = f"{self.api_url}/p/task/bot-task/executeCommand"
@@ -327,11 +332,8 @@ class BeeconPlugin(plugin.Plugin):
                 ]
             ]
 
-            async with self.bot.http.post(
-                uri,
-                json=payloads,
-                headers={"Content-Type": "application/json"}
-            ) as resp:
+            headers = {"Content-Type": "application/json"}
+            async with self.bot.http.post(uri, json=payloads, headers=headers) as resp:
                 self.log.debug("Java api response: %s", await resp.text())
                 if resp.status == 200:
                     res = await resp.json()
@@ -376,3 +378,8 @@ class BeeconPlugin(plugin.Plugin):
                     )
         except Exception as e:
             self.log.error(e)
+
+
+    async def cmd_invite(self, ctx: command.Context):
+        msg = ctx.message
+        pass
