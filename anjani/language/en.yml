@@ -661,14 +661,22 @@ create-project-button: 👉 Please enter community 👈
 #endregion
 
 #region server notification
-lottery-create: |
+lottery-create-0: |
   Attention {community_name} Community Lucky Draw launched!
   Prize: {prize}
   End time: {end_time}
   Join the excitement
-lottery-join: |
+lottery-create-1: |
+  Attention {community_name} Community Lucky Draw launched!
+  Prize: {prize}
+  Condition: Draw after {condition} participants
+lottery-join-0: |
   {joined_users}
   🎉  Draw Time: {end_time}
+  🎁  Prize Details: {prize}
+lottery-join-1: |
+  {joined_users}
+  🎉  Condition: Draw after {condition} participants
   🎁  Prize Details: {prize}
 lottery-end: |
   🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!

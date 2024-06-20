@@ -5,10 +5,17 @@ def build_lottery_create_msg(template: str, **args) -> str:
     community_name = args.get("communityName", "")
     prize = args.get("prize")
 
-    end_time_ms = args.get("endTime", 0)
-    end_time = format_msg_timestamp(end_time_ms)
+    lottery_type = args.get("lotteryType")
 
-    return template.format(community_name=community_name, prize=prize, end_time=end_time)
+    if lottery_type == 0:
+        end_time_ms = args.get("endTime", 0)
+        end_time = format_msg_timestamp(end_time_ms)
+        return template.format(community_name=community_name, prize=prize, end_time=end_time)
+    elif lottery_type == 1:
+        condition = args.get("miniCount")
+        return template.format(community_name=community_name, prize=prize, condition=condition)
+    else:
+        return ""
 
 
 def build_lottery_join_msg(template: str, **args) -> str:
@@ -22,12 +29,18 @@ def build_lottery_join_msg(template: str, **args) -> str:
         tg_id = tg_user.get("tgId", "")
         joined_users += f"[{nick}](tg://user?id={tg_id}) has entered the luckydraw.\n"
 
-    end_time_ms = args.get("endTime", 0)
-    end_time = format_msg_timestamp(end_time_ms)
-
     prize = args.get("prize")
 
-    return template.format(joined_users=joined_users, end_time=end_time, prize=prize)
+    lottery_type = args.get("lotteryType")
+    if lottery_type == 0:
+        end_time_ms = args.get("endTime", 0)
+        end_time = format_msg_timestamp(end_time_ms)
+        return template.format(joined_users=joined_users, prize=prize, end_time=end_time)
+    elif lottery_type == 1:
+        condition = args.get("miniCount")
+        return template.format(joined_users=joined_users, prize=prize, condition=condition)
+    else:
+        return ""
 
 
 def build_lottery_end_msg(template: str, **args) -> str:
