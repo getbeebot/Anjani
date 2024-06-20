@@ -297,7 +297,12 @@ class BeeconPlugin(plugin.Plugin):
         last_name = from_user.last_name
         nick_name = first_name + ' ' + last_name if last_name else first_name
 
-        avatar = await self.get_group_avatar_link(user_id, from_user.photo.big_file_id)
+        # handle not avatar info
+        try:
+            avatar = await self.get_group_avatar_link(user_id, from_user.photo.big_file_id)
+        except Exception as e:
+            self.log.error(e)
+            avatar = None
 
         try:
             uri = f"{self.api_url}/p/task/bot-task/executeCommand"
@@ -316,27 +321,24 @@ class BeeconPlugin(plugin.Plugin):
             payloads = json.loads(json.dumps(payloads))
             self.log.debug("Request to java api payloads: %s", payloads)
 
-            async with self.bot.http.post(
-                uri,
-                json=payloads,
-                headers={"Content-Type": "application/json"}
-            ) as resp:
+            twa = TWA()
+            project_link = await twa.get_chat_project_link(group_id)
+            button = [
+                [
+                    InlineKeyboardButton(
+                        text="👀 View more reward activities",
+                        url=project_link
+                    )
+                ]
+            ]
+
+            headers = {"Content-Type": "application/json"}
+            async with self.bot.http.post(uri, json=payloads, headers=headers) as resp:
                 self.log.debug("Java api response: %s", await resp.text())
-                # TODO: reply different message based on api result
                 if resp.status == 200:
                     res = await resp.json()
                     ret_data = res.get("data")
                     rewards = ret_data.get("awardsDes")
-                    project_id = ret_data.get("projectId")
-
-                    twa = TWA()
-                    project_link = twa.generate_project_detail_link(project_id) if project_id else twa.TWA_LINK
-
-                    button = [
-                        [
-                            InlineKeyboardButton(text="👀 View more reward activities", url=project_link)
-                        ]
-                    ]
 
                     reply_text = f"Checkin successful, community points awarded: {rewards}."
                     await ctx.respond(
@@ -345,17 +347,39 @@ class BeeconPlugin(plugin.Plugin):
                         parse_mode=ParseMode.MARKDOWN,
                         delete_after=20
                     )
-                elif resp.status == 704:
+                elif resp.status == 702:
                     await ctx.respond(
                         "Already checked in",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
+                        delete_after=20
+                    )
+                elif resp.status == 704:
+                    await ctx.respond(
+                        "Checkin task closed",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
                         delete_after=20
                     )
                 elif resp.status == 706:
                     await ctx.respond(
-                        "Checkin task closed",
+                        "Sorry, there's no checkin task.",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
                         delete_after=20
                     )
                 else:
                     self.log.error("Java API response error: %s", resp.status)
+                    await ctx.respond(
+                        "Engage more, earn more.",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
+                        delete_after=20
+                    )
         except Exception as e:
             self.log.error(e)
+
+
+    async def cmd_invite(self, ctx: command.Context):
+        msg = ctx.message
+        pass

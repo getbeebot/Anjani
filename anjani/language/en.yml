@@ -1,6 +1,6 @@
 #region Main
 start-pm: |
-  To assist in automatically identifying the completion status of community tasks, please add @beecon_bot to your managed group and designate it as an administrator.
+  To assist in automatically identifying the completion status of community tasks, please add @beecon_bot to your managed **public group** and designate it as an administrator.
 group-notify-no-participants: |
   🌟 There are **{tasks} tasks** in our community. Let's get involved! 👇
 group-start-pm: |
@@ -673,5 +673,5 @@ lottery-join: |
 lottery-end: |
   🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
 task-creation: |
-  🚀 Thers's a new task created in our community, check it now.
+  🚀 There's a new task created in our community, check it now.
 #endregion
