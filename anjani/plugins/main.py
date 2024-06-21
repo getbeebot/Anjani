@@ -352,12 +352,12 @@ class Main(plugin.Plugin):
                     )
 
                 ],
-                [
-                    InlineKeyboardButton(
-                        text=await self.text(chat.id, "language-button"),
-                        url=f"t.me/{self.bot.user.username}?start=language",
-                    ),
-                ],
+                # [
+                #     InlineKeyboardButton(
+                #         text=await self.text(chat.id, "language-button"),
+                #         url=f"t.me/{self.bot.user.username}?start=language",
+                #     ),
+                # ],
             ])
 
             await ctx.respond(
