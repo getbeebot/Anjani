@@ -154,7 +154,7 @@ WHERE biz_user_id = '{user_id}'
 
     async def query_project_tasks(self, chat_id: int):
         project_id = await self.query_project_id_by_chat_id(chat_id)
-        sql = f"SELECT COUNT(*) FROM beebot.bot_task WHERE project_id = '{project_id}'"
+        sql = f"SELECT COUNT(*) FROM beebot.bot_task WHERE project_id = '{project_id}' AND deleted <> 1"
         (count, )= await self.query_one(sql)
         return count
 

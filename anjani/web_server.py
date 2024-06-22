@@ -255,11 +255,12 @@ async def send_message_handler(request: BaseRequest) -> Response:
         content: str = ""
         notify_type = data.get("notifyType")
 
+        lottery_type = data.get("lotteryType")
         if notify_type == 1:    # create lottery task
-            template = await get_template("lottery-create")
+            template = await get_template(f"lottery-create-{lottery_type}")
             content = build_lottery_create_msg(template, **data)
         elif notify_type == 2:  # user entered the draw
-            template = await get_template("lottery-join")
+            template = await get_template(f"lottery-join-{lottery_type}")
             content = build_lottery_join_msg(template, **data)
         elif notify_type == 3:  # lottory draw winner announce
             template = await get_template("lottery-end")

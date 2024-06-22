@@ -36,6 +36,14 @@ class TWA:
         args = base58.b58encode(args).decode("utf-8")
         return f"{self.TWA_LINK}={args}"
 
+    def generate_project_leaderboard_link(self, project_id: int):
+        args = msgpack.packb({
+            "target": "leaderBoard",
+            "id": project_id
+        })
+        args = base58.b58encode(args).decode("utf-8")
+        return f"{self.TWA_LINK}={args}"
+
     @classmethod
     async def get_chat_project_link(cls, chat_id: int):
         twa = cls()
@@ -83,6 +91,18 @@ class TWA:
         try:
             await self.mysql.connect()
             res = await self.mysql.query_project_participants(chat_id)
+        except Exception as e:
+            self.log.error(e)
+        finally:
+            await self.mysql.close()
+
+        return res
+
+    async def get_chat_project_id(self, chat_id: int) -> int:
+        res = None
+        try:
+            await self.mysql.connect()
+            res = await self.mysql.query_project_id_by_chat_id(chat_id)
         except Exception as e:
             self.log.error(e)
         finally:

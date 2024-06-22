@@ -240,7 +240,6 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(f"Create project error: {str(e)}")
 
-
     async def get_group_avatar_link(self, group_id: int, file_id: int) -> str:
         try:
             filename = f"G{group_id}.jpg"
@@ -261,7 +260,6 @@ class BeeconPlugin(plugin.Plugin):
             return f"https://{self.aws_s3_bucket}.s3.ap-southeast-1.amazonaws.com/{filename}"
         except Exception as e:
             self.log.error(f"retrieving group pic failed: {str(e)}")
-
 
     async def get_group_description(self, group_id: int) -> str | None:
         try:
@@ -380,6 +378,42 @@ class BeeconPlugin(plugin.Plugin):
             self.log.error(e)
 
 
-    async def cmd_invite(self, ctx: command.Context):
+    @listener.filters(filters.group)
+    async def cmd_invite(self, ctx: command.Context) -> Optional[str]:
         msg = ctx.message
-        pass
+
+        group_id = msg.chat.id
+        top_number = 10
+
+        try:
+            twa = TWA()
+
+            project_id = await twa.get_chat_project_id(group_id)
+
+            # https://api.getbeebot.com/p/myWallet/getInviteLog?projectId=270&current=1&size=100
+            uri = f"{self.api_url}/p/myWallet/getInviteLog?projectId={project_id}&current=1&size={top_number}"
+            async with self.bot.http.get(uri) as resp:
+                self.log.info("Java API response: %s", resp)
+                if resp.status == 200:
+                    res = await resp.json()
+
+                    rewards = res.get("balance")
+                    reward_name = res.get("alias")
+                    invited_number = res.get("inviteNum")
+
+                    project_link = await twa.generate_project_detail_link(project_id)
+                    button = [
+                        [
+                            InlineKeyboardButton("View more", url=project_link)
+                        ]
+                    ]
+                    await ctx.respond(
+                        f"Invited: **{invited_number}**, rewards: **{rewards} {reward_name}**",
+                        reply_markup=InlineKeyboardMarkup(button),
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                else:
+                    self.log.error("Java api return error: %s", await resp.text())
+
+        except Exception as e:
+            self.log.error("CMD /invite error: %s", e)
