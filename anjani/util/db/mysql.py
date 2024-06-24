@@ -135,7 +135,7 @@ class AsyncMysqlClient:
             return None
 
     async def retrieve_group_id_with_project(self):
-        sql = "SELECT id, target_id FROM bot_project WHERE target_id IS NOT NULL AND target_type IS NOT NULL"
+        sql = "SELECT id, target_id FROM bot_project WHERE target_id IS NOT NULL AND target_type = 0"
         res = await self.query(sql)
         return res
 

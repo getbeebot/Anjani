@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 from datetime import datetime, timezone
 import os
@@ -14,7 +15,7 @@ from aiohttp.web import Response, BaseRequest
 import asyncio
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-# from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from .util.config import Config
@@ -101,11 +102,13 @@ def cron_job():
 
     # TODO: more flexible configuration
     # trigger = CronTrigger(minute="*", second="*/10")
-    # trigger = IntervalTrigger(hours=4)
     interval = config.AUTO_NOTIFY_INTERVAL
-
     trigger = IntervalTrigger(hours=interval)
     scheduler.add_job(auto_push_notification, trigger=trigger)
+
+    leaderboard_trigger = CronTrigger(day_of_week="sat", hour="14", minute="15")
+    scheduler.add_job(auto_push_leaderboard, trigger=leaderboard_trigger)
+
     scheduler.start()
 
 
@@ -149,6 +152,58 @@ async def auto_push_notification():
 
     except Exception as e:
         log.error(f"auto push notification error: {e}")
+
+
+def sorted_by_rank(data):
+    def rank_or_zero(user):
+        try:
+            return user.get("userRankNumber", 0)
+        except (AttributeError, TypeError):
+            return 0
+    return sorted(data, key=rank_or_zero)
+
+async def auto_push_leaderboard():
+    try:
+        twa = TWA()
+        rows = twa.get_group_id_with_project()
+        for row in rows:
+            (project_id, group_id) = row
+            api_uri = os.getenv("API_URL")
+            url = f"{api_uri}/p/project/myRank"
+            payloads = {
+                "projectId": project_id,
+                "index": 0,
+                "size": 10,
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=payloads) as resp:
+                    log.info("Java API response: %s", resp)
+                    if resp.status == 200:
+                        res = await resp.json()
+                        rank_data = res.get("userRanks")
+                        ranks = sorted_by_rank(json.loads(rank_data))
+
+                        leaderboard_content = ""
+                        for user in ranks:
+                            leaderboard_content += f"{user.get("userRankNumber")}. {user.get("userName")}\n"
+
+                        btn_url = twa.generate_project_leaderboard_link(project_id)
+
+                        button = [
+                            [
+                                InlineKeyboardButton("View more", url=btn_url)
+                            ]
+                        ]
+
+                        await tgclient.send_message(
+                            group_id,
+                            leaderboard_content,
+                            reply_markup=InlineKeyboardMarkup(button),
+                        )
+                    else:
+                        log.error("Get user rank error with java api %s", await resp.text())
+    except Exception as e:
+        log.error(f"Leaderboard push error: {e}")
 
 async def member_check_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }
