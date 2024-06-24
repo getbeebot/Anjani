@@ -185,7 +185,7 @@ async def auto_push_leaderboard():
 
                         leaderboard_content = ""
                         for user in ranks:
-                            leaderboard_content += f"{user.get("userRankNumber")}. {user.get("userName")}\n"
+                            leaderboard_content += f"{user.get('userRankNumber')}. {user.get('userName')}\n"
 
                         btn_url = twa.generate_project_leaderboard_link(project_id)
 
