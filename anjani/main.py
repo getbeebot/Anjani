@@ -68,7 +68,7 @@ def _setup_log() -> None:
         )
     else:
         formatter = logging.Formatter(
-            "  %(levelname)-8s  |  %(name)-15s  |  %(message)s"
+            "%(asctime)s  %(levelname)-8s  |  %(name)-15s  |  %(message)s"
         )
     stream = logging.StreamHandler()
     stream.setLevel(level)
@@ -84,6 +84,10 @@ def _setup_log() -> None:
     logging.getLogger("pymongo").setLevel(logging.WARNING)
     logging.getLogger("pyrogram").setLevel(logging.ERROR)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("botocore").setLevel(logging.WARNING)
+    logging.getLogger("boto3").setLevel(logging.WARNING)
+    logging.getLogger("s3transfer").setLevel(logging.WARNING)
+    logging.getLogger("mysql").setLevel(logging.WARNING)
 
 
 async def client_server(loop) -> None:
