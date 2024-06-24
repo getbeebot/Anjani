@@ -12,6 +12,8 @@ import aiohttp.web as web
 from aiohttp import web_response
 from aiohttp.web import Response, BaseRequest
 
+import aiohttp_cors
+
 import asyncio
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -64,8 +66,6 @@ async def start_server() -> None:
     get_invite_link_router = web.post("/get_invite_link", create_invite_link_handler)
 
 
-    send_alert_router = web.post("/alert", send_alert_handler)
-
     check_bot_privilege_router = web.post("/check_bot_privilege", check_bot_privilege)
 
     ws_router = web.get("/ws", community_creation_notify)
@@ -73,10 +73,20 @@ async def start_server() -> None:
     routers = [
         member_check_router, send_message_router, update_user_router,
         get_invite_link_router, check_bot_privilege_router, ws_router,
-        send_alert_router,
     ]
 
+    cors = aiohttp_cors.setup(app, defaults={
+        "*": aiohttp_cors.ResourceOptions(
+            expose_headers="*",
+            allow_headers="*",
+            allow_methods="POST,OPTIONS"
+        )
+    })
+    alert_router = app.router.add_route("POST", "/alert", send_alert_handler)
+    cors.add(alert_router)
+
     app.add_routes(routers)
+
 
     # start pyrogram client with web server start
     app.on_startup.append(start_tgclient)
