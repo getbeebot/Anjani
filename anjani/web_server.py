@@ -15,7 +15,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 # from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from .util.db.mysql import AsyncMysqlClient
 from .util.config import Config
 from .util.twa import TWA
 from .language import get_template
@@ -33,7 +32,6 @@ EXPIRE_TS: int = 2032995600
 config = Config()
 
 tgclient = TGClient(config)
-mysql = AsyncMysqlClient.init_from_env()
 
 log = logging.getLogger("web-server")
 
@@ -109,7 +107,7 @@ def cron_job():
 async def auto_push_notification():
     try:
         twa = TWA()
-        rows = await mysql.retrieve_group_id_with_project()
+        rows = twa.get_group_id_with_project()
         for row in rows:
             (project_id, group_id) = row
             project_link = twa.generate_project_detail_link(project_id)
@@ -130,15 +128,22 @@ async def auto_push_notification():
             else:
                 continue
 
-            await tgclient.send_photo(
+            # delete last notification
+            pre_msg = await twa.get_previous_notify_record(group_id)
+            if pre_msg:
+                await tgclient.client.delete_messages(group_id, int(pre_msg))
+
+            msg = await tgclient.send_photo(
                 group_id,
                 "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
                 caption=group_notify_msg,
                 reply_markup=button,
             )
+            if msg:
+                await twa.save_notify_record(group_id, msg.id)
 
     except Exception as e:
-        log.error(e)
+        log.error(f"auto push notification error: {e}")
 
 async def member_check_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }
@@ -180,8 +185,6 @@ async def get_user_info_handler(request: BaseRequest) -> Response:
         if not avatar_link:
             avatar_link = ""
 
-        # mysql_client = AsyncMysqlClient.init_from_env()
-
         firstname = user.first_name or ""
         lastname = user.last_name
         fullname = firstname + " " + lastname if lastname else firstname
@@ -192,8 +195,6 @@ async def get_user_info_handler(request: BaseRequest) -> Response:
                 "nickname": fullname,
                 "avatar": avatar_link,
         }
-
-        # await mysql_client.update_user_info(**user_info)
 
         ret_data.update({
             "ok": True,

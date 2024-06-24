@@ -52,6 +52,7 @@ class TGClient:
 
 
     async def send_photo(self, chat_id, photo, caption, delete_after=None, reply_markup=None):
+        msg = None
         try:
             if reply_markup:
                 msg = await self.client.send_photo(chat_id, photo, caption=caption, reply_markup=reply_markup)
@@ -64,6 +65,8 @@ class TGClient:
 
         except Exception as e:
             self.log.error(e)
+
+        return msg
 
 
     async def delete_message(self, chat_id, msg_id, delay):

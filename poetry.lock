@@ -172,6 +172,24 @@ aiofile = ">=3.5.0,<4"
 anyio = ">=3.2.0,<4"
 
 [[package]]
+name = "aioredis"
+version = "2.0.1"
+description = "asyncio (PEP 3156) Redis support"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "aioredis-2.0.1-py3-none-any.whl", hash = "sha256:9ac0d0b3b485d293b8ca1987e6de8658d7dafcca1cddfcd1d506cae8cdebfdd6"},
+    {file = "aioredis-2.0.1.tar.gz", hash = "sha256:eaa51aaf993f2d71f54b70527c440437ba65340588afeb786cd87c55c89cd98e"},
+]
+
+[package.dependencies]
+async-timeout = "*"
+typing-extensions = "*"
+
+[package.extras]
+hiredis = ["hiredis (>=1.0)"]
+
+[[package]]
 name = "aiorun"
 version = "2023.7.2"
 description = "Boilerplate for asyncio applications"
@@ -1926,4 +1944,4 @@ uvloop = ["uvloop"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~=3.9"
-content-hash = "2417061150f853edb5b5ab3516280f197ecb2432dd7e5f50bcbb7fccfdb0c482"
+content-hash = "175f9e2f2a9c1fd5decefd0d5a77f7de21427beee179b583fddb583a2ef2b50f"
