@@ -1,5 +1,8 @@
+import base64
+import json
 import logging
 from datetime import datetime, timezone
+import os
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import PeerIdInvalid
@@ -9,13 +12,14 @@ import aiohttp.web as web
 from aiohttp import web_response
 from aiohttp.web import Response, BaseRequest
 
+import aiohttp_cors
+
 import asyncio
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-# from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from .util.db.mysql import AsyncMysqlClient
 from .util.config import Config
 from .util.twa import TWA
 from .language import get_template
@@ -33,7 +37,6 @@ EXPIRE_TS: int = 2032995600
 config = Config()
 
 tgclient = TGClient(config)
-mysql = AsyncMysqlClient.init_from_env()
 
 log = logging.getLogger("web-server")
 
@@ -65,6 +68,8 @@ async def start_server() -> None:
 
     check_bot_privilege_router = web.post("/check_bot_privilege", check_bot_privilege)
 
+    # alert_router = web.post("/alert", send_alert_handler)
+
     ws_router = web.get("/ws", community_creation_notify)
 
     routers = [
@@ -72,7 +77,18 @@ async def start_server() -> None:
         get_invite_link_router, check_bot_privilege_router, ws_router,
     ]
 
+    cors = aiohttp_cors.setup(app, defaults={
+        "*": aiohttp_cors.ResourceOptions(
+            allow_credentials=True,
+            expose_headers="*",
+            allow_headers="*"
+        )
+    })
+    alert_router = app.router.add_route("POST", "/alert", send_alert_handler)
+    cors.add(alert_router)
+
     app.add_routes(routers)
+
 
     # start pyrogram client with web server start
     app.on_startup.append(start_tgclient)
@@ -98,18 +114,21 @@ def cron_job():
 
     # TODO: more flexible configuration
     # trigger = CronTrigger(minute="*", second="*/10")
-    # trigger = IntervalTrigger(hours=4)
     interval = config.AUTO_NOTIFY_INTERVAL
-
-    trigger = IntervalTrigger(hours=interval)
+    # trigger = IntervalTrigger(hours=interval)
+    trigger = IntervalTrigger(seconds=interval)
     scheduler.add_job(auto_push_notification, trigger=trigger)
+
+    leaderboard_trigger = CronTrigger(day_of_week="sat", hour="14", minute="15")
+    scheduler.add_job(auto_push_leaderboard, trigger=leaderboard_trigger)
+
     scheduler.start()
 
 
 async def auto_push_notification():
     try:
         twa = TWA()
-        rows = await mysql.retrieve_group_id_with_project()
+        rows = await twa.get_group_id_with_project()
         for row in rows:
             (project_id, group_id) = row
             project_link = twa.generate_project_detail_link(project_id)
@@ -130,15 +149,74 @@ async def auto_push_notification():
             else:
                 continue
 
-            await tgclient.send_photo(
+            # delete last notification
+            pre_msg = await twa.get_previous_notify_record(group_id)
+            if pre_msg:
+                await tgclient.client.delete_messages(group_id, int(pre_msg))
+
+            msg = await tgclient.send_photo(
                 group_id,
                 "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
                 caption=group_notify_msg,
                 reply_markup=button,
             )
+            if msg:
+                await twa.save_notify_record(group_id, msg.id)
 
     except Exception as e:
-        log.error(e)
+        log.error(f"auto push notification error: {e}")
+
+
+def sorted_by_rank(data):
+    def rank_or_zero(user):
+        try:
+            return user.get("userRankNumber", 0)
+        except (AttributeError, TypeError):
+            return 0
+    return sorted(data, key=rank_or_zero)
+
+async def auto_push_leaderboard():
+    try:
+        twa = TWA()
+        rows = await twa.get_group_id_with_project()
+        for row in rows:
+            (project_id, group_id) = row
+            api_uri = os.getenv("API_URL")
+            url = f"{api_uri}/p/project/myRank"
+            payloads = {
+                "projectId": project_id,
+                "index": 0,
+                "size": 10,
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=payloads) as resp:
+                    log.info("Java API response: %s", resp)
+                    if resp.status == 200:
+                        res = await resp.json()
+                        rank_data = res.get("userRanks")
+                        ranks = sorted_by_rank(json.loads(rank_data))
+
+                        leaderboard_content = ""
+                        for user in ranks:
+                            leaderboard_content += f"{user.get('userRankNumber')}. {user.get('userName')}\n"
+
+                        btn_url = twa.generate_project_leaderboard_link(project_id)
+
+                        button = [
+                            [
+                                InlineKeyboardButton("View more", url=btn_url)
+                            ]
+                        ]
+
+                        await tgclient.send_message(
+                            group_id,
+                            leaderboard_content,
+                            reply_markup=InlineKeyboardMarkup(button),
+                        )
+                    else:
+                        log.error("Get user rank error with java api %s", await resp.text())
+    except Exception as e:
+        log.error(f"Leaderboard push error: {e}")
 
 async def member_check_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }
@@ -180,8 +258,6 @@ async def get_user_info_handler(request: BaseRequest) -> Response:
         if not avatar_link:
             avatar_link = ""
 
-        # mysql_client = AsyncMysqlClient.init_from_env()
-
         firstname = user.first_name or ""
         lastname = user.last_name
         fullname = firstname + " " + lastname if lastname else firstname
@@ -192,8 +268,6 @@ async def get_user_info_handler(request: BaseRequest) -> Response:
                 "nickname": fullname,
                 "avatar": avatar_link,
         }
-
-        # await mysql_client.update_user_info(**user_info)
 
         ret_data.update({
             "ok": True,
@@ -432,7 +506,34 @@ async def check_bot_privilege(request: BaseRequest) -> Response:
 
     return web_response.json_response(ret_data, status=200)
 
-async def delete_test_handler(request: BaseRequest) -> Response:
-    chat_id = -1002207973234
-    await tgclient.send_photo(chat_id, "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png", caption="自毁测试 10s", delete_after=10)
-    return web_response.json_response({"ok": True}, status=200)
+
+async def send_alert_handler(request: BaseRequest) -> Response:
+    ret_data = {"ok": False}
+    try:
+        url = os.getenv("ALERT_API")
+        user = os.getenv("ALERT_USER")
+        password = os.getenv("ALERT_PASS")
+
+        payloads = await request.json()
+
+        auth_token = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode("utf-8")
+        auth = f"Basic {auth_token}"
+        headers = {
+            "Authorization": auth,
+            "Content-Type": "application/json",
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payloads, headers=headers) as resp:
+                log.info(f"Alert response: %s", resp)
+                if resp.status == 200:
+                    ret_data.update({"ok": True})
+                else:
+                    ret_data.update({"ok": False, "error": await resp.text()})
+    except Exception as e:
+        log.error(f"push alert error: {e}")
+        ret_data.update({
+            "ok": False,
+            "error": str(e)
+        })
+
+    return web_response.json_response(ret_data, status=200)

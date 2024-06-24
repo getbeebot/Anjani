@@ -6,17 +6,19 @@ import base58
 import os
 import logging
 
-from anjani.util.db import AsyncMysqlClient
+from anjani.util.db import AsyncMysqlClient, AsyncRedisClient
 
 class TWA:
     log: logging.Logger
 
     TWA_LINK = os.getenv("TWA_LINK")
     mysql: AsyncMysqlClient
+    redis: AsyncRedisClient
 
     def __init__(self):
         self.log = logging.getLogger("twa")
         self.mysql = AsyncMysqlClient.init_from_env()
+        self.redis = AsyncRedisClient.init_from_env()
 
 
     def generate_project_detail_link(self, project_id: int):
@@ -108,4 +110,34 @@ class TWA:
         finally:
             await self.mysql.close()
 
+        return res
+
+    async def get_group_id_with_project(self):
+        try:
+            await self.mysql.connect()
+            res = await self.mysql.retrieve_group_id_with_project()
+        except Exception as e:
+            self.log.error(f"retriving group id with projects error: {e}")
+            res = None
+        finally:
+            await self.mysql.close()
+            return res
+
+    async def save_notify_record(self, chat_id: int, message_id: int):
+        try:
+            await self.redis.connect()
+            await self.redis.set(chat_id, message_id)
+        except Exception as e:
+            self.log.error(f"save notify record error: {e}")
+        finally:
+            await self.redis.close()
+
+    async def get_previous_notify_record(self, chat_id: int):
+        try:
+            await self.redis.connect()
+            res = await self.redis.get(chat_id)
+        except Exception as e:
+            self.log.error(f"get previous notify record error: {e}")
+        finally:
+            await self.redis.close()
         return res

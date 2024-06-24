@@ -19,11 +19,13 @@ from .collection import AsyncCollection  # skipcq: PY-W2000
 from .cursor import AsyncCursor  # skipcq: PY-W2000
 from .db import AsyncDatabase  # skipcq: PY-W2000
 from .mysql import AsyncMysqlClient
+from .redis import AsyncRedisClient
 
 __all__ = [
     "AsyncClient",
     "AsyncCollection",
     "AsyncCursor",
     "AsyncDatabase",
-    "AsyncMysqlClient"
+    "AsyncMysqlClient",
+    "AsyncRedisClient"
 ]

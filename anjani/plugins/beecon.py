@@ -130,6 +130,14 @@ class BeeconPlugin(plugin.Plugin):
                 return None
 
             if not message.from_user:
+                button = [[
+                    InlineKeyboardButton("Start bot", url=f"t.me/{self.bot.user.username}?start=true")
+                ]]
+                await message.reply(
+                    "There're some issues with permission, please re-invite bot as group admin via `Add Bot as Admin` button. Otherwise, bot would not work",
+                    reply_markup=InlineKeyboardMarkup(button),
+                    parse_mode=ParseMode.MARKDOWN,
+                    )
                 return None
 
             if not message.chat:
