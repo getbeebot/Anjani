@@ -77,9 +77,9 @@ async def start_server() -> None:
 
     cors = aiohttp_cors.setup(app, defaults={
         "*": aiohttp_cors.ResourceOptions(
+            allow_credentials=True,
             expose_headers="*",
-            allow_headers="*",
-            allow_methods="POST,OPTIONS"
+            allow_headers="*"
         )
     })
     alert_router = app.router.add_route("POST", "/alert", send_alert_handler)
