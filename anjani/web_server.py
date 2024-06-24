@@ -115,7 +115,8 @@ def cron_job():
     # TODO: more flexible configuration
     # trigger = CronTrigger(minute="*", second="*/10")
     interval = config.AUTO_NOTIFY_INTERVAL
-    trigger = IntervalTrigger(hours=interval)
+    # trigger = IntervalTrigger(hours=interval)
+    trigger = IntervalTrigger(seconds=30)
     scheduler.add_job(auto_push_notification, trigger=trigger)
 
     leaderboard_trigger = CronTrigger(day_of_week="sat", hour="14", minute="15")
