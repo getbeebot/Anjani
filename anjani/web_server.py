@@ -178,7 +178,7 @@ def sorted_by_rank(data):
 async def auto_push_leaderboard():
     try:
         twa = TWA()
-        rows = twa.get_group_id_with_project()
+        rows = await twa.get_group_id_with_project()
         for row in rows:
             (project_id, group_id) = row
             api_uri = os.getenv("API_URL")
