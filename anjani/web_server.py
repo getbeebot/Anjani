@@ -1,5 +1,7 @@
+import base64
 import logging
 from datetime import datetime, timezone
+import os
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import PeerIdInvalid
@@ -61,6 +63,8 @@ async def start_server() -> None:
     get_invite_link_router = web.post("/get_invite_link", create_invite_link_handler)
 
 
+    send_alert_router = web.post("/alert", send_alert_handler)
+
     check_bot_privilege_router = web.post("/check_bot_privilege", check_bot_privilege)
 
     ws_router = web.get("/ws", community_creation_notify)
@@ -68,6 +72,7 @@ async def start_server() -> None:
     routers = [
         member_check_router, send_message_router, update_user_router,
         get_invite_link_router, check_bot_privilege_router, ws_router,
+        send_alert_router,
     ]
 
     app.add_routes(routers)
@@ -433,7 +438,34 @@ async def check_bot_privilege(request: BaseRequest) -> Response:
 
     return web_response.json_response(ret_data, status=200)
 
-async def delete_test_handler(request: BaseRequest) -> Response:
-    chat_id = -1002207973234
-    await tgclient.send_photo(chat_id, "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png", caption="自毁测试 10s", delete_after=10)
-    return web_response.json_response({"ok": True}, status=200)
+
+async def send_alert_handler(request: BaseRequest) -> Response:
+    ret_data = {"ok": False}
+    try:
+        url = os.getenv("ALERT_API")
+        user = os.getenv("ALERT_USER")
+        password = os.getenv("ALERT_PASS")
+
+        payloads = await request.json()
+
+        auth_token = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode("utf-8")
+        auth = f"Basic {auth_token}"
+        headers = {
+            "Authorization": auth,
+            "Content-Type": "application/json",
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payloads, headers=headers) as resp:
+                log.info(f"Alert response: %s", resp)
+                if resp.status == 200:
+                    ret_data.update({"ok": True})
+                else:
+                    ret_data.update({"ok": False, "error": await resp.text()})
+    except Exception as e:
+        log.error(f"push alert error: {e}")
+        ret_data.update({
+            "ok": False,
+            "error": str(e)
+        })
+
+    return web_response.json_response(ret_data, status=200)
