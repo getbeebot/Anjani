@@ -128,7 +128,7 @@ def cron_job():
 async def auto_push_notification():
     try:
         twa = TWA()
-        rows = twa.get_group_id_with_project()
+        rows = await twa.get_group_id_with_project()
         for row in rows:
             (project_id, group_id) = row
             project_link = twa.generate_project_detail_link(project_id)
