@@ -68,25 +68,24 @@ async def start_server() -> None:
 
     check_bot_privilege_router = web.post("/check_bot_privilege", check_bot_privilege)
 
-    alert_router = web.post("/alert", send_alert_handler)
+    # alert_router = web.post("/alert", send_alert_handler)
 
     ws_router = web.get("/ws", community_creation_notify)
 
     routers = [
         member_check_router, send_message_router, update_user_router,
         get_invite_link_router, check_bot_privilege_router, ws_router,
-        alert_router
     ]
 
-    # cors = aiohttp_cors.setup(app, defaults={
-    #     "*": aiohttp_cors.ResourceOptions(
-    #         allow_credentials=True,
-    #         expose_headers="*",
-    #         allow_headers="*"
-    #     )
-    # })
-    # alert_router = app.router.add_route("POST", "/alert", send_alert_handler)
-    # cors.add(alert_router)
+    cors = aiohttp_cors.setup(app, defaults={
+        "*": aiohttp_cors.ResourceOptions(
+            allow_credentials=True,
+            expose_headers="*",
+            allow_headers="*"
+        )
+    })
+    alert_router = app.router.add_route("POST", "/alert", send_alert_handler)
+    cors.add(alert_router)
 
     app.add_routes(routers)
 
