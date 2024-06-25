@@ -183,7 +183,7 @@ class BeeconPlugin(plugin.Plugin):
                             photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
                             caption=err_msg,
                             reply_markup=InlineKeyboardMarkup(start_me_btn),
-                            parse_mod=ParseMode.MARKDOWN,
+                            parse_mode=ParseMode.MARKDOWN,
                             reply_to_message_id=message.id,
                         )
                         # Early return for invalid group
