@@ -697,8 +697,8 @@ group-invite-exception: |
 group-init-failed: |
   Community init failed, please act following steps: \n
 usage-guide: |
-  Step 1. Remove me from group
-  Step 2. Make sure your group is **PUBLIC**
+  Step 1. Remove me from this group
+  Step 2. Make sure this group type is **PUBLIC**
   Step 3. Click **Start me** button
   Step 4. Add me via **{}** button
 #endregion
