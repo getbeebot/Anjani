@@ -134,6 +134,7 @@ class BeeconPlugin(plugin.Plugin):
                 return None
 
             group_id = message.chat.id
+            guide_img_link = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png"
 
             twa = TWA()
             is_exist = await twa.get_chat_project_id(group_id)
@@ -149,7 +150,7 @@ class BeeconPlugin(plugin.Plugin):
                 err_msg += usage_guide
                 await self.bot.client.send_photo(
                     chat_id=group_id,
-                    photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                    photo=guide_img_link,
                     caption=err_msg,
                     reply_markup=InlineKeyboardMarkup(start_me_btn),
                     parse_mode=ParseMode.MARKDOWN,
@@ -180,7 +181,7 @@ class BeeconPlugin(plugin.Plugin):
                         err_msg += usage_guide
                         await self.bot.client.send_photo(
                             chat_id=group_id,
-                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                            photo=guide_img_link,
                             caption=err_msg,
                             reply_markup=InlineKeyboardMarkup(start_me_btn),
                             parse_mode=ParseMode.MARKDOWN,
@@ -253,14 +254,14 @@ class BeeconPlugin(plugin.Plugin):
                         err_msg += usage_guide
                         await self.bot.client.send_photo(
                             chat_id=owner_id,
-                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                            photo=guide_img_link,
                             caption=err_msg,
                             reply_markup=InlineKeyboardMarkup(start_me_btn),
                             parse_mode=ParseMode.MARKDOWN,
                         )
                         await self.bot.client.send_photo(
                             chat_id=group_id,
-                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                            photo=guide_img_link,
                             caption=err_msg,
                             reply_markup=InlineKeyboardMarkup(start_me_btn),
                             parse_mode=ParseMode.MARKDOWN,
