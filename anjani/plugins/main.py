@@ -364,7 +364,6 @@ class Main(plugin.Plugin):
                 await self.text(chat.id, "start-pm", self.bot_name),
                 photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
                 reply_markup=InlineKeyboardMarkup(buttons),
-                disable_web_page_preview=False,
                 parse_mode=ParseMode.MARKDOWN,
             )
             return None
