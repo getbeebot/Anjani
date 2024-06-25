@@ -16,7 +16,7 @@ help-pm: |
 start-chat: To assist in automatically identifying the completion status of community tasks, please ensure that @beecon_bot has granted default admin permissions
 help-chat: Contact me in PM to get the list of possible commands.
 # add-to-group-button: Add to Group 👥
-add-to-group-button: + Add Bot as Admin +
+add-to-group-button: + Add bot as Admin +
 start-help-button: Help & Commands ❔
 help-chat-button: Help
 status-page-button: Status
@@ -681,5 +681,30 @@ lottery-join-1: |
 lottery-end: |
   🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
 task-creation: |
-  🚀 There's a new task created in our community, check it now.
+  🚀 There's a new reward created in our community, check it now.
+#endregion
+
+#region group exception
+group-no-participant-exception: |
+  There are {} rewards in this community, let's get involved.
+
+group-no-task-exception: |
+  This group has not setup task yet, please contact
+  admin to add tasks and get envolved.
+group-start-exception: |
+  Community initiating, it may take some time.
+  If failed, please act as following guide to
+  make it work properly. \n
+group-abnormal-exception: |
+  Group is not a supergroup, please act as following steps: \n
+group-invite-exception: |
+  Bot is lack of some permission, please act as
+  following steps: \n
+group-init-failed: |
+  Community init failed, please act following steps: \n
+usage-guide: |
+  Step 1. Remove me from this group
+  Step 2. Make sure this group type is **PUBLIC**
+  Step 3. Click **Start me** button
+  Step 4. Add me via **{}** button
 #endregion

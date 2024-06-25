@@ -11,7 +11,10 @@ from os.path import join
 from typing import ClassVar, Optional
 
 from pyrogram import filters
-from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import (
+    Chat, Message,
+    InlineKeyboardButton, InlineKeyboardMarkup
+)
 from pyrogram.enums.parse_mode import ParseMode
 
 from anjani import listener, plugin, command
@@ -51,7 +54,7 @@ class BeeconPlugin(plugin.Plugin):
         payloads = {}
 
         code = None
-        if len(context) == 6:
+        if len(context) == 6 and context.isdigit():
             code = context
         else:
             pattern = re.compile("\u200b\w+\u200b")
@@ -126,18 +129,32 @@ class BeeconPlugin(plugin.Plugin):
     @listener.filters(filters.group)
     async def on_chat_action(self, message: Message) -> None:
         try:
+            self.log.debug("On chat action: %s", message)
             if not message.new_chat_members:
                 return None
 
+            group_id = message.chat.id
+
+            twa = TWA()
+            is_exist = await twa.get_chat_project_id(group_id)
+            if is_exist:
+                self.log.warning(f"Community {message.chat.title} {message.chat.id} already exists")
+                return None
+
+            start_me_btn = [[InlineKeyboardButton("Start me", url=f"t.me/{self.bot.user.username}?start=true")]]
+            add_to_group_btn_text = await self.text(group_id, "add-to-group-button", noformat=True)
             if not message.from_user:
-                button = [[
-                    InlineKeyboardButton("Start bot", url=f"t.me/{self.bot.user.username}?start=true")
-                ]]
-                await message.reply(
-                    "There're some issues with permission, please re-invite bot as group admin via `Add Bot as Admin` button. Otherwise, bot would not work",
-                    reply_markup=InlineKeyboardMarkup(button),
+                err_msg = await self.text(group_id, "group-invite-exception", noformat=True)
+                usage_guide = await self.text(group_id, "usage-guide", add_to_group_btn_text)
+                err_msg += usage_guide
+                await self.bot.client.send_photo(
+                    chat_id=group_id,
+                    photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                    caption=err_msg,
+                    reply_markup=InlineKeyboardMarkup(start_me_btn),
                     parse_mode=ParseMode.MARKDOWN,
-                    )
+                    reply_to_message_id=message.id,
+                )
                 return None
 
             if not message.chat:
@@ -156,6 +173,22 @@ class BeeconPlugin(plugin.Plugin):
                     nick_name = first_name + ' ' + last_name if last_name else first_name
 
                     group_id = group.id
+
+                    if not self._group_check(group_id):
+                        err_msg = await self.text(group_id, "group-abnormal-exception", noformat=True)
+                        usage_guide = await self.text(group_id, "usage-guide", add_to_group_btn_text)
+                        err_msg += usage_guide
+                        await self.bot.client.send_photo(
+                            chat_id=group_id,
+                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                            caption=err_msg,
+                            reply_markup=InlineKeyboardMarkup(start_me_btn),
+                            parse_mode=ParseMode.MARKDOWN,
+                            reply_to_message_id=message.id,
+                        )
+                        # Early return for invalid group
+                        return None
+
                     group_name = group.title
 
                     if group.username:
@@ -195,7 +228,7 @@ class BeeconPlugin(plugin.Plugin):
                     headers = {'Content-Type': 'application/json'}
 
                     payloads = json.loads(json.dumps(payloads))
-                    self.log.debug(f"Request payloads: %s", payloads)
+                    self.log.debug(f"Java API request payloads: %s", payloads)
 
                     is_success = False
                     project_id = None
@@ -203,19 +236,37 @@ class BeeconPlugin(plugin.Plugin):
                     try:
                         api_uri = f"{self.api_url}/p/task/bot-project/init"
                         async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
-                            self.log.info("APIDEBUG: %s", resp.status)
-                            self.log.info("APIDEBUG: %s", await resp.text())
+                            self.log.info("Java API response: %s", await resp.text())
                             res = await resp.json()
                             if resp.status == 200 and res.get("success"):
                                 is_success = True
                             data = res.get("data")
                             project_id = data.get("id") if data else None
-
-                            self.log.info(f"response from Server, status: {resp.status}, data: {res}")
                     except Exception as e:
                         self.log.error(f"Create new project error: {str(e)}")
 
-                    url = await TWA.get_chat_project_link(group_id)
+                    url = await twa.get_chat_project_link(group_id)
+
+                    if url == twa.TWA_LINK:
+                        err_msg = await self.text(group_id, "group-init-failed", noformat=True)
+                        usage_guide = await self.text(group_id, "usage-guide", add_to_group_btn_text)
+                        err_msg += usage_guide
+                        await self.bot.client.send_photo(
+                            chat_id=owner_id,
+                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                            caption=err_msg,
+                            reply_markup=InlineKeyboardMarkup(start_me_btn),
+                            parse_mode=ParseMode.MARKDOWN,
+                        )
+                        await self.bot.client.send_photo(
+                            chat_id=group_id,
+                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                            caption=err_msg,
+                            reply_markup=InlineKeyboardMarkup(start_me_btn),
+                            parse_mode=ParseMode.MARKDOWN,
+                            reply_to_message_id=message.id,
+                        )
+                        return None
 
                     msg_text = await self.text(group_id, "create-project", noformat=True)
                     msg_context = msg_text.format(group_name=group_name)
@@ -226,17 +277,6 @@ class BeeconPlugin(plugin.Plugin):
                         owner_id,
                         msg_context,
                         reply_markup=button
-                    )
-
-                    # TODO: This would cause duplicate message when bot re-join a group
-                    # Solution: project-create api to return a flag to determine where a project is created
-                    group_msg_context = await self.text(group_id, "start-chat")
-
-                    await self.bot.client.send_photo(
-                        group_id,
-                        "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
-                        caption=group_msg_context,
-                        reply_markup=button,
                     )
 
                     if is_success and project_id:
@@ -288,6 +328,12 @@ class BeeconPlugin(plugin.Plugin):
             except websockets.ConnectionClosed:
                 pass
 
+    def _group_check(self, group_id: int) -> bool | None:
+        group_id_str = str(group_id)
+        if group_id_str.startswith('-100'):
+            return True
+        else:
+            return False
 
     @listener.filters(filters.group)
     async def cmd_checkin(self, ctx: command.Context) -> Optional[str]:
