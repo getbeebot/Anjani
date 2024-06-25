@@ -48,21 +48,13 @@ class BeeconPlugin(plugin.Plugin):
         if not context:
             return None
 
-        # filter out command message
-        if context.startswith('/'):
-            return None
-
-        # filter out string
-        if not context.isdigit():
-            return None
-
         api_uri = f"{self.api_url}/p/distribution/code/getInviteLink"
         from_user = message.from_user
 
         payloads = {}
 
         code = None
-        if len(context) == 6:
+        if len(context) == 6 and context.isdigit():
             code = context
         else:
             pattern = re.compile("\u200b\w+\u200b")
