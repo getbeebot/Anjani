@@ -147,7 +147,7 @@ SELECT
 FROM bot_project AS bp
 JOIN tz_app_connect AS tac ON bp.owner_id = tac.user_id
 JOIN tz_user_tg_group AS tutg on bp.target_id = tutg.chat_id
-WHERE biz_user_id = '{user_id}'
+WHERE biz_user_id = '{user_id}' AND bp.deleted = 0
 """
         res = await self.query(sql)
         return res

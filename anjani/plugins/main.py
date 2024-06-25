@@ -369,16 +369,35 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        project_link = await twa.get_chat_project_link(chat.id)
+        is_exist = await twa.get_chat_project_id(chat.id)
+        if not is_exist:
+            # await self.bot.client.send
+            pass
+        project_id = is_exist
+        counter = 0
+        while counter < 5 and not project_id:
+            await asyncio.sleep(1)
+            counter += 1
+            project_id = await twa.get_chat_project_id(chat.id)
 
-        buttons = [
-            [
-                InlineKeyboardButton(
-                    text=await self.text(chat.id, "create-project-button"),
-                    url=project_link
-                )
-            ]
-        ]
+        # no project for group, error exception
+        if not project_id:
+            group_start_msg = await self.text(chat.id, "group-start-exception", noformat=True)
+            add_to_group_btn_text = await self.text(chat.id, "add-to-group-button", noformat=True)
+            usage_guide = await self.text(chat.id, "usage-guide", add_to_group_btn_text)
+            group_start_msg += usage_guide
+            button = [[InlineKeyboardButton("Start me", url=f"t.me/{self.bot.user.username}?start=true")]]
+            await ctx.respond(
+                group_start_msg,
+                photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                reply_markup=InlineKeyboardMarkup(button),
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return None
+
+        project_link = twa.generate_project_detail_link(project_id)
+
+        buttons = [[InlineKeyboardButton(text=await self.text(chat.id, "create-project-button"),url=project_link)]]
 
         tasks = await twa.get_chat_tasks(chat.id)
         participants = await twa.get_chat_activity_participants(chat.id)
@@ -389,14 +408,12 @@ class Main(plugin.Plugin):
         else:
             group_start_msg = "We're initiating, just give us some time..."
 
-        msg = await ctx.respond(
+        await ctx.respond(
             group_start_msg,
             photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN
         )
-        if project_link == twa.TWA_LINK:
-            await msg.delete()
         return None
 
     async def switch_lang(self, chat_id: int, language: str) -> None:
