@@ -357,7 +357,7 @@ class Main(plugin.Plugin):
 
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot_name),
-                photo=engage_img_link,
+                photo=guide_img_link,
                 reply_markup=InlineKeyboardMarkup(buttons),
                 parse_mode=ParseMode.MARKDOWN,
             )
