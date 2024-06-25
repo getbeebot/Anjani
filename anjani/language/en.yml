@@ -686,12 +686,14 @@ task-creation: |
 
 #region group exception
 group-start-exception: |
-  Community initiating, it may take some time. If failed, please
-  act as following guide to make it work properly. \n
+  Community initiating, it may take some time.
+  If failed, please act as following guide to
+  make it work properly. \n
 group-abnormal-exception: |
   Group is not a supergroup, please act as following steps: \n
 group-invite-exception: |
-  Bot is lack of some permission, please act as following steps: \n
+  Bot is lack of some permission, please act as
+  following steps: \n
 group-init-failed: |
   Community init failed, please act following steps: \n
 usage-guide: |

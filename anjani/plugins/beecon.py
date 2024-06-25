@@ -145,7 +145,7 @@ class BeeconPlugin(plugin.Plugin):
 
             twa = TWA()
             is_exist = await twa.get_chat_project_id(group_id)
-            if not is_exist:
+            if is_exist:
                 self.log.warning(f"Community {message.chat.title} {message.chat.id} already exists")
                 return None
 
