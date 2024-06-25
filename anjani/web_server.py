@@ -320,14 +320,11 @@ async def send_message_handler(request: BaseRequest) -> Response:
         if not uri:
             uri = config.TWA_LINK
 
-        button = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("🕹 Enter", url=uri)]
-            ]
-        )
+        button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
 
         content: str = ""
         notify_type = data.get("notifyType")
+        engage_img_link =  "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
 
         lottery_type = data.get("lotteryType")
         if notify_type == 1:    # create lottery task
@@ -355,7 +352,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
             content = await get_template("task-creation")
             await tgclient.send_photo(
                 chat_id,
-                "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                engage_img_link,
                 caption=content,
                 reply_markup=button,
             )
@@ -368,7 +365,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
         log.info(f"sending message {content}")
         await tgclient.send_photo(
             chat_id,
-            "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+            engage_img_link,
             caption=content,
             reply_markup=button,
         )

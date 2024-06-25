@@ -254,6 +254,8 @@ class Main(plugin.Plugin):
         chat = ctx.chat
 
         twa = TWA()
+        guide_img_link = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png"
+        engage_img_link = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
@@ -294,16 +296,12 @@ class Main(plugin.Plugin):
                     )
                     await ctx.respond(
                         text,
-                        reply_markup=InlineKeyboardMarkup(
-                            [
-                                [
-                                    InlineKeyboardButton(
-                                        await self.text(chat.id, "back-button"),
-                                        callback_data="help_back",
-                                    )
-                                ]
-                            ]
-                        ),
+                        reply_markup=InlineKeyboardMarkup([[
+                            InlineKeyboardButton(
+                                await self.text(chat.id, "back-button"),
+                                callback_data="help_back",
+                            )
+                        ]]),
                         disable_web_page_preview=True,
                         parse_mode=ParseMode.MARKDOWN,
                     )
@@ -321,10 +319,7 @@ class Main(plugin.Plugin):
                 for row in group_projects:
                     (project_id, group_name) = row
                     project_link = twa.generate_project_detail_link(project_id)
-                    group_button = InlineKeyboardButton(
-                        text=group_name,
-                        url=project_link
-                    )
+                    group_button = InlineKeyboardButton(text=group_name, url=project_link)
                     line_buttons.append(group_button)
                 # Two group button one line
                 group_buttons = [line_buttons[i * 2: (i+1) * 2] for i in range((len(line_buttons) + 2 - 1) // 2)]
@@ -362,7 +357,7 @@ class Main(plugin.Plugin):
 
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot_name),
-                photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                photo=engage_img_link,
                 reply_markup=InlineKeyboardMarkup(buttons),
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -389,7 +384,7 @@ class Main(plugin.Plugin):
             button = [[InlineKeyboardButton("Start me", url=f"t.me/{self.bot.user.username}?start=true")]]
             await ctx.respond(
                 group_start_msg,
-                photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+                photo=guide_img_link,
                 reply_markup=InlineKeyboardMarkup(button),
                 parse_mode=ParseMode.MARKDOWN
             )
@@ -413,7 +408,7 @@ class Main(plugin.Plugin):
 
         await ctx.respond(
             group_start_msg,
-            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+            photo=engage_img_link,
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN
         )
