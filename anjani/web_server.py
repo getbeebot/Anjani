@@ -366,9 +366,10 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         # sending message
         log.info(f"sending message {content}")
-        await tgclient.send_message(
+        await tgclient.send_photo(
             chat_id,
-            content,
+            "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+            caption=content,
             reply_markup=button,
         )
 

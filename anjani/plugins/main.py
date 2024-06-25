@@ -405,8 +405,11 @@ class Main(plugin.Plugin):
         if tasks and participants:
             group_context = await self.text(chat.id, "group-start-pm", noformat=True)
             group_start_msg = group_context.format(tasks=tasks, participants=participants)
+        elif tasks:
+            group_start_msg = await self.text(chat.id, "group-no-participant-exception", tasks)
+            pass
         else:
-            group_start_msg = "We're initiating, just give us some time..."
+            group_start_msg = await self.text(chat.id, "group-no-task-exception", noformat=True)
 
         await ctx.respond(
             group_start_msg,

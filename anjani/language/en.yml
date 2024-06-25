@@ -681,10 +681,16 @@ lottery-join-1: |
 lottery-end: |
   🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
 task-creation: |
-  🚀 There's a new task created in our community, check it now.
+  🚀 There's a new reward created in our community, check it now.
 #endregion
 
 #region group exception
+group-no-participant-exception: |
+  There are {} rewards in this community, let's get involved.
+
+group-no-task-exception: |
+  This group has not setup task yet, please contact
+  admin to add tasks and get envolved.
 group-start-exception: |
   Community initiating, it may take some time.
   If failed, please act as following guide to
