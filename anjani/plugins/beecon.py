@@ -12,7 +12,7 @@ from typing import ClassVar, Optional
 
 from pyrogram import filters
 from pyrogram.types import (
-    Chat, Message,
+    Message,
     InlineKeyboardButton, InlineKeyboardMarkup
 )
 from pyrogram.enums.parse_mode import ParseMode
@@ -51,7 +51,7 @@ class BeeconPlugin(plugin.Plugin):
         api_uri = f"{self.api_url}/p/distribution/code/getInviteLink"
         from_user = message.from_user
 
-        payloads = {}
+        payloads = { "botId": self.bot.uid }
 
         code = None
         if len(context) == 6 and context.isdigit():
@@ -150,7 +150,7 @@ class BeeconPlugin(plugin.Plugin):
                 err_msg += usage_guide
                 await self.bot.client.send_photo(
                     chat_id=group_id,
-                    photo=guide_img_link,
+                    photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png",
                     caption=err_msg,
                     reply_markup=InlineKeyboardMarkup(start_me_btn),
                     parse_mode=ParseMode.MARKDOWN,
@@ -181,7 +181,7 @@ class BeeconPlugin(plugin.Plugin):
                         err_msg += usage_guide
                         await self.bot.client.send_photo(
                             chat_id=group_id,
-                            photo=guide_img_link,
+                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png",
                             caption=err_msg,
                             reply_markup=InlineKeyboardMarkup(start_me_btn),
                             parse_mode=ParseMode.MARKDOWN,
@@ -215,6 +215,7 @@ class BeeconPlugin(plugin.Plugin):
                         "status": 1, # project status, default to 1
                         "targetId":  group_id, # group id
                         "targetType": 0, # 0 for group, 1 for channel
+                        "botId": self.bot.uid, # bot id, for multi merchant
                     }
 
                     if group_desc:
@@ -254,14 +255,14 @@ class BeeconPlugin(plugin.Plugin):
                         err_msg += usage_guide
                         await self.bot.client.send_photo(
                             chat_id=owner_id,
-                            photo=guide_img_link,
+                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png",
                             caption=err_msg,
                             reply_markup=InlineKeyboardMarkup(start_me_btn),
                             parse_mode=ParseMode.MARKDOWN,
                         )
                         await self.bot.client.send_photo(
                             chat_id=group_id,
-                            photo=guide_img_link,
+                            photo="https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png",
                             caption=err_msg,
                             reply_markup=InlineKeyboardMarkup(start_me_btn),
                             parse_mode=ParseMode.MARKDOWN,
@@ -369,6 +370,7 @@ class BeeconPlugin(plugin.Plugin):
                 "targetId": group_id,
                 "targetType": 0,
                 "tgUserId": user_id,
+                "botId": self.bot.uid,
             }
 
             payloads = json.loads(json.dumps(payloads))
@@ -445,9 +447,15 @@ class BeeconPlugin(plugin.Plugin):
 
             project_id = await twa.get_chat_project_id(group_id)
 
+            payloads = {
+                "botId": self.bot.uid,
+                "projectId": project_id,
+                "current": 1,
+                "size": top_number,
+            }
             # https://api.getbeebot.com/p/myWallet/getInviteLog?projectId=270&current=1&size=100
-            uri = f"{self.api_url}/p/myWallet/getInviteLog?projectId={project_id}&current=1&size={top_number}"
-            async with self.bot.http.get(uri) as resp:
+            uri = f"{self.api_url}/p/myWallet/getInviteLog"
+            async with self.bot.http.get(uri, params=payloads) as resp:
                 self.log.info("Java API response: %s", resp)
                 if resp.status == 200:
                     res = await resp.json()
@@ -457,11 +465,7 @@ class BeeconPlugin(plugin.Plugin):
                     invited_number = res.get("inviteNum")
 
                     project_link = await twa.generate_project_detail_link(project_id)
-                    button = [
-                        [
-                            InlineKeyboardButton("View more", url=project_link)
-                        ]
-                    ]
+                    button = [[InlineKeyboardButton("View more", url=project_link)]]
                     await ctx.respond(
                         f"Invited: **{invited_number}**, rewards: **{rewards} {reward_name}**",
                         reply_markup=InlineKeyboardMarkup(button),

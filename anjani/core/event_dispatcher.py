@@ -258,6 +258,7 @@ class EventDispatcher(MixinBase):
                     "chatId": chat.id,
                     "tgUserId": from_user.id,
                     "inviteLink": invite_link.invite_link,
+                    "botId": self.uid
                 }
                 api_uri = f"{self.api_prefix}/p/task/bot-project/join"
                 # call java api
