@@ -699,6 +699,10 @@ usage-guide: |
   Step 4. Add me via **{}** button
 #endregion
 
+#region invite link
+invite-link: "🎁 Join our community to get rewards\n\n{}"
+#endregion
+
 #region image
 engage-img: "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
 guide-img: "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png"

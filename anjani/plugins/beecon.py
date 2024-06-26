@@ -10,8 +10,12 @@ import os
 from os.path import join
 from typing import ClassVar, Optional
 
+import asyncio
+
 from pyrogram import filters
+from pyrogram.enums.chat_type import ChatType
 from pyrogram.types import (
+    User,
     Message,
     InlineKeyboardButton, InlineKeyboardMarkup
 )
@@ -34,58 +38,115 @@ class BeeconPlugin(plugin.Plugin):
     aws_ak = os.getenv("AWS_AK")
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
-
+    twa = TWA()
 
     async def on_message(self, message: Message) -> None:
-        payloads = "".join(str(message).split())
-        self.log.debug(f"Receiving message: {payloads}")
-        payloads = json.loads(payloads)
-        await self.save_message(payloads)
+        data = "".join(str(message).split())
+        self.log.debug(f"Receiving message: {data}")
 
-        context = message.text
+        data = json.loads(data)
+        await self.save_message(data)
 
-        # return if no text message
-        if not context:
-            return None
+        chat = message.chat
 
-        api_uri = f"{self.api_url}/p/distribution/code/getInviteLink"
-        from_user = message.from_user
-
-        payloads = { "botId": self.bot.uid }
-
-        code = None
-        if len(context) == 6 and context.isdigit():
-            code = context
-        else:
-            pattern = re.compile("\u200b\w+\u200b")
-            match = pattern.search(context)
-
-            if match:
-                target = match.group()
-                code = target[1:-1]
-            else:
+        if chat.type == ChatType.PRIVATE:
+            context = message.text
+            # return if no text message
+            if not context:
                 return None
 
-        self.log.info(f"Invitation code: {code}")
+            code = None
+            if len(context) == 6 and context.isdigit():
+                code = context
+            else:
+                pattern = re.compile("\u200b\w+\u200b")
+                match = pattern.search(context)
 
-        if code:
-            payloads.update({"inviteCode": code})
-            try:
-                self.log.info(f"Payloads: {payloads}")
-                # query for invite link based on code
-                async with self.bot.http.get(api_uri, params=payloads) as resp:
-                    res = await resp.json()
-                    self.log.debug(res)
-                    invite_link = res.get("inviteLink")
-                    if invite_link:
-                        reply_context = f"🎁 Join our community to get rewards\n\n{invite_link}"
-                        await self.bot.client.send_message(
-                            from_user.id,
-                            reply_context,
-                            disable_web_page_preview=False,
-                        )
-            except Exception as e:
-                self.log.error(e)
+                if match:
+                    target = match.group()
+                    code = target[1:-1]
+                else:
+                    return None
+
+            self.log.info(f"Invitation code: {code}")
+
+            if code:
+                payloads = { "botId": self.bot.uid, "inviteCode": code }
+                invite_link = await self._get_invite_link(payloads)
+                if invite_link:
+                    reply_context = await self.text(None, "invite-link", invite_link)
+                    await message.reply(reply_context)
+            # try:
+            #     self.log.info(f"Payloads: {payloads}")
+            #     # query for invite link based on code
+            #     async with self.bot.http.get(api_uri, params=payloads) as resp:
+            #         res = await resp.json()
+            #         self.log.debug(res)
+            #         invite_link = res.get("inviteLink")
+            #         if invite_link:
+            #             reply_context = f"🎁 Join our community to get rewards\n\n{invite_link}"
+            #             await self.bot.client.send_message(
+            #                 from_user.id,
+            #                 reply_context,
+            #                 disable_web_page_preview=False,
+            #             )
+            # except Exception as e:
+            #     self.log.error(e)
+
+        checkin_keyword = await self.twa.get_chat_checkin_keyword(chat.id)
+
+        if checkin_keyword:
+            chat_id = chat.id
+            from_user = message.from_user
+
+            payloads = await self._construct_user_api_payloads(from_user)
+            payloads.update({
+                "command": checkin_keyword,
+                "targetId": chat_id,
+                "targetType": 0,
+            })
+
+            project_link = await self.twa.get_chat_project_link(chat_id, self.bot.uid)
+            button = [[
+                InlineKeyboardButton(
+                    text="👀 View more reward activities",
+                    url=project_link
+                )
+            ]]
+
+            reply_context = await self._check_in(payloads)
+            reply_msg = await message.reply(
+                text=reply_context,
+                reply_to_message_id=message.id,
+                reply_markup=InlineKeyboardMarkup(button),
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            # auto delete check in message
+            # loop = asyncio.get_running_loop()
+            self.bot.loop.create_task(self._delete_msg(chat_id, message.id, 60))
+            self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
+
+
+    async def _get_invite_link(self, payloads: dict) -> Optional[str]:
+        api_uri = f"{self.api_url}/p/distribution/code/getInviteLink"
+        self.log.info(f"Get invite code payloads: {payloads}")
+        invite_link = None
+        try:
+            async with self.bot.http.get(api_uri, params=payloads) as resp:
+                self.log.info("Java api response: %s", resp)
+                res = await resp.json()
+                invite_link = res.get("inviteLink")
+        except Exception as e:
+            self.log.error("Request invitation link from java error")
+
+        return invite_link
+
+
+    async def _delete_msg(self, chat_id: int, message_id: int, delay: int):
+        if not delay:
+            return
+        await asyncio.sleep(delay)
+        await self.bot.client.delete_messages(chat_id, message_id)
 
 
     async def save_message(self, message) -> None:
@@ -136,8 +197,8 @@ class BeeconPlugin(plugin.Plugin):
             group_id = message.chat.id
             guide_img_link = await self.text(group_id, "guide-img", noformat=True)
 
-            twa = TWA()
-            is_exist = await twa.get_chat_project_id(group_id)
+            # twa = TWA()
+            is_exist = await self.twa.get_chat_project_id(group_id)
             if is_exist:
                 self.log.warning(f"Community {message.chat.title} {message.chat.id} already exists")
                 return None
@@ -168,10 +229,8 @@ class BeeconPlugin(plugin.Plugin):
             for member in new_members:
                 if member.id == self.bot.uid:
                     owner_id = group_owner.id
-                    user_name = group_owner.username or None
-                    first_name = group_owner.first_name or ""
-                    last_name = group_owner.last_name
-                    nick_name = first_name + ' ' + last_name if last_name else first_name
+
+                    payloads = await self._construct_user_api_payloads(group_owner)
 
                     group_id = group.id
 
@@ -206,26 +265,19 @@ class BeeconPlugin(plugin.Plugin):
                         file_id = group.photo.big_file_id
                         logo_url = await self.get_group_avatar_link(group_id, file_id)
 
-                    payloads = {
-                        "firstName": first_name, # group owner first name
-                        "name": group_name, # group name
-                        "nickName": nick_name, # group owner nick name
-                        "ownerTgId": owner_id, # group owner telegram id
-                        "shareLink": group_invite_link,  # group invite link
-                        "status": 1, # project status, default to 1
-                        "targetId":  group_id, # group id
-                        "targetType": 0, # 0 for group, 1 for channel
-                        "botId": self.bot.uid, # bot id, for multi merchant
-                    }
+                    payloads.update({
+                        "name": group_name,
+                        "ownerTgId": owner_id,
+                        "shareLink": group_invite_link,
+                        "status": 1,
+                        "targetId": group_id,
+                        "targetType": 0,
+                    })
 
                     if group_desc:
                         payloads.update({"slogan": group_desc})
-                    if last_name:
-                        payloads.update({"lastName": last_name})
                     if logo_url:
                         payloads.update({"logoUrl": logo_url})
-                    if user_name:
-                        payloads.update({"userName": user_name})
 
                     payloads = json.loads(json.dumps(payloads))
 
@@ -252,7 +304,7 @@ class BeeconPlugin(plugin.Plugin):
                         )
                         return None
 
-                    url = twa.generate_project_detail_link(project_id, self.bot.uid)
+                    url = self.twa.generate_project_detail_link(project_id, self.bot.uid)
                     msg_text = await self.text(group_id, "create-project", noformat=True)
                     msg_context = msg_text.format(group_name=group_name)
                     button_text = await self.text(owner_id, "create-project-button")
@@ -315,6 +367,7 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(f"retrieving group pic failed: {str(e)}")
 
+
     async def get_group_description(self, group_id: int) -> str | None:
         try:
             chat = await self.bot.client.get_chat(group_id)
@@ -325,6 +378,7 @@ class BeeconPlugin(plugin.Plugin):
             self.log.error(str(e))
         return None
 
+
     async def send_ws_notify(self, data) -> None:
         async with connect("ws://127.0.0.1:8080/ws") as ws:
             try:
@@ -334,12 +388,14 @@ class BeeconPlugin(plugin.Plugin):
             except websockets.ConnectionClosed:
                 pass
 
+
     def _group_check(self, group_id: int) -> bool | None:
         group_id_str = str(group_id)
         if group_id_str.startswith('-100'):
             return True
         else:
             return False
+
 
     @listener.filters(filters.group)
     async def cmd_checkin(self, ctx: command.Context) -> Optional[str]:
@@ -349,39 +405,18 @@ class BeeconPlugin(plugin.Plugin):
 
         from_user = msg.from_user
 
-        user_id = from_user.id
-        user_name = from_user.username or None
-        first_name = from_user.first_name
-        last_name = from_user.last_name
-        nick_name = first_name + ' ' + last_name if last_name else first_name
-
-        # handle not avatar info
-        try:
-            avatar = await self.get_group_avatar_link(user_id, from_user.photo.big_file_id)
-        except Exception as e:
-            self.log.error(e)
-            avatar = None
+        payloads = await self._construct_user_api_payloads(from_user)
 
         try:
-            payloads = {
+            payloads.update({
                 "command": "checkin",
-                "firstName": first_name,
-                "lastName": last_name,
-                "nickName": nick_name,
-                "userName": user_name,
-                "pic": avatar,
                 "targetId": group_id,
                 "targetType": 0,
-                "tgUserId": user_id,
-                "botId": self.bot.uid,
-            }
+            })
 
             payloads = json.loads(json.dumps(payloads))
-            self.log.debug("Request to java api payloads: %s", payloads)
 
-            twa = TWA()
-
-            project_link = await twa.get_chat_project_link(group_id, self.bot.uid)
+            project_link = await self.twa.get_chat_project_link(group_id, self.bot.uid)
             button = [[
                 InlineKeyboardButton(
                     text="👀 View more reward activities",
@@ -399,11 +434,14 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(e)
 
+
     async def _check_in(self, payloads: dict) -> str:
         uri = f"{self.api_url}/p/task/bot-task/executeCommand"
         headers = {"Content-Type": "application/json"}
 
         reply_text = "Engage more, earn more."
+
+        self.log.debug("Request to java api payloads: %s", payloads)
 
         async with self.bot.http.post(uri, json=payloads, headers=headers) as resp:
             self.log.debug("Java api response: %s", resp)
@@ -423,6 +461,35 @@ class BeeconPlugin(plugin.Plugin):
 
         return reply_text
 
+
+    async def _construct_user_api_payloads(self, user: User) -> dict:
+        payloads = {}
+
+        user_id = user.id
+        user_name = user.username or None
+        first_name = user.first_name
+        last_name = user.last_name
+        nick_name = first_name + ' ' + last_name if last_name else first_name
+
+        try:
+            avatar = await self.get_group_avatar_link(user_id, user.photo.big_file_id)
+        except Exception as e:
+            self.log.error(e)
+            avatar = None
+
+        payloads.update({
+            "firstName": first_name,
+            "lastName": last_name,
+            "nickName": nick_name,
+            "userName": user_name,
+            "pic": avatar,
+            "tgUserId": user_id,
+            "botId": self.bot.uid,
+        })
+
+        return payloads
+
+
     @listener.filters(filters.group)
     async def cmd_invite(self, ctx: command.Context) -> Optional[str]:
         msg = ctx.message
@@ -431,9 +498,7 @@ class BeeconPlugin(plugin.Plugin):
         top_number = 10
 
         try:
-            twa = TWA()
-
-            project_id = await twa.get_chat_project_id(group_id)
+            project_id = await self.twa.get_chat_project_id(group_id)
 
             payloads = {
                 "botId": self.bot.uid,
@@ -452,7 +517,7 @@ class BeeconPlugin(plugin.Plugin):
                     reward_name = res.get("alias")
                     invited_number = res.get("inviteNum")
 
-                    project_link = await twa.generate_project_detail_link(project_id, self.bot.uid)
+                    project_link = await self.twa.generate_project_detail_link(project_id, self.bot.uid)
                     button = [[InlineKeyboardButton("View more", url=project_link)]]
                     await ctx.respond(
                         f"Invited: **{invited_number}**, rewards: **{rewards} {reward_name}**",

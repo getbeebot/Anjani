@@ -129,7 +129,7 @@ class TWA:
     async def save_notify_record(self, chat_id: int, message_id: int):
         try:
             await self.redis.connect()
-            await self.redis.set(chat_id, message_id)
+            await self.redis.set(f"notify_{chat_id}", message_id)
         except Exception as e:
             self.log.error(f"save notify record error: {e}")
         finally:
@@ -138,9 +138,19 @@ class TWA:
     async def get_previous_notify_record(self, chat_id: int):
         try:
             await self.redis.connect()
-            res = await self.redis.get(chat_id)
+            res = await self.redis.get(f"notify_{chat_id}")
         except Exception as e:
             self.log.error(f"get previous notify record error: {e}")
+        finally:
+            await self.redis.close()
+        return res
+
+    async def get_chat_checkin_keyword(self, chat_id: int):
+        try:
+            await self.redis.connect()
+            res = await self.redis.get(f"checkin_{chat_id}")
+        except Exception as e:
+            self.log.error(f"Get checking keywords error: {e}")
         finally:
             await self.redis.close()
         return res
