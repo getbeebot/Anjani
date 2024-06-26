@@ -703,6 +703,10 @@ usage-guide: |
 invite-link: "🎁 Join our community to get rewards\n\n{}"
 #endregion
 
+#region checkin
+checkin-button: "👀 View more rewards"
+#endregion
+
 #region image
 engage-img: "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
 guide-img: "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png"

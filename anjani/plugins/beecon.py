@@ -76,22 +76,6 @@ class BeeconPlugin(plugin.Plugin):
                 if invite_link:
                     reply_context = await self.text(None, "invite-link", invite_link)
                     await message.reply(reply_context)
-            # try:
-            #     self.log.info(f"Payloads: {payloads}")
-            #     # query for invite link based on code
-            #     async with self.bot.http.get(api_uri, params=payloads) as resp:
-            #         res = await resp.json()
-            #         self.log.debug(res)
-            #         invite_link = res.get("inviteLink")
-            #         if invite_link:
-            #             reply_context = f"🎁 Join our community to get rewards\n\n{invite_link}"
-            #             await self.bot.client.send_message(
-            #                 from_user.id,
-            #                 reply_context,
-            #                 disable_web_page_preview=False,
-            #             )
-            # except Exception as e:
-            #     self.log.error(e)
 
         checkin_keyword = await self.twa.get_chat_checkin_keyword(chat.id)
 
@@ -109,7 +93,7 @@ class BeeconPlugin(plugin.Plugin):
             project_link = await self.twa.get_chat_project_link(chat_id, self.bot.uid)
             button = [[
                 InlineKeyboardButton(
-                    text="👀 View more reward activities",
+                    text=await self.text(None, "checkin-button", noformat=True),
                     url=project_link
                 )
             ]]
@@ -195,7 +179,7 @@ class BeeconPlugin(plugin.Plugin):
                 return None
 
             group_id = message.chat.id
-            guide_img_link = await self.text(group_id, "guide-img", noformat=True)
+            guide_img_link = await self.text(None, "guide-img", noformat=True)
 
             # twa = TWA()
             is_exist = await self.twa.get_chat_project_id(group_id)
@@ -204,10 +188,10 @@ class BeeconPlugin(plugin.Plugin):
                 return None
 
             start_me_btn = [[InlineKeyboardButton("Start me", url=f"t.me/{self.bot.user.username}?start=true")]]
-            add_to_group_btn_text = await self.text(group_id, "add-to-group-button", noformat=True)
+            add_to_group_btn_text = await self.text(None, "add-to-group-button", noformat=True)
             if not message.from_user:
-                err_msg = await self.text(group_id, "group-invite-exception", noformat=True)
-                usage_guide = await self.text(group_id, "usage-guide", add_to_group_btn_text)
+                err_msg = await self.text(None, "group-invite-exception", noformat=True)
+                usage_guide = await self.text(None, "usage-guide", add_to_group_btn_text)
                 err_msg += usage_guide
                 await self.bot.client.send_photo(
                     chat_id=group_id,
@@ -235,8 +219,8 @@ class BeeconPlugin(plugin.Plugin):
                     group_id = group.id
 
                     if not self._group_check(group_id):
-                        err_msg = await self.text(group_id, "group-abnormal-exception", noformat=True)
-                        usage_guide = await self.text(group_id, "usage-guide", add_to_group_btn_text)
+                        err_msg = await self.text(None, "group-abnormal-exception", noformat=True)
+                        usage_guide = await self.text(None, "usage-guide", add_to_group_btn_text)
                         err_msg += usage_guide
                         await self.bot.client.send_photo(
                             chat_id=group_id,
@@ -284,8 +268,8 @@ class BeeconPlugin(plugin.Plugin):
                     project_id = await self._init_project(payloads)
 
                     if not project_id:
-                        err_msg = await self.text(group_id, "group-init-failed", noformat=True)
-                        usage_guide = await self.text(group_id, "usage-guide", add_to_group_btn_text)
+                        err_msg = await self.text(None, "group-init-failed", noformat=True)
+                        usage_guide = await self.text(None, "usage-guide", add_to_group_btn_text)
                         err_msg += usage_guide
                         await self.bot.client.send_photo(
                             chat_id=owner_id,
@@ -305,9 +289,9 @@ class BeeconPlugin(plugin.Plugin):
                         return None
 
                     url = self.twa.generate_project_detail_link(project_id, self.bot.uid)
-                    msg_text = await self.text(group_id, "create-project", noformat=True)
+                    msg_text = await self.text(None, "create-project", noformat=True)
                     msg_context = msg_text.format(group_name=group_name)
-                    button_text = await self.text(owner_id, "create-project-button")
+                    button_text = await self.text(None, "create-project-button")
                     button = build_button([(button_text, url, False)])
 
                     await self.bot.client.send_message(
@@ -419,7 +403,7 @@ class BeeconPlugin(plugin.Plugin):
             project_link = await self.twa.get_chat_project_link(group_id, self.bot.uid)
             button = [[
                 InlineKeyboardButton(
-                    text="👀 View more reward activities",
+                    text=await self.text(None, "checkin-button", noformat=True),
                     url=project_link
                 )
             ]]
