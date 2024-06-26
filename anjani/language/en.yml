@@ -689,19 +689,19 @@ group-no-participant-exception: |
   There are {} rewards in this community, let's get involved.
 
 group-no-task-exception: |
-  This group has not setup task yet, please contact
-  admin to add tasks and get envolved.
+  There's no rewards in this group yet, please contact
+  admin to add tasks and setup rewards, then get envolved.
 group-start-exception: |
   Community initiating, it may take some time.
-  If failed, please act as following guide to
+  If failed, please do as following guide to
   make it work properly. \n
 group-abnormal-exception: |
   Group is not a supergroup, please act as following steps: \n
 group-invite-exception: |
-  Bot is lack of some permission, please act as
-  following steps: \n
+  There're missing admin privilieges for bot, please do as
+  following: \n
 group-init-failed: |
-  Community init failed, please act following steps: \n
+  Community init failed, please do as following: \n
 usage-guide: |
   Step 1. Remove me from this group
   Step 2. Make sure this group type is **PUBLIC**
