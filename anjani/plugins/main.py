@@ -254,8 +254,12 @@ class Main(plugin.Plugin):
         chat = ctx.chat
 
         twa = TWA()
-        guide_img_link = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png"
-        engage_img_link = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
+
+        guide_img_link = await self.text(chat.id, "guide-img", noformat=True)
+        engage_img_link = await self.text(chat.id, "engage-img", noformat=True)
+
+        self.log.error(f"guide: {guide_img_link}, engage: {engage_img_link}")
+
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
@@ -318,7 +322,7 @@ class Main(plugin.Plugin):
                 line_buttons = []
                 for row in group_projects:
                     (project_id, group_name) = row
-                    project_link = twa.generate_project_detail_link(project_id)
+                    project_link = twa.generate_project_detail_link(project_id, self.bot.uid)
                     group_button = InlineKeyboardButton(text=group_name, url=project_link)
                     line_buttons.append(group_button)
                 # Two group button one line
@@ -390,7 +394,7 @@ class Main(plugin.Plugin):
             )
             return None
 
-        project_link = twa.generate_project_detail_link(project_id)
+        project_link = twa.generate_project_detail_link(project_id, self.bot.uid)
 
         buttons = [[InlineKeyboardButton(text=await self.text(chat.id, "create-project-button"),url=project_link)]]
 

@@ -685,26 +685,21 @@ task-creation: |
 #endregion
 
 #region group exception
-group-no-participant-exception: |
-  There are {} rewards in this community, let's get involved.
+group-no-participant-exception: "There are {} rewards in this community, let's get involved."
 
-group-no-task-exception: |
-  There's no rewards in this group yet, please contact
-  admin to add tasks and setup rewards, then get envolved.
-group-start-exception: |
-  Community initiating, it may take some time.
-  If failed, please do as following guide to
-  make it work properly. \n
-group-abnormal-exception: |
-  Group is not a supergroup, please act as following steps: \n
-group-invite-exception: |
-  There're missing admin privilieges for bot, please do as
-  following: \n
-group-init-failed: |
-  Community init failed, please do as following: \n
+group-no-task-exception: "There's no rewards in this group yet, please contact admin to add tasks and setup rewards, then get envolved."
+group-start-exception: "Community initiating, it may take some time. If failed, please do as following guide to make it work properly. \n"
+group-abnormal-exception: "Group is not a supergroup, please act as following steps: \n"
+group-invite-exception: "There're missing admin privilieges for bot, please do as following: \n"
+group-init-failed: "Community init failed, please do as following: \n"
 usage-guide: |
   Step 1. Remove me from this group
   Step 2. Make sure this group type is **PUBLIC**
   Step 3. Click **Start me** button
   Step 4. Add me via **{}** button
 #endregion
+
+#region image
+engage-img: "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
+guide-img: "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png"
+#endreion

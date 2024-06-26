@@ -21,39 +21,42 @@ class TWA:
         self.redis = AsyncRedisClient.init_from_env()
 
 
-    def generate_project_detail_link(self, project_id: int):
+    def generate_project_detail_link(self, project_id: int, bot_id: int):
         args = msgpack.packb({
             "target": "projectDetail",
             "id": project_id,
+            "botid": bot_id
         })
         args = base58.b58encode(args).decode("utf-8")
         return f"{self.TWA_LINK}={args}"
 
-    def generate_task_detail_link(self, project_id: int, task_id: int):
+    def generate_task_detail_link(self, project_id: int, task_id: int, bot_id: int):
         args = msgpack.packb({
             "target": "taskShare",
             "id": project_id,
             "subid": task_id,
+            "botid": bot_id,
         })
         args = base58.b58encode(args).decode("utf-8")
         return f"{self.TWA_LINK}={args}"
 
-    def generate_project_leaderboard_link(self, project_id: int):
+    def generate_project_leaderboard_link(self, project_id: int, bot_id: int):
         args = msgpack.packb({
             "target": "leaderBoard",
-            "id": project_id
+            "id": project_id,
+            "botid": bot_id,
         })
         args = base58.b58encode(args).decode("utf-8")
         return f"{self.TWA_LINK}={args}"
 
     @classmethod
-    async def get_chat_project_link(cls, chat_id: int):
+    async def get_chat_project_link(cls, chat_id: int, bot_id: int):
         twa = cls()
         try:
             await twa.mysql.connect()
             project_id = await twa.mysql.query_project_id_by_chat_id(chat_id)
             if project_id:
-                url = twa.generate_project_detail_link(project_id)
+                url = twa.generate_project_detail_link(project_id, bot_id)
             else:
                 url = twa.TWA_LINK
         except Exception as e:

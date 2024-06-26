@@ -127,11 +127,14 @@ def cron_job():
 
 async def auto_push_notification():
     try:
+        bot = await tgclient.client.get_me()
+        bot_id = bot.id
+
         twa = TWA()
         rows = await twa.get_group_id_with_project()
         for row in rows:
             (project_id, group_id) = row
-            project_link = twa.generate_project_detail_link(project_id)
+            project_link = twa.generate_project_detail_link(project_id, bot_id)
             button = InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
             )
@@ -154,9 +157,11 @@ async def auto_push_notification():
             if pre_msg:
                 await tgclient.client.delete_messages(group_id, int(pre_msg))
 
+            engage_img = await get_template("engage-img")
+
             msg = await tgclient.send_photo(
                 group_id,
-                "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                engage_img,
                 caption=group_notify_msg,
                 reply_markup=button,
             )
@@ -177,6 +182,8 @@ def sorted_by_rank(data):
 
 async def auto_push_leaderboard():
     try:
+        bot = await tgclient.client.get_me()
+        bot_id = bot.id
         twa = TWA()
         rows = await twa.get_group_id_with_project()
         for row in rows:
@@ -200,7 +207,7 @@ async def auto_push_leaderboard():
                         for user in ranks:
                             leaderboard_content += f"{user.get('userRankNumber')}. {user.get('userName')}\n"
 
-                        btn_url = twa.generate_project_leaderboard_link(project_id)
+                        btn_url = twa.generate_project_leaderboard_link(project_id, bot_id)
 
                         button = [
                             [
@@ -324,7 +331,8 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         content: str = ""
         notify_type = data.get("notifyType")
-        engage_img_link =  "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
+        # engage_img_link =  "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
+        engage_img_link = await get_template("engage-img")
 
         lottery_type = data.get("lotteryType")
         if notify_type == 1:    # create lottery task
