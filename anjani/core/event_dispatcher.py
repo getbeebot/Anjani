@@ -256,12 +256,7 @@ class EventDispatcher(MixinBase):
                 chat = event_data.chat
                 from_user = event_data.from_user
                 invite_link = event_data.invite_link
-                payloads = {
-                    "chatId": chat.id,
-                    "tgUserId": from_user.id,
-                    "inviteLink": invite_link.invite_link,
-                    "botId": self.uid
-                }
+                payloads = [chat.id, invite_link.invite_link]
 
                 verify_args = util.misc.encode_args(payloads)
 
@@ -273,7 +268,7 @@ class EventDispatcher(MixinBase):
                     )
                 ]])
                 reply_text = await get_template("rewards-to-claim")
-                reply_text = reply_text.format(from_user.first_name)
+                reply_text = reply_text.format(from_user.mention)
                 await self.client.send_message(
                     chat_id=chat.id,
                     text=reply_text,

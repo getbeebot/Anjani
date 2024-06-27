@@ -283,16 +283,25 @@ class Main(plugin.Plugin):
                     )
 
             if ctx.input:
-                payloads = util.misc.decode_args(ctx.input)
-                if isinstance(payloads, dict):
+                self.log.info("Input %s", ctx.input)
+                args = util.misc.decode_args(ctx.input)
+                if isinstance(args, list):
                     claim_reply = await self.text(None, "claim-reply", noformat=True)
                     await ctx.respond(claim_reply)
-                    group_id = payloads.get("chatId")
+                    group_id = args[0]
+                    invite_link = args[1]
                     api_uri = f"{twa.API_PREFIX}/p/task/bot-project/join"
+                    bot_id = self.bot.uid
+                    payloads = {
+                        "chatId": group_id,
+                        "tgUserId": chat.id,
+                        "inviteLink": invite_link,
+                        "botId": bot_id
+                    }
                     awards = await self._distribute_rewards(api_uri, payloads)
 
                     reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
-                    project_url = await twa.get_chat_project_link(group_id, self.bot.uid)
+                    project_url = await twa.get_chat_project_link(group_id, bot_id)
 
                     project_btn = InlineKeyboardMarkup([[
                         InlineKeyboardButton(
@@ -455,7 +464,10 @@ class Main(plugin.Plugin):
     async def _distribute_rewards(self, uri: str, payloads: dict) -> Optional[str]:
         awards = None
         try:
-            headers = {"Content-Type": "application/json"}
+            headers = {
+                "Content-Type": "application/json",
+                "Botid": str(self.bot.uid),
+            }
             async with self.bot.http.put(uri, json=payloads, headers=headers) as resp:
                 res = await resp.json()
                 data = res.get("data")

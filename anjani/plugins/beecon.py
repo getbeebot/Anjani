@@ -115,8 +115,9 @@ class BeeconPlugin(plugin.Plugin):
         api_uri = f"{self.api_url}/p/distribution/code/getInviteLink"
         self.log.info(f"Get invite code payloads: {payloads}")
         invite_link = None
+        headers = { "Botid": str(self.bot.uid) }
         try:
-            async with self.bot.http.get(api_uri, params=payloads) as resp:
+            async with self.bot.http.get(api_uri, params=payloads, headers=headers) as resp:
                 self.log.info("Java api response: %s", resp)
                 res = await resp.json()
                 invite_link = res.get("inviteLink")
@@ -316,7 +317,10 @@ class BeeconPlugin(plugin.Plugin):
 
     async def _init_project(self, payloads: dict) -> Optional[int]:
         project_id = None
-        headers = {'Content-Type': 'application/json'}
+        headers = {
+            "Content-Type": "application/json",
+            "Botid": str(self.bot.uid),
+        }
 
         self.log.debug(f"Java API request payloads: %s", payloads)
 
@@ -425,7 +429,10 @@ class BeeconPlugin(plugin.Plugin):
 
     async def _check_in(self, payloads: dict) -> str:
         uri = f"{self.api_url}/p/task/bot-task/executeCommand"
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "Botid": str(self.bot.uid),
+        }
 
         reply_text = "Engage more, earn more."
 
@@ -494,9 +501,10 @@ class BeeconPlugin(plugin.Plugin):
                 "current": 1,
                 "size": top_number,
             }
+            headers = { "Botid": str(self.bot.uid) }
             # https://api.getbeebot.com/p/myWallet/getInviteLog?projectId=270&current=1&size=100
             uri = f"{self.api_url}/p/myWallet/getInviteLog"
-            async with self.bot.http.get(uri, params=payloads) as resp:
+            async with self.bot.http.get(uri, params=payloads, headers=headers) as resp:
                 self.log.info("Java API response: %s", resp)
                 if resp.status == 200:
                     res = await resp.json()
