@@ -283,7 +283,7 @@ class Main(plugin.Plugin):
                     )
 
             if ctx.input:
-                self.log.info("Input %s", ctx.input)
+                self.log.info("Start inputs %s", ctx.input)
                 args = util.misc.decode_args(ctx.input)
                 if isinstance(args, list):
                     claim_reply = await self.text(None, "claim-reply", noformat=True)
@@ -299,24 +299,24 @@ class Main(plugin.Plugin):
                         "botId": bot_id
                     }
                     awards = await self._distribute_rewards(api_uri, payloads)
+                    if awards:
+                        reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
+                        project_url = await twa.get_chat_project_link(group_id, bot_id)
 
-                    reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
-                    project_url = await twa.get_chat_project_link(group_id, bot_id)
-
-                    project_btn = InlineKeyboardMarkup([[
-                        InlineKeyboardButton(
-                            text=reward_btn_text,
-                            url=project_url
+                        project_btn = InlineKeyboardMarkup([[
+                            InlineKeyboardButton(
+                                text=reward_btn_text,
+                                url=project_url
+                            )
+                        ]])
+                        reply_text = await self.text(None, "rewards-claimed", mention=ctx.author.mention, rewards=awards)
+                        await self.bot.client.send_message(
+                            chat_id=group_id,
+                            text=reply_text,
+                            reply_markup=project_btn,
+                            parse_mode=ParseMode.MARKDOWN
                         )
-                    ]])
-                    reply_text = await self.text(None, "rewards-claimed", mention=ctx.author.mention, rewards=awards)
-                    await self.bot.client.send_message(
-                        chat_id=group_id,
-                        text=reply_text,
-                        reply_markup=project_btn,
-                        parse_mode=ParseMode.MARKDOWN
-                    )
-                    return None
+                        return None
 
 
                 rules_re = re.compile(r"rules_(.*)")
@@ -468,7 +468,9 @@ class Main(plugin.Plugin):
                 "Content-Type": "application/json",
                 "Botid": str(self.bot.uid),
             }
+            self.log.info(f"Java API for inviting rewards request: payloads - {payloads}, headers - {headers}")
             async with self.bot.http.put(uri, json=payloads, headers=headers) as resp:
+                self.log.info(f"Java API response: %s", resp)
                 res = await resp.json()
                 data = res.get("data")
                 awards = data.get("awardsDes") if data else None

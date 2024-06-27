@@ -716,5 +716,5 @@ rewards-to-claim-button: "Verify you are human and claim."
 rewards-to-claim: "Hey there {}, there're rewards for your joining."
 rewards-claimed: "Thank you for joining, {mention}, **{rewards}** has distributed to your account"
 rewards-msg-button: "Engage more, earn more"
-claim-reply: "Verify success, please check the message in group"
+claim-reply: "Verify success, start distributing your rewards..."
 #endregion

@@ -275,35 +275,6 @@ class EventDispatcher(MixinBase):
                     reply_markup=button
                 )
 
-                # headers = { "Content-Type": "application/json" }
-                # payloads = {
-                #     "chatId": chat.id,
-                #     "tgUserId": from_user.id,
-                #     "inviteLink": invite_link.invite_link,
-                #     "botId": self.uid
-                # }
-                # api_uri = f"{self.api_prefix}/p/task/bot-project/join"
-                # # call java api
-                # try:
-                #     async with self.http.put(
-                #         api_uri,
-                #         json=payloads,
-                #         headers=headers
-                #     ) as resp:
-                #         res = await resp.json()
-                #         self.log.debug(res)
-                #         data = res.get("data")
-                #         awards = data.get("awardsDes")
-                #         # project_id = res.get("projectId")
-                #         # project_url = res.get("projectUrl")
-                #         mention_user = f"@{from_user.username}" if from_user.username else f"[{from_user.first_name}](tg://user?id={from_user.id})"
-                #         context = f"🎉🎉🎉 Welcome {mention_user}, there're **{awards}** for your joining"
-                #         await self.client.send_message(chat.id, context)
-
-                # except Exception as e:
-                #     self.log.error(e)
-
-
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():
             match = None
