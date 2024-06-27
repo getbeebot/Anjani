@@ -12,6 +12,7 @@ class TWA:
     log: logging.Logger
 
     TWA_LINK = os.getenv("TWA_LINK")
+    API_PREFIX = os.getenv("API_URL")
     mysql: AsyncMysqlClient
     redis: AsyncRedisClient
 

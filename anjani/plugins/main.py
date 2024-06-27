@@ -283,6 +283,33 @@ class Main(plugin.Plugin):
                     )
 
             if ctx.input:
+                payloads = util.misc.decode_args(ctx.input)
+                if isinstance(payloads, dict):
+                    claim_reply = await self.text(None, "claim-reply", noformat=True)
+                    await ctx.respond(claim_reply)
+                    group_id = payloads.get("chatId")
+                    api_uri = f"{twa.API_PREFIX}/p/task/bot-project/join"
+                    awards = await self._distribute_rewards(api_uri, payloads)
+
+                    reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
+                    project_url = await twa.get_chat_project_link(group_id, self.bot.uid)
+
+                    project_btn = InlineKeyboardMarkup([[
+                        InlineKeyboardButton(
+                            text=reward_btn_text,
+                            url=project_url
+                        )
+                    ]])
+                    reply_text = await self.text(None, "rewards-claimed", mention=ctx.author.mention, rewards=awards)
+                    await self.bot.client.send_message(
+                        chat_id=group_id,
+                        text=reply_text,
+                        reply_markup=project_btn,
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                    return None
+
+
                 rules_re = re.compile(r"rules_(.*)")
                 if rules_re.search(ctx.input):
                     plug: "Rules" = self.bot.plugins["Rules"]  # type: ignore
@@ -424,6 +451,19 @@ class Main(plugin.Plugin):
             {"$set": {"language": language}},
             upsert=True,
         )
+
+    async def _distribute_rewards(self, uri: str, payloads: dict) -> Optional[str]:
+        awards = None
+        try:
+            headers = {"Content-Type": "application/json"}
+            async with self.bot.http.put(uri, json=payloads, headers=headers) as resp:
+                res = await resp.json()
+                data = res.get("data")
+                awards = data.get("awardsDes") if data else None
+        except Exception as e:
+            self.log.error("Java API distribute error: %s", e)
+
+        return awards
 
     async def cmd_help(self, ctx: command.Context) -> None:
         """Bot plugins helper"""

@@ -25,13 +25,15 @@ from typing import TYPE_CHECKING, Any, MutableMapping, MutableSequence, Optional
 from pyrogram import raw
 from pyrogram.filters import Filter
 from pyrogram.raw import functions
-from pyrogram.types import CallbackQuery, InlineQuery, Message
+from pyrogram.types import CallbackQuery, InlineQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.enums import ChatType
 
 from anjani import plugin, util
 from anjani.error import EventDispatchError
 from anjani.listener import Listener, ListenerFunc
 from anjani.util.misc import StopPropagation
+
+from anjani.language import get_template
 
 from .anjani_mixin_base import MixinBase
 from .metrics import EventCount, EventLatencySecond, UnhandledError
@@ -254,34 +256,57 @@ class EventDispatcher(MixinBase):
                 chat = event_data.chat
                 from_user = event_data.from_user
                 invite_link = event_data.invite_link
-
-                headers = { "Content-Type": "application/json" }
                 payloads = {
                     "chatId": chat.id,
                     "tgUserId": from_user.id,
                     "inviteLink": invite_link.invite_link,
                     "botId": self.uid
                 }
-                api_uri = f"{self.api_prefix}/p/task/bot-project/join"
-                # call java api
-                try:
-                    async with self.http.put(
-                        api_uri,
-                        json=payloads,
-                        headers=headers
-                    ) as resp:
-                        res = await resp.json()
-                        self.log.debug(res)
-                        data = res.get("data")
-                        awards = data.get("awardsDes")
-                        # project_id = res.get("projectId")
-                        # project_url = res.get("projectUrl")
-                        mention_user = f"@{from_user.username}" if from_user.username else f"[{from_user.first_name}](tg://user?id={from_user.id})"
-                        context = f"🎉🎉🎉 Welcome {mention_user}, there're **{awards}** for your joining"
-                        await self.client.send_message(chat.id, context)
 
-                except Exception as e:
-                    self.log.error(e)
+                verify_args = util.misc.encode_args(payloads)
+
+                btn_text = await get_template("rewards-to-claim-button")
+                button = InlineKeyboardMarkup([[
+                    InlineKeyboardButton(
+                        btn_text,
+                        url=f"t.me/{self.user.username}?start={verify_args}"
+                    )
+                ]])
+                reply_text = await get_template("rewards-to-claim")
+                reply_text = reply_text.format(from_user.first_name)
+                await self.client.send_message(
+                    chat_id=chat.id,
+                    text=reply_text,
+                    reply_markup=button
+                )
+
+                # headers = { "Content-Type": "application/json" }
+                # payloads = {
+                #     "chatId": chat.id,
+                #     "tgUserId": from_user.id,
+                #     "inviteLink": invite_link.invite_link,
+                #     "botId": self.uid
+                # }
+                # api_uri = f"{self.api_prefix}/p/task/bot-project/join"
+                # # call java api
+                # try:
+                #     async with self.http.put(
+                #         api_uri,
+                #         json=payloads,
+                #         headers=headers
+                #     ) as resp:
+                #         res = await resp.json()
+                #         self.log.debug(res)
+                #         data = res.get("data")
+                #         awards = data.get("awardsDes")
+                #         # project_id = res.get("projectId")
+                #         # project_url = res.get("projectUrl")
+                #         mention_user = f"@{from_user.username}" if from_user.username else f"[{from_user.first_name}](tg://user?id={from_user.id})"
+                #         context = f"🎉🎉🎉 Welcome {mention_user}, there're **{awards}** for your joining"
+                #         await self.client.send_message(chat.id, context)
+
+                # except Exception as e:
+                #     self.log.error(e)
 
 
         EventCount.labels(event).inc()

@@ -16,12 +16,25 @@
 
 from typing import TYPE_CHECKING, Any, Callable, Set, Tuple, Union
 
+import msgpack
+import base58
+
 from pyrogram.filters import AndFilter, Filter, InvertFilter, OrFilter
 
 from anjani.util.types import CustomFilter
 
 if TYPE_CHECKING:
     from anjani.core import Anjani
+
+
+def encode_args(args: dict) -> str:
+    packed = msgpack.packb(args)
+    return base58.b58encode(packed).decode("utf-8")
+
+
+def decode_args(args_str: str) -> dict:
+    p_args = base58.b58decode(args_str.encode("utf-8"))
+    return msgpack.unpackb(p_args)
 
 
 def check_filters(filters: Union[Filter, CustomFilter], anjani: "Anjani") -> None:
