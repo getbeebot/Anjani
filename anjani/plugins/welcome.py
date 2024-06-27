@@ -162,9 +162,7 @@ class Greeting(plugin.Plugin):
                     if button:
                         button = build_button(button)
                     else:
-                        url = await TWA.get_chat_project_link(chat.id)
-
-                        self.log.info(f"Welcome button url in {chat.title}: {url}")
+                        url = await TWA.get_chat_project_link(chat.id, self.bot.uid)
 
                         button = build_button([("🕹 Enter", url, False)])
                     msg = None
@@ -172,7 +170,7 @@ class Greeting(plugin.Plugin):
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
-                                "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                                await self.text(None, "engage-img", noformat=True),
                                 caption=formatted_text,
                                 message_thread_id=thread_id,
                                 reply_to_message_id=reply_to,

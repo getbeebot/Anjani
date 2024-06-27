@@ -254,8 +254,12 @@ class Main(plugin.Plugin):
         chat = ctx.chat
 
         twa = TWA()
-        guide_img_link = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png"
-        engage_img_link = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
+
+        guide_img_link = await self.text(None, "guide-img", noformat=True)
+        engage_img_link = await self.text(None, "engage-img", noformat=True)
+
+        self.log.error(f"guide: {guide_img_link}, engage: {engage_img_link}")
+
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
@@ -311,14 +315,14 @@ class Main(plugin.Plugin):
             buttons: List[InlineKeyboardButton] = []
 
             group_buttons = []
-            group_projects = await twa.get_user_owned_groups(chat.id)
+            group_projects = await twa.get_user_owned_groups(chat.id, self.bot.uid)
             if not group_projects:
                 pass
             else:
                 line_buttons = []
                 for row in group_projects:
                     (project_id, group_name) = row
-                    project_link = twa.generate_project_detail_link(project_id)
+                    project_link = twa.generate_project_detail_link(project_id, self.bot.uid)
                     group_button = InlineKeyboardButton(text=group_name, url=project_link)
                     line_buttons.append(group_button)
                 # Two group button one line
@@ -356,7 +360,7 @@ class Main(plugin.Plugin):
             ])
 
             await ctx.respond(
-                await self.text(chat.id, "start-pm", self.bot_name),
+                await self.text(chat.id, "start-pm", self.bot.user.username),
                 photo=guide_img_link,
                 reply_markup=InlineKeyboardMarkup(buttons),
                 parse_mode=ParseMode.MARKDOWN,
@@ -365,9 +369,9 @@ class Main(plugin.Plugin):
 
         # group start message
         is_exist = await twa.get_chat_project_id(chat.id)
-        if not is_exist:
-            # await self.bot.client.send
-            pass
+        # if not is_exist:
+        #     pass
+
         project_id = is_exist
         counter = 0
         while counter < 5 and not project_id:
@@ -390,7 +394,7 @@ class Main(plugin.Plugin):
             )
             return None
 
-        project_link = twa.generate_project_detail_link(project_id)
+        project_link = twa.generate_project_detail_link(project_id, self.bot.uid)
 
         buttons = [[InlineKeyboardButton(text=await self.text(chat.id, "create-project-button"),url=project_link)]]
 
@@ -410,7 +414,7 @@ class Main(plugin.Plugin):
             group_start_msg,
             photo=engage_img_link,
             reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN,
         )
         return None
 

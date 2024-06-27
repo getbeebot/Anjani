@@ -197,7 +197,8 @@ class EventDispatcher(MixinBase):
                         "chat_type": 0,
                         "chat_id": group_id,
                         "chat_name": group_name,
-                        "invite_link": invite_link
+                        "invite_link": invite_link,
+                        "bot_id": self.uid,
                     })
 
                     self.log.info(f"Update group info {group_name}, {group_id}, {invite_link}")
@@ -238,7 +239,8 @@ class EventDispatcher(MixinBase):
                         "chat_type": chat_type,
                         "chat_id": chat_id,
                         "chat_name": chat_name,
-                        "invite_link": invite_link
+                        "invite_link": invite_link,
+                        "bot_id": self.uid,
                     })
 
                     self.log.info(f"Bot joining {chat_type} {chat_name}({chat_id}) {invite_link}")
@@ -258,6 +260,7 @@ class EventDispatcher(MixinBase):
                     "chatId": chat.id,
                     "tgUserId": from_user.id,
                     "inviteLink": invite_link.invite_link,
+                    "botId": self.uid
                 }
                 api_uri = f"{self.api_prefix}/p/task/bot-project/join"
                 # call java api
