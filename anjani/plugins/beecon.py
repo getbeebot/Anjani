@@ -174,7 +174,7 @@ class BeeconPlugin(plugin.Plugin):
     @listener.filters(filters.group)
     async def on_chat_action(self, message: Message) -> None:
         try:
-            self.log.debug("On chat action: %s", message)
+            self.log.debug("On chat action: %s", "".join(str(message).split()))
             if not message.new_chat_members:
                 return None
 
@@ -325,6 +325,7 @@ class BeeconPlugin(plugin.Plugin):
             async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
                 self.log.info("Java API response: %s", resp)
                 res = await resp.json()
+                self.log.info(f"Java response content: %s", res)
                 data = res.get("data")
                 project_id = int(data.get("id")) if data else None
         except Exception as e:

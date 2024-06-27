@@ -255,8 +255,8 @@ class Main(plugin.Plugin):
 
         twa = TWA()
 
-        guide_img_link = await self.text(chat.id, "guide-img", noformat=True)
-        engage_img_link = await self.text(chat.id, "engage-img", noformat=True)
+        guide_img_link = await self.text(None, "guide-img", noformat=True)
+        engage_img_link = await self.text(None, "engage-img", noformat=True)
 
         self.log.error(f"guide: {guide_img_link}, engage: {engage_img_link}")
 
@@ -315,7 +315,7 @@ class Main(plugin.Plugin):
             buttons: List[InlineKeyboardButton] = []
 
             group_buttons = []
-            group_projects = await twa.get_user_owned_groups(chat.id)
+            group_projects = await twa.get_user_owned_groups(chat.id, self.bot.uid)
             if not group_projects:
                 pass
             else:
@@ -369,9 +369,9 @@ class Main(plugin.Plugin):
 
         # group start message
         is_exist = await twa.get_chat_project_id(chat.id)
-        if not is_exist:
-            # await self.bot.client.send
-            pass
+        # if not is_exist:
+        #     pass
+
         project_id = is_exist
         counter = 0
         while counter < 5 and not project_id:
@@ -414,7 +414,7 @@ class Main(plugin.Plugin):
             group_start_msg,
             photo=engage_img_link,
             reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN,
         )
         return None
 

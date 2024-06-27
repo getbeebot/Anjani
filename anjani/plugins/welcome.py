@@ -170,7 +170,7 @@ class Greeting(plugin.Plugin):
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
-                                await self.text(chat.id, "engage-img", noformat=True),
+                                await self.text(None, "engage-img", noformat=True),
                                 caption=formatted_text,
                                 message_thread_id=thread_id,
                                 reply_to_message_id=reply_to,

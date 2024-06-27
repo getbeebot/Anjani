@@ -67,11 +67,11 @@ class TWA:
 
         return url
 
-    async def get_user_owned_groups(self, user_id: int):
+    async def get_user_owned_groups(self, user_id: int, bot_id: int):
         rows = None
         try:
             await self.mysql.connect()
-            rows = await self.mysql.query_user_owned_groups(user_id)
+            rows = await self.mysql.query_user_owned_groups(user_id, bot_id)
         except Exception as e:
             self.log.error(e)
         finally:
@@ -115,10 +115,10 @@ class TWA:
 
         return res
 
-    async def get_group_id_with_project(self):
+    async def get_group_id_with_project(self, bot_id: int):
         try:
             await self.mysql.connect()
-            res = await self.mysql.retrieve_group_id_with_project()
+            res = await self.mysql.retrieve_group_id_with_project(bot_id)
         except Exception as e:
             self.log.error(f"retriving group id with projects error: {e}")
             res = None

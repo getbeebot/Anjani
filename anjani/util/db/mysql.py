@@ -102,14 +102,15 @@ class AsyncMysqlClient:
         chat_name = data.get("chat_name")
         chat_id = int(data.get("chat_id"))
         invite_link = data.get("invite_link")
-        sql = f"SELECT * FROM tz_user_tg_group WHERE chat_id = {chat_id} AND user_id = 1"
+        bot_id = int(data.get("bot_id"))
+        sql = f"SELECT * FROM tz_user_tg_group WHERE chat_id = {chat_id} AND user_id = 1 AND bot_id = {bot_id}"
         res = await self.query_one(sql)
 
         if res is None:
-            sql = f"INSERT INTO tz_user_tg_group (user_id, chat_name, chat_id, chat_type, invite_link) VALUES (1, '{chat_name}', {chat_id}, '{chat_type}', '{invite_link}')"
+            sql = f"INSERT INTO tz_user_tg_group (user_id, chat_name, chat_id, chat_type, invite_link, bot_id) VALUES (1, '{chat_name}', {chat_id}, '{chat_type}', '{invite_link}', {bot_id})"
             await self.update(sql)
         else:
-            sql = f"UPDATE tz_user_tg_group SET chat_name='{chat_name}', chat_type={chat_type}, invite_link='{invite_link}' WHERE chat_id='{chat_id}' AND user_id=1"
+            sql = f"UPDATE tz_user_tg_group SET chat_name='{chat_name}', chat_type={chat_type}, invite_link='{invite_link}' WHERE chat_id={chat_id} AND user_id=1 AND bot_id={bot_id}"
             await self.update(sql)
 
     async def update_user_info(self, **data):
@@ -139,15 +140,14 @@ class AsyncMysqlClient:
         res = await self.query(sql)
         return res
 
-    async def query_user_owned_groups(self, user_id: int):
+    async def query_user_owned_groups(self, user_id: int, bot_id: int):
         sql = f"""
 SELECT
-  DISTINCT bp.id AS project_id,
-  tutg.chat_name
+  DISTINCT bp.id AS project_id, bp.name
 FROM bot_project AS bp
 JOIN tz_app_connect AS tac ON bp.owner_id = tac.user_id
 JOIN tz_user_tg_group AS tutg on bp.target_id = tutg.chat_id
-WHERE biz_user_id = '{user_id}' AND bp.deleted = 0
+WHERE biz_user_id = '{user_id}' AND bp.deleted = 0 AND tutg.bot_id = {bot_id}
 """
         res = await self.query(sql)
         return res
