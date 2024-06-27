@@ -178,31 +178,6 @@ class BeeconPlugin(plugin.Plugin):
             if not message.new_chat_members:
                 return None
 
-            group_id = message.chat.id
-            guide_img_link = await self.text(None, "guide-img", noformat=True)
-
-            # twa = TWA()
-            is_exist = await self.twa.get_chat_project_id(group_id)
-            if is_exist:
-                self.log.warning(f"Community {message.chat.title} {message.chat.id} already exists")
-                return None
-
-            start_me_btn = [[InlineKeyboardButton("Start me", url=f"t.me/{self.bot.user.username}?start=true")]]
-            add_to_group_btn_text = await self.text(None, "add-to-group-button", noformat=True)
-            if not message.from_user:
-                err_msg = await self.text(None, "group-invite-exception", noformat=True)
-                usage_guide = await self.text(None, "usage-guide", add_to_group_btn_text)
-                err_msg += usage_guide
-                await self.bot.client.send_photo(
-                    chat_id=group_id,
-                    photo=guide_img_link,
-                    caption=err_msg,
-                    reply_markup=InlineKeyboardMarkup(start_me_btn),
-                    parse_mode=ParseMode.MARKDOWN,
-                    reply_to_message_id=message.id,
-                )
-                return None
-
             if not message.chat:
                 return None
 
@@ -212,6 +187,34 @@ class BeeconPlugin(plugin.Plugin):
             new_members = message.new_chat_members
             for member in new_members:
                 if member.id == self.bot.uid:
+
+                    group_id = message.chat.id
+                    guide_img_link = await self.text(None, "guide-img", noformat=True)
+
+                    # twa = TWA()
+                    # is_exist = await self.twa.get_chat_project_id(group_id)
+                    # if is_exist:
+                    #     self.log.warning(f"Community {message.chat.title} {message.chat.id} already exists")
+                    #     return None
+
+                    start_me_btn = [[InlineKeyboardButton("Start me", url=f"t.me/{self.bot.user.username}?start=true")]]
+                    add_to_group_btn_text = await self.text(None, "add-to-group-button", noformat=True)
+
+                    if not message.from_user:
+                        err_msg = await self.text(None, "group-invite-exception", noformat=True)
+                        usage_guide = await self.text(None, "usage-guide", add_to_group_btn_text)
+                        err_msg += usage_guide
+                        await self.bot.client.send_photo(
+                            chat_id=group_id,
+                            photo=guide_img_link,
+                            caption=err_msg,
+                            reply_markup=InlineKeyboardMarkup(start_me_btn),
+                            parse_mode=ParseMode.MARKDOWN,
+                            reply_to_message_id=message.id,
+                        )
+                        return None
+
+
                     owner_id = group_owner.id
 
                     payloads = await self._construct_user_api_payloads(group_owner)

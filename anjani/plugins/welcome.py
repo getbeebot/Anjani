@@ -164,8 +164,6 @@ class Greeting(plugin.Plugin):
                     else:
                         url = await TWA.get_chat_project_link(chat.id, self.bot.uid)
 
-                        self.log.info(f"Welcome button url in {chat.title}: {url}")
-
                         button = build_button([("🕹 Enter", url, False)])
                     msg = None
                     try:
