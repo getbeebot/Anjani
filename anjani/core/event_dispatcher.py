@@ -22,11 +22,21 @@ from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, MutableMapping, MutableSequence, Optional, Tuple
 
+import aiofiles.os as aio_os
+import logging
+import json
+
 from pyrogram import raw
 from pyrogram.filters import Filter
 from pyrogram.raw import functions
-from pyrogram.types import CallbackQuery, InlineQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import (
+    CallbackQuery, InlineQuery,
+    Message, InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Chat, ChatMemberUpdated, User
+)
 from pyrogram.enums import ChatType
+from pyrogram.enums.parse_mode import ParseMode
 
 from anjani import plugin, util
 from anjani.error import EventDispatchError
@@ -34,6 +44,10 @@ from anjani.listener import Listener, ListenerFunc
 from anjani.util.misc import StopPropagation
 
 from anjani.language import get_template
+
+import boto3
+
+import websockets
 
 from .anjani_mixin_base import MixinBase
 from .metrics import EventCount, EventLatencySecond, UnhandledError
@@ -79,6 +93,16 @@ def _get_event_data(event: Any) -> MutableMapping[str, Any]:
 def _unpack_args(args: Tuple[Any, ...]) -> str:
     """Unpack arguments into a string for logging purposes."""
     return ", ".join([str(arg) for arg in args])
+
+async def _store_chat_info(chat_info: dict):
+    try:
+        mysql = util.db.AsyncMysqlClient.init_from_env()
+        await mysql.connect()
+        await mysql.update_chat_info(chat_info)
+    except Exception as e:
+        logging.error("Save chat info %s to db error: %s", chat_info, e)
+    finally:
+        await mysql.close()
 
 
 class EventDispatcher(MixinBase):
@@ -158,6 +182,226 @@ class EventDispatcher(MixinBase):
                 if listener.plugin == plug:
                     self.unregister_listener(listener)
 
+    async def get_chat_link(self: "Anjani", chat: Chat) -> Optional[str]:
+        link = ""
+        try:
+            if chat.username:
+                link = f"https://t.me/{chat.username}"
+            else:
+                invite_link = await self.client.create_chat_invite_link(chat.id)
+                link = invite_link.invite_link
+        except Exception as e:
+            self.log.warning("Can not link of chat %s (%s)", chat.title, chat.id)
+
+        return link
+
+
+    async def save_chat_info(self: "Anjani", chat: Chat) -> None:
+        try:
+            chat_link = await self.get_chat_link(chat)
+            chat_type = 0
+            if chat.type == ChatType.CHANNEL:
+                chat_type = 1
+            chat_id = chat.id
+            chat_name = chat.title
+            await _store_chat_info({
+                "chat_type": chat_type,
+                "chat_id": chat_id,
+                "chat_name": chat_name,
+                "invite_link": chat_link,
+                "bot_id": self.uid
+            })
+            self.log.info(f"Bot joining {chat.type} {chat_name}({chat_id}) {chat_link}")
+        except Exception as e:
+            self.log.error("Update chat info error: %s", e)
+
+
+    async def init_project(self: "Anjani", payloads: dict) -> Optional[str]:
+        project_id = None
+        headers = {
+            "Content-Type": "application/json",
+            "Botid": str(self.uid)
+        }
+
+        self.log.debug(f"Java API request payloads: %s", payloads)
+
+        try:
+            api_uri = f"{self.api_prefix}/p/task/bot-project/init"
+            async with self.http.put(api_uri, json=payloads, headers=headers) as resp:
+                self.log.info("Java API response: %s", await resp.text())
+                res = await resp.json()
+                data = res.get("data")
+                project_id = int(data.get("id")) if data else None
+        except Exception as e:
+            self.log.error(f"Create a new project error: {str(e)}")
+
+        return project_id
+
+
+    async def create_project_on_join(self: "Anjani", updated: ChatMemberUpdated) -> None:
+        new_member = updated.new_chat_member
+        chat = updated.chat
+
+        if not new_member:
+            return None
+
+        if not chat:
+            return None
+
+
+        async def get_avatar_link(chat_id: int, file_id: str) -> Optional[str]:
+            try:
+                filename = f"C{chat_id}.jpg"
+                filepath = os.path.join("downloads", filename)
+
+                await self.client.download_media(file_id, file_name=f"../downloads/{filename}")
+                s3 = boto3.client("s3", aws_access_key_id=self.config.AWS_AK, aws_secret_access_key=self.config.AWS_SK)
+                s3.upload_file(filepath, self.config.AWS_S3_BUCKET, filename, ExtraArgs={"ContentType": "image/jpeg"})
+                await aio_os.remove(filepath)
+                return f"https://{self.config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{filename}"
+            except Exception as e:
+                self.log.error("Retrieving chat pic failed: %s", e)
+
+        async def get_chat_description(chat_id) -> Optional[str]:
+            try:
+                chat = await self.client.get_chat(chat_id)
+                if chat.description:
+                    return chat.description
+            except Exception as e:
+                self.log.error("Retrieve chat (%s) description error: %s", chat_id, e)
+
+        async def construct_payloads(user: User) -> dict:
+            payloads = {}
+            user_id = user.id
+            user_name= user.username or None
+            first_name = user.first_name
+            last_name = user.last_name
+            nick_name = first_name + ' ' + last_name if last_name else first_name
+
+            avatar = None
+            try:
+                avatar = await get_avatar_link(user_id, user.photo.big_file_id)
+            except Exception as e:
+                self.log.warning("User %s (%s) does not have avatar: %s", first_name, user_id, e)
+
+            payloads.update({
+                "firstName": first_name,
+                "lastName": last_name,
+                "nickName": nick_name,
+                "userName": user_name,
+                "pic": avatar,
+                "tgUserId": user_id,
+                "botId": self.uid
+            })
+            return payloads
+
+        # default is group type: 0 for group, 1 for channel
+        chat_type = 0
+        if chat.type == ChatType.CHANNEL:
+            chat_type = 1
+
+        guide_img_link = await get_template("guide-img")
+        add_me_btn_text = await get_template("add-to-group-button")
+        usage_guide = await get_template("usage-guide")
+        usage_guide = usage_guide.format(add_me_btn_text)
+
+        start_me_btn = InlineKeyboardMarkup([[
+            InlineKeyboardButton("Start me", url=f"t.me/{self.user.username}?start")
+        ]])
+
+        group_id = chat.id
+
+        if not str(group_id).startswith("-100"):
+            err_msg = await get_template("group-abnormal-exception")
+            err_msg += usage_guide
+            await self.client.send_photo(
+                chat_id=group_id,
+                photo=guide_img_link,
+                caption=err_msg,
+                reply_markup=start_me_btn,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return None
+
+        twa = util.twa.TWA()
+        admin = new_member.promoted_by
+        if not admin:
+            self.log.error("Bot join group error, not by admin")
+            err_msg = await get_template("group-invite-exception")
+            err_msg += usage_guide
+            await self.client.send_photo(
+                chat_id=group_id,
+                photo=guide_img_link,
+                caption=err_msg,
+                reply_markup=start_me_btn,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return None
+
+        payloads = await construct_payloads(admin)
+
+        share_link = await self.get_chat_link(chat)
+        slogan = await get_chat_description(chat.id)
+        logo_url = None
+        if chat.photo:
+            file_id = chat.photo.big_file_id
+            logo_url = await get_avatar_link(chat.id, file_id)
+
+        payloads.update({
+            "name": chat.title,
+            "ownerTgId": admin.id,
+            "shareLink": share_link,
+            "status": 1,
+            "targetId": group_id,
+            "targetType": chat_type,
+            "slogan": slogan,
+            "logoUrl": logo_url,
+        })
+
+        payloads = json.loads(json.dumps(payloads))
+
+        project_id = await self.init_project(payloads)
+
+        if not project_id:
+            err_msg = await get_template("group-init-failed")
+            err_msg += usage_guide
+            await self.client.send_photo(
+                chat_id=admin.id,
+                photo=guide_img_link,
+                caption=err_msg,
+                reply_markup=start_me_btn,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            await self.client.send_photo(
+                chat_id=group_id,
+                photo=guide_img_link,
+                caption=err_msg,
+                reply_markup=start_me_btn,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        url = twa.generate_project_detail_link(project_id, self.uid)
+        msg_text = await get_template("create-project")
+        msg_text = msg_text.format(group_name=chat.title)
+        btn_text = await get_template("create-project-button")
+        button = util.tg.build_button([(btn_text, url, False)])
+
+        await self.client.send_message(admin.id, msg_text, reply_markup=button)
+
+        if project_id:
+            notify_msg = json.dumps({
+                "project_id": project_id,
+                "owner_tg_id": admin.id,
+                "bot_id": self.uid,
+            })
+            async with websockets.client.connect("ws://127.0.0.1:8080/ws") as ws:
+                try:
+                    await ws.send(notify_msg)
+                    msg = await ws.recv()
+                    self.log.info("Project create notify: %s", msg)
+                except websockets.ConnectionClosed:
+                    pass
+
+
     async def dispatch_event(
         self: "Anjani",
         event: str,
@@ -179,83 +423,24 @@ class EventDispatcher(MixinBase):
         if event == "message":
             event_data = args[0]
             if event_data.new_chat_title:
-                try:
-                    chat = event_data.chat
-                    group_name = event_data.new_chat_title
-                    group_id = chat.id
-                    group_username = chat.username
-                    if group_username:
-                        invite_link = f"https://t.me/{group_username}"
-                    else:
-                        try:
-                            invite_link = await self.client.export_chat_invite_link(group_id)
-                        except Exception as e:
-                            self.log.error("export invite link error: %s", e)
-                            invite_link = ""
-
-                    mysql = util.db.AsyncMysqlClient.init_from_env()
-                    await mysql.connect()
-                    await mysql.update_chat_info({
-                        "chat_type": 0,
-                        "chat_id": group_id,
-                        "chat_name": group_name,
-                        "invite_link": invite_link,
-                        "bot_id": self.uid,
-                    })
-
-                    self.log.info(f"Update group info {group_name}, {group_id}, {invite_link}")
-                except Exception as e:
-                    self.log.error("update group info error: %s", e)
-                finally:
-                    await mysql.close()
+                chat = event_data.chat
+                chat.title = event_data.new_chat_title
+                await self.save_chat_info(chat)
 
         # storing group info when bot joined
         if event == "chat_member_update":
-            event_data = args[0]
-            chat_id = event_data.chat.id
-            chat_name = event_data.chat.title
-            chat_username = event_data.chat.username
-            ctype = event_data.chat.type
-
-            if ctype == ChatType.CHANNEL:
-                chat_type = 1
-
-            if ctype == ChatType.GROUP or ctype == ChatType.SUPERGROUP:
-                chat_type = 0
+            updated = args[0]
+            chat = updated.chat
 
             # only for bot join group
-            if event_data.new_chat_member and event_data.new_chat_member.user.id == self.uid:
-                try:
-                    if chat_username:
-                        invite_link = f"https://t.me/{chat_username}"
-                    else:
-                        invite_link = await self.client.export_chat_invite_link(chat_id)
-                except Exception as e:
-                    self.log.error(e)
-                    invite_link = ""
-
-                try:
-                    mysql = util.db.AsyncMysqlClient.init_from_env()
-                    await mysql.connect()
-                    await mysql.update_chat_info({
-                        "chat_type": chat_type,
-                        "chat_id": chat_id,
-                        "chat_name": chat_name,
-                        "invite_link": invite_link,
-                        "bot_id": self.uid,
-                    })
-
-                    self.log.info(f"Bot joining {chat_type} {chat_name}({chat_id}) {invite_link}")
-                except Exception as e:
-                    self.log.error("Inserting group record error: %s", e)
-                finally:
-                    await mysql.close()
+            if updated.new_chat_member and updated.new_chat_member.user.id == self.uid:
+                await self.save_chat_info(chat)
+                await self.create_project_on_join(updated)
 
 
-            if event_data.new_chat_member and event_data.invite_link:
-                chat = event_data.chat
-                from_user = event_data.from_user
-                invite_link = event_data.invite_link
+            if updated.new_chat_member and updated.invite_link:
+                from_user = updated.from_user
+                invite_link = updated.invite_link
                 payloads = [chat.id, invite_link.invite_link]
 
                 verify_args = util.misc.encode_args(payloads)

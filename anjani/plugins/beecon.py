@@ -17,6 +17,7 @@ from pyrogram.enums.chat_type import ChatType
 from pyrogram.types import (
     User,
     Message,
+    ChatMemberUpdated,
     InlineKeyboardButton, InlineKeyboardMarkup
 )
 from pyrogram.enums.parse_mode import ParseMode
@@ -172,170 +173,27 @@ class BeeconPlugin(plugin.Plugin):
             return None
 
 
-    @listener.filters(filters.group)
-    async def on_chat_action(self, message: Message) -> None:
-        try:
-            self.log.debug("On chat action: %s", "".join(str(message).split()))
-            if not message.new_chat_members:
-                return None
+    # async def _init_project(self, payloads: dict) -> Optional[int]:
+    #     project_id = None
+    #     headers = {
+    #         "Content-Type": "application/json",
+    #         "Botid": str(self.bot.uid),
+    #     }
 
-            if not message.chat:
-                return None
+    #     self.log.debug(f"Java API request payloads: %s", payloads)
 
-            group_owner = message.from_user
-            group = message.chat
+    #     try:
+    #         api_uri = f"{self.api_url}/p/task/bot-project/init"
+    #         async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
+    #             self.log.info("Java API response: %s", resp)
+    #             res = await resp.json()
+    #             self.log.info(f"Java response content: %s", res)
+    #             data = res.get("data")
+    #             project_id = int(data.get("id")) if data else None
+    #     except Exception as e:
+    #         self.log.error(f"Create new project error: {str(e)}")
 
-            new_members = message.new_chat_members
-            for member in new_members:
-                if member.id == self.bot.uid:
-
-                    group_id = message.chat.id
-                    guide_img_link = await self.text(None, "guide-img", noformat=True)
-
-                    # twa = TWA()
-                    # is_exist = await self.twa.get_chat_project_id(group_id)
-                    # if is_exist:
-                    #     self.log.warning(f"Community {message.chat.title} {message.chat.id} already exists")
-                    #     return None
-
-                    start_me_btn = [[InlineKeyboardButton("Start me", url=f"t.me/{self.bot.user.username}?start=true")]]
-                    add_to_group_btn_text = await self.text(None, "add-to-group-button", noformat=True)
-
-                    if not message.from_user:
-                        err_msg = await self.text(None, "group-invite-exception", noformat=True)
-                        usage_guide = await self.text(None, "usage-guide", add_to_group_btn_text)
-                        err_msg += usage_guide
-                        await self.bot.client.send_photo(
-                            chat_id=group_id,
-                            photo=guide_img_link,
-                            caption=err_msg,
-                            reply_markup=InlineKeyboardMarkup(start_me_btn),
-                            parse_mode=ParseMode.MARKDOWN,
-                            reply_to_message_id=message.id,
-                        )
-                        return None
-
-
-                    owner_id = group_owner.id
-
-                    payloads = await self._construct_user_api_payloads(group_owner)
-
-                    group_id = group.id
-
-                    if not self._group_check(group_id):
-                        err_msg = await self.text(None, "group-abnormal-exception", noformat=True)
-                        usage_guide = await self.text(None, "usage-guide", add_to_group_btn_text)
-                        err_msg += usage_guide
-                        await self.bot.client.send_photo(
-                            chat_id=group_id,
-                            photo=guide_img_link,
-                            caption=err_msg,
-                            reply_markup=InlineKeyboardMarkup(start_me_btn),
-                            parse_mode=ParseMode.MARKDOWN,
-                            reply_to_message_id=message.id,
-                        )
-                        # Early return for invalid group
-                        return None
-
-                    group_name = group.title
-
-                    if group.username:
-                        group_invite_link = f"https://t.me/{group.username}"
-                    else:
-                        try:
-                            group_invite_link = await self.bot.client.export_chat_invite_link(group.id)
-                        except Exception as e:
-                            group_invite_link = None
-
-                    group_desc = await self.get_group_description(group_id)
-                    logo_url = None
-                    if group.photo:
-                        file_id = group.photo.big_file_id
-                        logo_url = await self.get_group_avatar_link(group_id, file_id)
-
-                    payloads.update({
-                        "name": group_name,
-                        "ownerTgId": owner_id,
-                        "shareLink": group_invite_link,
-                        "status": 1,
-                        "targetId": group_id,
-                        "targetType": 0,
-                    })
-
-                    if group_desc:
-                        payloads.update({"slogan": group_desc})
-                    if logo_url:
-                        payloads.update({"logoUrl": logo_url})
-
-                    payloads = json.loads(json.dumps(payloads))
-
-                    project_id = await self._init_project(payloads)
-
-                    if not project_id:
-                        err_msg = await self.text(None, "group-init-failed", noformat=True)
-                        usage_guide = await self.text(None, "usage-guide", add_to_group_btn_text)
-                        err_msg += usage_guide
-                        await self.bot.client.send_photo(
-                            chat_id=owner_id,
-                            photo=guide_img_link,
-                            caption=err_msg,
-                            reply_markup=InlineKeyboardMarkup(start_me_btn),
-                            parse_mode=ParseMode.MARKDOWN,
-                        )
-                        await self.bot.client.send_photo(
-                            chat_id=group_id,
-                            photo=guide_img_link,
-                            caption=err_msg,
-                            reply_markup=InlineKeyboardMarkup(start_me_btn),
-                            parse_mode=ParseMode.MARKDOWN,
-                            reply_to_message_id=message.id,
-                        )
-                        return None
-
-                    url = self.twa.generate_project_detail_link(project_id, self.bot.uid)
-                    msg_text = await self.text(None, "create-project", noformat=True)
-                    msg_context = msg_text.format(group_name=group_name)
-                    button_text = await self.text(None, "create-project-button")
-                    button = build_button([(button_text, url, False)])
-
-                    await self.bot.client.send_message(
-                        owner_id,
-                        msg_context,
-                        reply_markup=button
-                    )
-
-                    # if is_success and project_id:
-                    if project_id:
-                        await self.send_ws_notify(json.dumps({
-                            "project_id": project_id,
-                            "owner_tg_id": owner_id
-                        }))
-
-        except Exception as e:
-            self.log.error(f"Create project error: {str(e)}")
-
-
-    async def _init_project(self, payloads: dict) -> Optional[int]:
-        project_id = None
-        headers = {
-            "Content-Type": "application/json",
-            "Botid": str(self.bot.uid),
-        }
-
-        self.log.debug(f"Java API request payloads: %s", payloads)
-
-        try:
-            api_uri = f"{self.api_url}/p/task/bot-project/init"
-            async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
-                self.log.info("Java API response: %s", resp)
-                res = await resp.json()
-                self.log.info(f"Java response content: %s", res)
-                data = res.get("data")
-                project_id = int(data.get("id")) if data else None
-        except Exception as e:
-            self.log.error(f"Create new project error: {str(e)}")
-
-        return project_id
+    #     return project_id
 
 
     async def get_group_avatar_link(self, group_id: int, file_id: int) -> str:
@@ -370,23 +228,6 @@ class BeeconPlugin(plugin.Plugin):
             self.log.error(str(e))
         return None
 
-
-    async def send_ws_notify(self, data) -> None:
-        async with connect("ws://127.0.0.1:8080/ws") as ws:
-            try:
-                await ws.send(data)
-                msg = await ws.recv()
-                self.log.info(msg)
-            except websockets.ConnectionClosed:
-                pass
-
-
-    def _group_check(self, group_id: int) -> bool | None:
-        group_id_str = str(group_id)
-        if group_id_str.startswith('-100'):
-            return True
-        else:
-            return False
 
 
     @listener.filters(filters.group)

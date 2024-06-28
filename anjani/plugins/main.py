@@ -258,8 +258,6 @@ class Main(plugin.Plugin):
         guide_img_link = await self.text(None, "guide-img", noformat=True)
         engage_img_link = await self.text(None, "engage-img", noformat=True)
 
-        self.log.error(f"guide: {guide_img_link}, engage: {engage_img_link}")
-
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
@@ -282,8 +280,9 @@ class Main(plugin.Plugin):
                         ctx.respond(await self.text(chat.id, "language-set-succes", LANG_FLAG["en"])),
                     )
 
-            if ctx.input:
+            if ctx.input and ctx.input != "true":
                 self.log.info("Start inputs %s", ctx.input)
+
                 args = util.misc.decode_args(ctx.input)
                 if isinstance(args, list):
                     claim_reply = await self.text(None, "claim-reply", noformat=True)
@@ -470,7 +469,7 @@ class Main(plugin.Plugin):
             }
             self.log.info(f"Java API for inviting rewards request: payloads - {payloads}, headers - {headers}")
             async with self.bot.http.put(uri, json=payloads, headers=headers) as resp:
-                self.log.info(f"Java API response: %s", resp)
+                self.log.info(f"Java API response: %s", await resp.text())
                 res = await resp.json()
                 data = res.get("data")
                 awards = data.get("awardsDes") if data else None
