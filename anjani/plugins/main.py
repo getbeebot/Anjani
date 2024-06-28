@@ -289,7 +289,6 @@ class Main(plugin.Plugin):
                     await ctx.respond(claim_reply)
                     group_id = args[0]
                     invite_link = args[1]
-                    api_uri = f"{twa.API_PREFIX}/p/task/bot-project/join"
                     bot_id = self.bot.uid
                     payloads = {
                         "chatId": group_id,
@@ -297,7 +296,9 @@ class Main(plugin.Plugin):
                         "inviteLink": invite_link,
                         "botId": bot_id
                     }
-                    awards = await self._distribute_rewards(api_uri, payloads)
+
+                    api = util.apiclient.APIClient.init_from_env()
+                    awards = await api.distribute_join_rewards(payloads)
                     if awards:
                         reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
                         project_url = await twa.get_chat_project_link(group_id, bot_id)

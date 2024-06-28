@@ -25,6 +25,7 @@ from pyrogram.enums.parse_mode import ParseMode
 from anjani import listener, plugin, command
 from anjani.util.tg import build_button
 from anjani.util.twa import TWA
+from anjani.util.apiclient import APIClient
 
 import boto3
 
@@ -40,6 +41,7 @@ class BeeconPlugin(plugin.Plugin):
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
     twa = TWA()
+    api = APIClient.init_from_env()
 
     async def on_message(self, message: Message) -> None:
         data = "".join(str(message).split())
@@ -73,7 +75,8 @@ class BeeconPlugin(plugin.Plugin):
 
             if code:
                 payloads = { "botId": self.bot.uid, "inviteCode": code }
-                invite_link = await self._get_invite_link(payloads)
+                invite_link = await self.api.get_invite_link(payloads)
+
                 if invite_link:
                     reply_context = await self.text(None, "invite-link", invite_link)
                     await message.reply(reply_context)
@@ -92,40 +95,24 @@ class BeeconPlugin(plugin.Plugin):
             })
 
             project_link = await self.twa.get_chat_project_link(chat_id, self.bot.uid)
-            button = [[
+            button = InlineKeyboardMarkup([[
                 InlineKeyboardButton(
                     text=await self.text(None, "checkin-button", noformat=True),
                     url=project_link
                 )
-            ]]
+            ]])
 
-            reply_context = await self._check_in(payloads)
+            reply_context = await self.api.checkin(payloads)
             reply_msg = await message.reply(
                 text=reply_context,
                 reply_to_message_id=message.id,
-                reply_markup=InlineKeyboardMarkup(button),
+                reply_markup=button,
                 parse_mode=ParseMode.MARKDOWN,
             )
             # auto delete check in message
             # loop = asyncio.get_running_loop()
             self.bot.loop.create_task(self._delete_msg(chat_id, message.id, 60))
             self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
-
-
-    async def _get_invite_link(self, payloads: dict) -> Optional[str]:
-        api_uri = f"{self.api_url}/p/distribution/code/getInviteLink"
-        self.log.info(f"Get invite code payloads: {payloads}")
-        invite_link = None
-        headers = { "Botid": str(self.bot.uid) }
-        try:
-            async with self.bot.http.get(api_uri, params=payloads, headers=headers) as resp:
-                self.log.info("Java api response: %s", resp)
-                res = await resp.json()
-                invite_link = res.get("inviteLink")
-        except Exception as e:
-            self.log.error("Request invitation link from java error")
-
-        return invite_link
 
 
     async def _delete_msg(self, chat_id: int, message_id: int, delay: int):
@@ -171,29 +158,6 @@ class BeeconPlugin(plugin.Plugin):
                     return filepath
         except Exception:
             return None
-
-
-    # async def _init_project(self, payloads: dict) -> Optional[int]:
-    #     project_id = None
-    #     headers = {
-    #         "Content-Type": "application/json",
-    #         "Botid": str(self.bot.uid),
-    #     }
-
-    #     self.log.debug(f"Java API request payloads: %s", payloads)
-
-    #     try:
-    #         api_uri = f"{self.api_url}/p/task/bot-project/init"
-    #         async with self.bot.http.put(api_uri, json=payloads, headers=headers) as resp:
-    #             self.log.info("Java API response: %s", resp)
-    #             res = await resp.json()
-    #             self.log.info(f"Java response content: %s", res)
-    #             data = res.get("data")
-    #             project_id = int(data.get("id")) if data else None
-    #     except Exception as e:
-    #         self.log.error(f"Create new project error: {str(e)}")
-
-    #     return project_id
 
 
     async def get_group_avatar_link(self, group_id: int, file_id: int) -> str:
@@ -256,7 +220,8 @@ class BeeconPlugin(plugin.Plugin):
                     url=project_link
                 )
             ]]
-            reply_text = await self._check_in(payloads)
+
+            reply_text = await self.api.checkin(payloads)
 
             await ctx.respond(
                 reply_text,
@@ -266,36 +231,6 @@ class BeeconPlugin(plugin.Plugin):
             )
         except Exception as e:
             self.log.error(e)
-
-
-    async def _check_in(self, payloads: dict) -> str:
-        uri = f"{self.api_url}/p/task/bot-task/executeCommand"
-        headers = {
-            "Content-Type": "application/json",
-            "Botid": str(self.bot.uid),
-        }
-
-        reply_text = "Engage more, earn more."
-
-        self.log.debug("Request to java api payloads: %s", payloads)
-
-        async with self.bot.http.post(uri, json=payloads, headers=headers) as resp:
-            self.log.debug("Java api response: %s", resp)
-            if resp.status == 200:
-                res = await resp.json()
-                ret_data = res.get("data")
-                rewards = ret_data.get("awardsDes")
-                reply_text = f"Checkin successful, community points awarded: {rewards}."
-            elif resp.status == 702:
-                reply_text = "Already checked in"
-            elif resp.status == 704:
-                reply_text = "Checkin task closed",
-            elif resp.status == 706:
-                reply_text = "Sorry, there's no checkin task."
-            else:
-                self.log.error("Java API response error: %s", resp.status)
-
-        return reply_text
 
 
     async def _construct_user_api_payloads(self, user: User) -> dict:
@@ -335,6 +270,8 @@ class BeeconPlugin(plugin.Plugin):
 
         try:
             project_id = await self.twa.get_chat_project_id(group_id)
+            project_link = await self.twa.generate_project_detail_link(project_id, self.bot.uid)
+            button = [[InlineKeyboardButton("View more", url=project_link)]]
 
             payloads = {
                 "botId": self.bot.uid,
@@ -342,27 +279,20 @@ class BeeconPlugin(plugin.Plugin):
                 "current": 1,
                 "size": top_number,
             }
-            headers = { "Botid": str(self.bot.uid) }
-            # https://api.getbeebot.com/p/myWallet/getInviteLog?projectId=270&current=1&size=100
-            uri = f"{self.api_url}/p/myWallet/getInviteLog"
-            async with self.bot.http.get(uri, params=payloads, headers=headers) as resp:
-                self.log.info("Java API response: %s", resp)
-                if resp.status == 200:
-                    res = await resp.json()
 
-                    rewards = res.get("balance")
-                    reward_name = res.get("alias")
-                    invited_number = res.get("inviteNum")
+            (invited_number, rewards, reward_name) = await self.api.get_invite_log(payloads)
 
-                    project_link = await self.twa.generate_project_detail_link(project_id, self.bot.uid)
-                    button = [[InlineKeyboardButton("View more", url=project_link)]]
-                    await ctx.respond(
-                        f"Invited: **{invited_number}**, rewards: **{rewards} {reward_name}**",
-                        reply_markup=InlineKeyboardMarkup(button),
-                        parse_mode=ParseMode.MARKDOWN,
-                    )
-                else:
-                    self.log.error("Java api return error: %s", await resp.text())
+            reply_text = "Sorry, you havn't inivte others yet."
+            if invited_number and rewards and reward_name:
+                reply_text = f"Invited: **{invited_number}**, rewards: **{rewards} {reward_name}**"
+            else:
+                self.log.warning("No inviting rewards")
+
+            await ctx.respond(
+                text=reply_text,
+                reply_markup=InlineKeyboardMarkup(button),
+                parse_mode=ParseMode.MARKDOWN,
+            )
 
         except Exception as e:
             self.log.error("CMD /invite error: %s", e)

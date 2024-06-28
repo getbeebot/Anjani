@@ -195,7 +195,6 @@ class EventDispatcher(MixinBase):
 
         return link
 
-
     async def save_chat_info(self: "Anjani", chat: Chat) -> None:
         try:
             chat_link = await self.get_chat_link(chat)
@@ -214,29 +213,6 @@ class EventDispatcher(MixinBase):
             self.log.info(f"Bot joining {chat.type} {chat_name}({chat_id}) {chat_link}")
         except Exception as e:
             self.log.error("Update chat info error: %s", e)
-
-
-    async def init_project(self: "Anjani", payloads: dict) -> Optional[str]:
-        project_id = None
-        headers = {
-            "Content-Type": "application/json",
-            "Botid": str(self.uid)
-        }
-
-        self.log.debug(f"Java API request payloads: %s", payloads)
-
-        try:
-            api_uri = f"{self.api_prefix}/p/task/bot-project/init"
-            async with self.http.put(api_uri, json=payloads, headers=headers) as resp:
-                self.log.info("Java API response: %s", await resp.text())
-                res = await resp.json()
-                data = res.get("data")
-                project_id = int(data.get("id")) if data else None
-        except Exception as e:
-            self.log.error(f"Create a new project error: {str(e)}")
-
-        return project_id
-
 
     async def create_project_on_join(self: "Anjani", updated: ChatMemberUpdated) -> None:
         new_member = updated.new_chat_member
@@ -360,7 +336,8 @@ class EventDispatcher(MixinBase):
 
         payloads = json.loads(json.dumps(payloads))
 
-        project_id = await self.init_project(payloads)
+        apiclient = util.apiclient.APIClient.init_from_env()
+        project_id = await apiclient.create_project(payloads)
 
         if not project_id:
             err_msg = await get_template("group-init-failed")
@@ -401,7 +378,6 @@ class EventDispatcher(MixinBase):
                 except websockets.ConnectionClosed:
                     pass
 
-
     async def dispatch_event(
         self: "Anjani",
         event: str,
@@ -441,24 +417,40 @@ class EventDispatcher(MixinBase):
             if updated.new_chat_member and updated.invite_link:
                 from_user = updated.from_user
                 invite_link = updated.invite_link
-                payloads = [chat.id, invite_link.invite_link]
 
-                verify_args = util.misc.encode_args(payloads)
+                is_verify = os.getenv("IS_VERIFY", False)
+                if is_verify:
+                    payloads = [chat.id, invite_link.invite_link]
 
-                btn_text = await get_template("rewards-to-claim-button")
-                button = InlineKeyboardMarkup([[
-                    InlineKeyboardButton(
-                        btn_text,
-                        url=f"t.me/{self.user.username}?start={verify_args}"
+                    verify_args = util.misc.encode_args(payloads)
+
+                    btn_text = await get_template("rewards-to-claim-button")
+                    button = InlineKeyboardMarkup([[
+                        InlineKeyboardButton(
+                            btn_text,
+                            url=f"t.me/{self.user.username}?start={verify_args}"
+                        )
+                    ]])
+                    reply_text = await get_template("rewards-to-claim")
+                    reply_text = reply_text.format(from_user.mention)
+                    await self.client.send_message(
+                        chat_id=chat.id,
+                        text=reply_text,
+                        reply_markup=button
                     )
-                ]])
-                reply_text = await get_template("rewards-to-claim")
-                reply_text = reply_text.format(from_user.mention)
-                await self.client.send_message(
-                    chat_id=chat.id,
-                    text=reply_text,
-                    reply_markup=button
-                )
+                else:
+                    payloads = {
+                        "chatId": chat.id,
+                        "tgUserId": from_user.id,
+                        "inviteLink": invite_link.invite_link,
+                        "botId": self.uid,
+                    }
+                    api = util.apiclient.APIClient.init_from_env()
+                    rewards = await api.distribute_join_rewards(payloads)
+                    reply_text = await get_template("rewards-claimed")
+                    if rewards:
+                        reply_text = reply_text.format(rewards=rewards, mention=from_user.mention)
+                        await self.client.send_message(chat.id, reply_text)
 
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():
