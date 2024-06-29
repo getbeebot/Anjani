@@ -131,7 +131,7 @@ async def auto_push_notification():
         bot_id = bot.id
 
         twa = TWA()
-        rows = await twa.get_group_id_with_project()
+        rows = await twa.get_group_id_with_project(bot_id)
         for row in rows:
             (project_id, group_id) = row
             project_link = twa.generate_project_detail_link(project_id, bot_id)
@@ -185,7 +185,7 @@ async def auto_push_leaderboard():
         bot = await tgclient.client.get_me()
         bot_id = bot.id
         twa = TWA()
-        rows = await twa.get_group_id_with_project()
+        rows = await twa.get_group_id_with_project(bot_id)
         for row in rows:
             (project_id, group_id) = row
             api_uri = os.getenv("API_URL")
