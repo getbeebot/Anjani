@@ -135,8 +135,12 @@ class AsyncMysqlClient:
         else:
             return None
 
-    async def retrieve_group_id_with_project(self):
-        sql = "SELECT id, target_id FROM bot_project WHERE target_id IS NOT NULL AND target_type = 0"
+    async def retrieve_group_id_with_project(self, bot_id: int):
+        sql = f"""
+SELECT DISTINCT bp.id, bp.target_id FROM bot_project AS bp
+JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = bp.target_id
+WHERE bp.target_id IS NOT NULL AND tutg.bot_id = {bot_id}
+"""
         res = await self.query(sql)
         return res
 
