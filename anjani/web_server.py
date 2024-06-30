@@ -132,6 +132,10 @@ async def auto_push_notification():
 
         twa = TWA()
         rows = await twa.get_group_id_with_project(bot_id)
+        if not rows:
+            log.warning("There's not project to push notification")
+            return
+
         for row in rows:
             (project_id, group_id) = row
             project_link = twa.generate_project_detail_link(project_id, bot_id)
@@ -141,7 +145,7 @@ async def auto_push_notification():
             tasks = await twa.get_chat_tasks(group_id)
             participants = await twa.get_chat_activity_participants(group_id)
 
-            log.info(f"group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}")
+            log.info(f"Auto push notification group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}")
 
             if tasks and participants > 7:
                 group_context = await get_template("group-start-pm")
@@ -184,8 +188,13 @@ async def auto_push_leaderboard():
     try:
         bot = await tgclient.client.get_me()
         bot_id = bot.id
+
         twa = TWA()
         rows = await twa.get_group_id_with_project(bot_id)
+        if not rows:
+            log.warning("There's not project to push notification")
+            return
+
         for row in rows:
             (project_id, group_id) = row
             api_uri = os.getenv("API_URL")

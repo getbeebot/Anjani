@@ -114,13 +114,11 @@ class BeeconPlugin(plugin.Plugin):
             self.bot.loop.create_task(self._delete_msg(chat_id, message.id, 60))
             self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
 
-
     async def _delete_msg(self, chat_id: int, message_id: int, delay: int):
         if not delay:
             return
         await asyncio.sleep(delay)
         await self.bot.client.delete_messages(chat_id, message_id)
-
 
     async def save_message(self, message) -> None:
         target_dir = "messages"
@@ -141,12 +139,10 @@ class BeeconPlugin(plugin.Plugin):
                 await f.write(line)
             await f.write("\n")
 
-
     async def create_if_not_exist(self, path):
         result = await aio_os.path.exists(path)
         if not result:
             await aio_os.mkdir(path)
-
 
     async def get_target_file(self, directory):
         try:
@@ -158,7 +154,6 @@ class BeeconPlugin(plugin.Plugin):
                     return filepath
         except Exception:
             return None
-
 
     async def get_group_avatar_link(self, group_id: int, file_id: int) -> str:
         try:
@@ -191,7 +186,6 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(str(e))
         return None
-
 
 
     @listener.filters(filters.group)
