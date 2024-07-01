@@ -1,19 +1,18 @@
-from os import getenv
 import logging
-from typing import Any, Dict, Sequence
+import aiomysql
 
-from mysql.connector.aio import connect
+from os import getenv
+from typing import Optional
 
-
-class AsyncMysqlClient:
-    def __init__(self, host: str, port: int, user: str, password: str, database: str) -> None:
-        self.conn = None
+class MysqlPoolClient:
+    def __init__(self, host: str, port: int, username: str, password: str, database: str):
         self.host = host
         self.port = port
-        self.user = user
+        self.username = username
         self.password = password
         self.database = database
-        self.log = logging.getLogger("mysql")
+        self._pool: Optional[aiomysql.Pool] = None
+        self.log = logging.getLogger("MySQL")
 
     @classmethod
     def init_from_env(cls):
@@ -22,88 +21,63 @@ class AsyncMysqlClient:
         user = getenv("MYSQL_USER")
         password = getenv("MYSQL_PASS")
         database = getenv("MYSQL_DB")
-
-        client = cls(host, port, user, password, database)
-        return client
+        return cls(host, port, user, password, database)
 
     async def connect(self):
-        try:
-            self.conn = await connect(
+        if not self._pool:
+            self._pool = await aiomysql.create_pool(
                 host=self.host, port=self.port,
-                user=self.user, password=self.password,
-                database=self.database,
-                auth_plugin="mysql_native_password")
+                user=self.username, password=self.password,
+                db=self.database, autocommit=True,
+            )
+        self.log.info("Connected to MySQL database")
 
-        except Exception as e:
-            self.log.error("Error connecting to MySQL: %s", e)
-            self.conn = None
-
-        return self.conn
-
-    async def close(self):
-        if self.conn:
-            await self.conn.close()
-
-    async def query(self, sql: str, values: Sequence[Any] | Dict[str, Any] = ()):
-        if not self.conn:
+    async def get_cursor(self) -> aiomysql.Cursor:
+        if not self._pool:
             await self.connect()
 
-        if not self.conn:
-            return None
+        if not self._pool:
+            self.log.error("MySQL connection is not available")
 
+        async with self._pool.acquire() as conn:
+            return await conn.cursor()
+
+    async def close(self):
+        if self._pool:
+            await self._pool.close()
+            self.log.info("Closed MySQL connection pool")
+
+    async def query(self, sql: str, values = ()):
         try:
-            cursor = await self.conn.cursor()
+            cursor = await self.get_cursor()
             if values:
                 await cursor.execute(sql, values)
             else:
                 await cursor.execute(sql)
-            rows = await cursor.fetchall()
-            return rows
+            return await cursor.fetchall()
         except Exception as e:
-            self.log.error("Error executing query %s: %s", sql, e)
-            return None
-        finally:
-            await cursor.close()
+            self.log.error("MySQL query %s error: %s", sql, e)
 
-    async def query_one(self, sql: str, values: Sequence[Any] | Dict[str, Any] = ()):
-        if not self.conn:
-            await self.connect()
-        if not self.conn:
-            return None
-
+    async def query_one(self, sql, values=()):
         try:
-            cursor = await self.conn.cursor()
+            cursor = await self.get_cursor()
             if values:
                 await cursor.execute(sql, values)
             else:
                 await cursor.execute(sql)
             return await cursor.fetchone()
         except Exception as e:
-            self.log.error("Error executing query %s: %s", sql, e)
-            return None
-        finally:
-            await cursor.close()
+            self.log.error("MySQL query %s, error: %s", sql, e)
 
-    async def update(self, sql: str, values: Sequence[Any] | Dict[str, Any] = ()):
-        if not self.conn:
-            await self.connect()
-
-        if not self.conn:
-            return None
-
+    async def update(self, sql, values=()):
         try:
-            cursor = await self.conn.cursor()
+            cursor = await self.get_cursor()
             if values:
                 await cursor.execute(sql, values)
             else:
                 await cursor.execute(sql)
-            await self.conn.commit()
-            return cursor.lastrowid
         except Exception as e:
-            self.log.error("Error modifing data: %s", e)
-            return None
-        finally:
-            await cursor.close()
+            self.log.error("MySQL query %s, error: %s", sql, e)
 
     async def update_chat_info(self, data):
         chat_type = int(data.get("chat_type"))
@@ -168,72 +142,3 @@ class AsyncMysqlClient:
         sql = "SELECT COUNT(*) FROM beebot.bot_user_action WHERE project_id = %s"
         (count, ) = await self.query_one(sql, (project_id, ))
         return count
-
-import aiomysql
-from typing import Optional
-
-class MysqlPoolClient:
-    def __init__(self, host: str, port: int, username: str, password: str, database: str):
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
-        self.database = database
-        self._pool: Optional[aiomysql.Pool] = None
-        self.log = logging.getLogger("MySQL")
-
-    async def connect(self):
-        if not self._pool:
-            self._pool = await aiomysql.create_pool(
-                host=self.host, port=self.port,
-                user=self.username, password=self.password,
-                db=self.database, autocommit=True,
-            )
-        self.log.info("Connected to MySQL database")
-
-    async def get_cursor(self) -> aiomysql.Cursor:
-        if not self._pool:
-            await self.connect()
-
-        if not self._pool:
-            self.log.error("MySQL connection is not available")
-
-        async with self._pool.acquire() as conn:
-            return await conn.cursor()
-
-    async def close(self):
-        if self._pool:
-            await self._pool.close()
-            self.log.info("Closed MySQL connection pool")
-
-    async def query(self, sql: str, values = ()):
-        try:
-            cursor = await self.get_cursor()
-            if values:
-                await cursor.execute(sql, values)
-            else:
-                await cursor.execute(sql)
-            return await cursor.fetchall()
-        except Exception as e:
-            self.log.error("MySQL query %s error: %s", sql, e)
-
-    async def query_one(self, sql, values=()):
-        try:
-            cursor = await self.get_cursor()
-            if values:
-                await cursor.execute(sql, values)
-            else:
-                await cursor.execute(sql)
-            return await cursor.fetchone()
-        except Exception as e:
-            self.log.error("MySQL query %s, error: %s", sql, e)
-
-    async def update(self, sql, values=()):
-        try:
-            cursor = await self.get_cursor()
-            if values:
-                await cursor.execute(sql, values)
-            else:
-                await cursor.execute(sql)
-        except Exception as e:
-            self.log.error("MySQL query %s, error: %s", sql, e)

@@ -42,7 +42,6 @@ from pyrogram.types import (
 )
 
 from anjani import command, filters, listener, plugin, util
-from anjani.util.twa import TWA
 from .language import LANG_FLAG
 
 if TYPE_CHECKING:
@@ -253,7 +252,7 @@ class Main(plugin.Plugin):
         """Bot start command"""
         chat = ctx.chat
 
-        twa = TWA()
+        twa = self.bot.twa
 
         guide_img_link = await self.text(None, "guide-img", noformat=True)
         engage_img_link = await self.text(None, "engage-img", noformat=True)

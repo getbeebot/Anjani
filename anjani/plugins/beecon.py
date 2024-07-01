@@ -14,15 +14,12 @@ from pyrogram.enums.chat_type import ChatType
 from pyrogram.types import (
     User,
     Message,
-    ChatMemberUpdated,
     InlineKeyboardButton, InlineKeyboardMarkup
 )
 from pyrogram.enums.parse_mode import ParseMode
 
 from anjani import listener, plugin, command
-from anjani.util.tg import build_button
-from anjani.util.twa import TWA_V2
-from anjani.util.db import AsyncMysqlClient, AsyncRedisClient
+from anjani.util.twa import TWA
 
 import boto3
 
@@ -37,13 +34,10 @@ class BeeconPlugin(plugin.Plugin):
     aws_ak = os.getenv("AWS_AK")
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
-    twa = TWA_V2
+    twa = TWA
 
-    async def on_load(self) -> None:
-        self.twa = TWA_V2(AsyncMysqlClient.init_from_env(), AsyncRedisClient.init_from_env())
-
-    async def on_stop(self) -> None:
-        await self.twa.ensure_db_closed()
+    async def on_load(self):
+        twa = self.bot.twa
 
     async def on_message(self, message: Message) -> None:
         data = "".join(str(message).split())

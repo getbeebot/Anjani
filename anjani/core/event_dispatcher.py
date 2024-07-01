@@ -299,7 +299,6 @@ class EventDispatcher(MixinBase):
             )
             return None
 
-        twa = util.twa.TWA()
         admin = new_member.promoted_by
         if not admin:
             self.log.error("Bot join group error, not by admin")
@@ -356,7 +355,7 @@ class EventDispatcher(MixinBase):
                 reply_markup=start_me_btn,
                 parse_mode=ParseMode.MARKDOWN,
             )
-        url = twa.generate_project_detail_link(project_id, self.uid)
+        url = self.twa.generate_project_detail_link(project_id, self.uid)
         msg_text = await get_template("create-project")
         msg_text = msg_text.format(group_name=chat.title)
         btn_text = await get_template("create-project-button")

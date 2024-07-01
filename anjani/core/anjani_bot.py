@@ -40,6 +40,7 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
     loop: asyncio.AbstractEventLoop
     stopping: bool
     apiclient: APIClient
+    twa: TWA
 
     def __init__(self, config: Config):
         self.config = config
@@ -53,6 +54,7 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
         # Initialize aiohttp session last in case another mixin fails
         self.http = aiohttp.ClientSession()
         self.apiclient = APIClient.init_from_env()
+        self.twa = TWA.init_from_env()
 
     @classmethod
     async def init_and_run(
@@ -79,6 +81,8 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
             if self.client.is_connected:
                 await self.client.stop()
 
+
+        await self.twa.clean_up()
         await self.apiclient.http.close()
 
         await self.http.close()
