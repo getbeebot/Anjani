@@ -168,3 +168,72 @@ class AsyncMysqlClient:
         sql = "SELECT COUNT(*) FROM beebot.bot_user_action WHERE project_id = %s"
         (count, ) = await self.query_one(sql, (project_id, ))
         return count
+
+import aiomysql
+from typing import Optional
+
+class MysqlPoolClient:
+    def __init__(self, host: str, port: int, username: str, password: str, database: str):
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.database = database
+        self._pool: Optional[aiomysql.Pool] = None
+        self.log = logging.getLogger("MySQL")
+
+    async def connect(self):
+        if not self._pool:
+            self._pool = await aiomysql.create_pool(
+                host=self.host, port=self.port,
+                user=self.username, password=self.password,
+                db=self.database, autocommit=True,
+            )
+        self.log.info("Connected to MySQL database")
+
+    async def get_cursor(self) -> aiomysql.Cursor:
+        if not self._pool:
+            await self.connect()
+
+        if not self._pool:
+            self.log.error("MySQL connection is not available")
+
+        async with self._pool.acquire() as conn:
+            return await conn.cursor()
+
+    async def close(self):
+        if self._pool:
+            await self._pool.close()
+            self.log.info("Closed MySQL connection pool")
+
+    async def query(self, sql: str, values = ()):
+        try:
+            cursor = await self.get_cursor()
+            if values:
+                await cursor.execute(sql, values)
+            else:
+                await cursor.execute(sql)
+            return await cursor.fetchall()
+        except Exception as e:
+            self.log.error("MySQL query %s error: %s", sql, e)
+
+    async def query_one(self, sql, values=()):
+        try:
+            cursor = await self.get_cursor()
+            if values:
+                await cursor.execute(sql, values)
+            else:
+                await cursor.execute(sql)
+            return await cursor.fetchone()
+        except Exception as e:
+            self.log.error("MySQL query %s, error: %s", sql, e)
+
+    async def update(self, sql, values=()):
+        try:
+            cursor = await self.get_cursor()
+            if values:
+                await cursor.execute(sql, values)
+            else:
+                await cursor.execute(sql)
+        except Exception as e:
+            self.log.error("MySQL query %s, error: %s", sql, e)
