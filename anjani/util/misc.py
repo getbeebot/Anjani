@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Callable, Set, Tuple, Union
 
 import msgpack
 import base58
+import os
 
 from pyrogram.filters import AndFilter, Filter, InvertFilter, OrFilter
 
@@ -26,6 +27,7 @@ from anjani.util.types import CustomFilter
 if TYPE_CHECKING:
     from anjani.core import Anjani
 
+TWA_LINK = os.getenv("TWA_LINK")
 
 def encode_args(args: dict) -> str:
     packed = msgpack.packb(args)
@@ -36,6 +38,33 @@ def decode_args(args_str: str) -> dict:
     p_args = base58.b58decode(args_str.encode("utf-8"))
     return msgpack.unpackb(p_args)
 
+def generate_project_detail_link(project_id: int, bot_id: int):
+    payloads = {
+        "target": "projectDetail",
+        "id": project_id,
+        "botid": bot_id
+    }
+    args = encode_args(payloads)
+    return f"{TWA_LINK}={args}"
+
+def generate_task_detail_link(project_id: int, task_id: int, bot_id: int):
+    payloads = {
+        "target": "taskShare",
+        "id": project_id,
+        "subid": task_id,
+        "botid": bot_id
+    }
+    args = encode_args(payloads)
+    return f"{TWA_LINK}={args}"
+
+def generate_project_leaderboard_link(project_id: int, bot_id: int):
+    payloads = {
+        "target": "leaderBoard",
+        "id": project_id,
+        "botid": bot_id,
+    }
+    args = encode_args(payloads)
+    return f"{TWA_LINK}={args}"
 
 def check_filters(filters: Union[Filter, CustomFilter], anjani: "Anjani") -> None:
     """Recursively check filters to set :obj:`~Anjani` into :obj:`~CustomFilter` if needed"""
@@ -73,3 +102,7 @@ def do_nothing(*args: Any, **kwargs: Any) -> None:
 
 class StopPropagation(Exception):
     """Exception that raised to stop propagating an event"""
+
+
+class InvalidArgumentError(Exception):
+    """Wrong argument type for web server request"""

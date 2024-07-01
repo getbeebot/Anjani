@@ -158,3 +158,18 @@ class APIClient:
                 self.log.error("Get invite log error: %s", await resp.text())
 
         return (invited_number, rewards, reward_name)
+
+    async def get_ranks(self, payloads: dict):
+        self.log.debug("Get ranks request payloads: %s", payloads)
+
+        req_uri = f"{self.url_prefix}/p/project/myRank"
+
+        self.update_headers(payloads)
+
+        async with self.http.get(url=req_uri, params=payloads, headers=self.headers) as resp:
+            if resp.status == 200:
+                res = await resp.json()
+                self.log.debug("Get ranks response: %s", res)
+                return res.get("userRanks")
+            else:
+                self.log.error("Get ransk error: %s", await resp.text())

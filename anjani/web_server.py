@@ -19,7 +19,13 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from .util.config import Config
-from .util.twa import TWA
+from .util.misc import (
+    generate_project_detail_link,
+    generate_project_leaderboard_link,
+    InvalidArgumentError
+)
+from .util.apiclient import APIClient
+from .util.db import MysqlPoolClient, AsyncRedisClient
 from .language import get_template
 
 from .server.tgclient import TGClient
@@ -38,6 +44,9 @@ tgclient = TGClient(config)
 
 log = logging.getLogger("web-server")
 
+mysql = MysqlPoolClient.init_from_env()
+redis = AsyncRedisClient.init_from_env()
+
 
 async def start_tgclient(app) -> None:
     await tgclient.start()
@@ -50,10 +59,8 @@ async def stop_scheduler(app) -> None:
     if scheduler:
         await scheduler.shutdown()
 
-
 async def web_server() -> None:
     await start_server()
-
 
 async def start_server() -> None:
     app = web.Application()
@@ -128,21 +135,20 @@ async def auto_push_notification():
         bot = await tgclient.client.get_me()
         bot_id = bot.id
 
-        twa = TWA()
+        rows = await mysql.retrieve_group_id_with_project(bot_id)
 
-        rows = await twa.get_group_id_with_project(bot_id)
         if not rows:
             log.warning("There's not project to push notification")
             return
 
         for row in rows:
             (project_id, group_id) = row
-            project_link = twa.generate_project_detail_link(project_id, bot_id)
+            project_link = generate_project_detail_link(project_id, bot_id)
             button = InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
             )
-            tasks = await twa.get_chat_tasks(group_id)
-            participants = await twa.get_chat_activity_participants(group_id)
+            tasks = await mysql.query_project_tasks(group_id)
+            participants = await mysql.query_project_participants(group_id)
 
             log.info(f"Auto push notification group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}")
 
@@ -156,7 +162,7 @@ async def auto_push_notification():
                 continue
 
             # delete last notification
-            pre_msg = await twa.get_previous_notify_record(group_id)
+            pre_msg = await redis.get(f"notify_{group_id}")
             if pre_msg:
                 await tgclient.client.delete_messages(group_id, int(pre_msg))
 
@@ -169,7 +175,7 @@ async def auto_push_notification():
                 reply_markup=button,
             )
             if msg:
-                await twa.save_notify_record(group_id, msg.id)
+                await redis.set(f"notify_{group_id}", msg.id)
 
     except Exception as e:
         log.error(f"auto push notification error: {e}")
@@ -188,9 +194,8 @@ async def auto_push_leaderboard():
         bot = await tgclient.client.get_me()
         bot_id = bot.id
 
-        twa = TWA()
+        rows = await mysql.retrieve_group_id_with_project(bot_id)
 
-        rows = await twa.get_group_id_with_project(bot_id)
         if not rows:
             log.warning("There's not project to push notification")
             return
@@ -199,38 +204,30 @@ async def auto_push_leaderboard():
             (project_id, group_id) = row
             api_uri = os.getenv("API_URL")
             url = f"{api_uri}/p/project/myRank"
+
             payloads = {
                 "projectId": project_id,
                 "index": 0,
                 "size": 10,
+                "botId": bot_id
             }
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=payloads) as resp:
-                    log.info("Java API response: %s", resp)
-                    if resp.status == 200:
-                        res = await resp.json()
-                        rank_data = res.get("userRanks")
-                        ranks = sorted_by_rank(json.loads(rank_data))
 
-                        leaderboard_content = ""
-                        for user in ranks:
-                            leaderboard_content += f"{user.get('userRankNumber')}. {user.get('userName')}\n"
+            apiclient = APIClient.init_from_env()
+            rank_res = await apiclient.get_ranks(payloads)
 
-                        btn_url = twa.generate_project_leaderboard_link(project_id, bot_id)
+            if rank_res:
+                ranks = sorted_by_rank(json.loads(rank_res))
+                leaderboard_content = ""
+                for user in ranks:
+                    leaderboard_content += f"{user.get('userRankNumber')}. {user.get('userName')}\n"
 
-                        button = [
-                            [
-                                InlineKeyboardButton("View more", url=btn_url)
-                            ]
-                        ]
+                btn_url = generate_project_leaderboard_link(project_id, bot_id)
+                button = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("View more", url=btn_url)]
+                ])
 
-                        await tgclient.send_message(
-                            group_id,
-                            leaderboard_content,
-                            reply_markup=InlineKeyboardMarkup(button),
-                        )
-                    else:
-                        log.error("Get user rank error with java api %s", await resp.text())
+                await tgclient.send_message(group_id, leaderboard_content, reply_markup=button)
+
     except Exception as e:
         log.error(f"Leaderboard push error: {e}")
 
@@ -299,10 +296,6 @@ async def get_user_info_handler(request: BaseRequest) -> Response:
         })
 
     return web_response.json_response(ret_data, status=200)
-
-
-class InvalidArgumentError(Exception):
-    pass
 
 
 async def send_message_handler(request: BaseRequest) -> Response:

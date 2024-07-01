@@ -252,8 +252,6 @@ class Main(plugin.Plugin):
         """Bot start command"""
         chat = ctx.chat
 
-        twa = self.bot.twa
-
         guide_img_link = await self.text(None, "guide-img", noformat=True)
         engage_img_link = await self.text(None, "engage-img", noformat=True)
 
@@ -299,7 +297,8 @@ class Main(plugin.Plugin):
                     awards = await self.bot.apiclient.distribute_join_rewards(payloads)
                     if awards:
                         reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
-                        project_url = await twa.get_chat_project_link(group_id, bot_id)
+                        project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id, bot_id)
+                        project_url= util.misc.generate_project_detail_link(project_id, bot_id)
 
                         project_btn = InlineKeyboardMarkup([[
                             InlineKeyboardButton(
@@ -349,14 +348,14 @@ class Main(plugin.Plugin):
             buttons: List[InlineKeyboardButton] = []
 
             group_buttons = []
-            group_projects = await twa.get_user_owned_groups(chat.id, self.bot.uid)
+            group_projects = await self.bot.mysql.query_user_owned_groups(chat.id, self.bot.uid)
             if not group_projects:
                 pass
             else:
                 line_buttons = []
                 for row in group_projects:
                     (project_id, group_name) = row
-                    project_link = twa.generate_project_detail_link(project_id, self.bot.uid)
+                    project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
                     group_button = InlineKeyboardButton(text=group_name, url=project_link)
                     line_buttons.append(group_button)
                 # Two group button one line
@@ -402,7 +401,7 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        is_exist = await twa.get_chat_project_id(chat.id)
+        is_exist = await self.bot.mysql.query_project_id_by_chat_id(chat.id, self.bot.uid)
         # if not is_exist:
         #     pass
 
@@ -411,7 +410,7 @@ class Main(plugin.Plugin):
         while counter < 5 and not project_id:
             await asyncio.sleep(1)
             counter += 1
-            project_id = await twa.get_chat_project_id(chat.id)
+            project_id = await self.bot.mysql.query_project_id_by_chat_id(chat.id)
 
         # no project for group, error exception
         if not project_id:
@@ -428,12 +427,12 @@ class Main(plugin.Plugin):
             )
             return None
 
-        project_link = twa.generate_project_detail_link(project_id, self.bot.uid)
+        project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
         buttons = [[InlineKeyboardButton(text=await self.text(chat.id, "create-project-button"),url=project_link)]]
 
-        tasks = await twa.get_chat_tasks(chat.id)
-        participants = await twa.get_chat_activity_participants(chat.id)
+        tasks = await self.bot.mysql.query_project_tasks(chat.id)
+        participants = await self.bot.mysql.query_project_participants(chat.id)
 
         if tasks and participants:
             group_context = await self.text(chat.id, "group-start-pm", noformat=True)

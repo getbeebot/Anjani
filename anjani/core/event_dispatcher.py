@@ -23,7 +23,6 @@ from hashlib import sha256
 from typing import TYPE_CHECKING, Any, MutableMapping, MutableSequence, Optional, Tuple
 
 import aiofiles.os as aio_os
-import logging
 import json
 
 from pyrogram import raw
@@ -48,6 +47,7 @@ from anjani.language import get_template
 import boto3
 
 import websockets
+from websockets import client
 
 from .anjani_mixin_base import MixinBase
 from .metrics import EventCount, EventLatencySecond, UnhandledError
@@ -93,16 +93,6 @@ def _get_event_data(event: Any) -> MutableMapping[str, Any]:
 def _unpack_args(args: Tuple[Any, ...]) -> str:
     """Unpack arguments into a string for logging purposes."""
     return ", ".join([str(arg) for arg in args])
-
-async def _store_chat_info(chat_info: dict):
-    try:
-        mysql = util.db.AsyncMysqlClient.init_from_env()
-        await mysql.connect()
-        await mysql.update_chat_info(chat_info)
-    except Exception as e:
-        logging.error("Save chat info %s to db error: %s", chat_info, e)
-    finally:
-        await mysql.close()
 
 
 class EventDispatcher(MixinBase):
@@ -203,14 +193,15 @@ class EventDispatcher(MixinBase):
                 chat_type = 1
             chat_id = chat.id
             chat_name = chat.title
-            await _store_chat_info({
+            chat_info = {
                 "chat_type": chat_type,
                 "chat_id": chat_id,
                 "chat_name": chat_name,
                 "invite_link": chat_link,
                 "bot_id": self.uid
-            })
+            }
             self.log.info(f"Bot joining {chat.type} {chat_name}({chat_id}) {chat_link}")
+            await self.mysql.update_chat_info(chat_info)
         except Exception as e:
             self.log.error("Update chat info error: %s", e)
 
@@ -335,7 +326,6 @@ class EventDispatcher(MixinBase):
 
         payloads = json.loads(json.dumps(payloads))
 
-        # apiclient = util.apiclient.APIClient.init_from_env()
         project_id = await self.apiclient.create_project(payloads)
 
         if not project_id:
@@ -355,7 +345,7 @@ class EventDispatcher(MixinBase):
                 reply_markup=start_me_btn,
                 parse_mode=ParseMode.MARKDOWN,
             )
-        url = self.twa.generate_project_detail_link(project_id, self.uid)
+        url = util.misc.generate_project_detail_link(project_id, self.uid)
         msg_text = await get_template("create-project")
         msg_text = msg_text.format(group_name=chat.title)
         btn_text = await get_template("create-project-button")
@@ -369,7 +359,7 @@ class EventDispatcher(MixinBase):
                 "owner_tg_id": admin.id,
                 "bot_id": self.uid,
             })
-            async with websockets.client.connect("ws://127.0.0.1:8080/ws") as ws:
+            async with client.connect("ws://127.0.0.1:8080/ws") as ws:
                 try:
                     await ws.send(notify_msg)
                     msg = await ws.recv()

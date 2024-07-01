@@ -18,8 +18,7 @@ from pyrogram.types import (
 )
 from pyrogram.enums.parse_mode import ParseMode
 
-from anjani import listener, plugin, command
-from anjani.util.twa import TWA
+from anjani import listener, plugin, command, util
 
 import boto3
 
@@ -34,10 +33,6 @@ class BeeconPlugin(plugin.Plugin):
     aws_ak = os.getenv("AWS_AK")
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
-    twa = TWA
-
-    async def on_load(self):
-        twa = self.bot.twa
 
     async def on_message(self, message: Message) -> None:
         data = "".join(str(message).split())
@@ -77,7 +72,7 @@ class BeeconPlugin(plugin.Plugin):
                     reply_context = await self.text(None, "invite-link", invite_link)
                     await message.reply(reply_context)
 
-        checkin_keyword = await self.twa.get_chat_checkin_keyword(chat.id)
+        checkin_keyword = await self.bot.redis.get(f"checkin_{chat.id}")
 
         if checkin_keyword:
             chat_id = chat.id
@@ -90,7 +85,9 @@ class BeeconPlugin(plugin.Plugin):
                 "targetType": 0,
             })
 
-            project_link = await self.twa.get_chat_project_link(chat_id, self.bot.uid)
+            project_id = await self.bot.mysql.query_project_id_by_chat_id(chat_id, self.bot.uid)
+            project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+
             button = InlineKeyboardMarkup([[
                 InlineKeyboardButton(
                     text=await self.text(None, "checkin-button", noformat=True),
@@ -203,7 +200,9 @@ class BeeconPlugin(plugin.Plugin):
 
             payloads = json.loads(json.dumps(payloads))
 
-            project_link = await self.twa.get_chat_project_link(group_id, self.bot.uid)
+            project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id)
+            project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+
             button = [[
                 InlineKeyboardButton(
                     text=await self.text(None, "checkin-button", noformat=True),
@@ -259,8 +258,8 @@ class BeeconPlugin(plugin.Plugin):
         top_number = 10
 
         try:
-            project_id = await self.twa.get_chat_project_id(group_id)
-            project_link = self.twa.generate_project_detail_link(project_id, self.bot.uid)
+            project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id)
+            project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
             button = [[InlineKeyboardButton("View more", url=project_link)]]
 
             payloads = {
