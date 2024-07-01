@@ -18,7 +18,7 @@ from pyrogram.types import (
 )
 from pyrogram.enums.parse_mode import ParseMode
 
-from anjani import listener, plugin, command, util
+from anjani import plugin, command, util
 
 import boto3
 
@@ -29,7 +29,6 @@ class BeeconPlugin(plugin.Plugin):
     name: ClassVar[str] = "Beecon Plugin"
     helpable: ClassVar[bool] = False
 
-    api_url = os.getenv("API_URL")
     aws_ak = os.getenv("AWS_AK")
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
@@ -72,15 +71,16 @@ class BeeconPlugin(plugin.Plugin):
                     reply_context = await self.text(None, "invite-link", invite_link)
                     await message.reply(reply_context)
 
-        checkin_keyword = await self.bot.redis.get(f"checkin_{chat.id}")
+        checkin_cmd = await self.bot.redis.get(f"checkin_{chat.id}")
 
-        if checkin_keyword:
+        if checkin_cmd:
             chat_id = chat.id
             from_user = message.from_user
+            self.log.debug("Checking keyword: %s", checkin_cmd)
 
             payloads = await self._construct_user_api_payloads(from_user)
             payloads.update({
-                "command": checkin_keyword,
+                "command": checkin_cmd,
                 "targetId": chat_id,
                 "targetType": 0,
             })
@@ -181,7 +181,7 @@ class BeeconPlugin(plugin.Plugin):
         return None
 
 
-    @listener.filters(filters.group)
+    @command.filters(filters.group)
     async def cmd_checkin(self, ctx: command.Context) -> Optional[str]:
         msg = ctx.message
 
@@ -250,7 +250,7 @@ class BeeconPlugin(plugin.Plugin):
         return payloads
 
 
-    @listener.filters(filters.group)
+    @command.filters(filters.group)
     async def cmd_invite(self, ctx: command.Context) -> Optional[str]:
         msg = ctx.message
 

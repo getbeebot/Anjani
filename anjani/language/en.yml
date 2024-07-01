@@ -718,3 +718,9 @@ rewards-claimed: "Thank you for joining, {mention}, **{rewards}** has distribute
 rewards-msg-button: "Engage more, earn more"
 claim-reply: "Verify success, start distributing your rewards..."
 #endregion
+
+#region addme
+add-me-to-group: "Add me to group"
+add-me-to-channel: "Add me to channel"
+group-or-channel: "Group or channel?"
+#endregion

@@ -87,7 +87,6 @@ def _setup_log() -> None:
     logging.getLogger("botocore").setLevel(logging.WARNING)
     logging.getLogger("boto3").setLevel(logging.WARNING)
     logging.getLogger("s3transfer").setLevel(logging.WARNING)
-    # logging.getLogger("mysql").setLevel(logging.WARNING)
 
 
 async def client_server(loop) -> None:

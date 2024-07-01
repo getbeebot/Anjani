@@ -248,6 +248,24 @@ class Main(plugin.Plugin):
             except MessageNotModified:
                 pass
 
+    @listener.filters(filters.regex(r"addme"))
+    async def on_callback_query(self, query: CallbackQuery) -> None:
+        """ add me to group or channel"""
+        chat = query.message.chat
+        group_btn_text = await self.text(None, "add-me-to-group", noformat=True)
+        channel_btn_text = await self.text(None, "add-me-to-channel", noformat=True)
+        buttons = InlineKeyboardMarkup([
+            [InlineKeyboardButton(text=group_btn_text, url=f"t.me/{self.bot.user.username}?startgroup=true")],
+            [InlineKeyboardButton(text=channel_btn_text, url=f"t.me/{self.bot.user.username}?startchannel=true")]
+        ])
+        group_or_channel = await self.text(None, "group-or-channel", noformat=True)
+        await self.bot.client.send_message(
+                chat.id,
+                group_or_channel,
+                reply_markup=buttons,
+                parse_mode=ParseMode.MARKDOWN
+            )
+
     async def cmd_start(self, ctx: command.Context) -> Optional[str]:
         """Bot start command"""
         chat = ctx.chat
@@ -370,7 +388,8 @@ class Main(plugin.Plugin):
                 [
                     InlineKeyboardButton(  # Add bot as Admin button
                         text=await self.text(chat.id, "add-to-group-button"),
-                        url=f"t.me/{self.bot.user.username}?startgroup=true",
+                        # url=f"t.me/{self.bot.user.username}?startgroup=true",
+                        callback_data="addme"
                     ),
                 ],
                 [
