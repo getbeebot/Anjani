@@ -19,7 +19,7 @@ from pyrogram.types import (
 )
 from pyrogram.enums.parse_mode import ParseMode
 
-from anjani import listener, plugin, command
+from anjani import plugin, command
 from anjani.util.tg import build_button
 from anjani.util.twa import TWA_V2
 from anjani.util.db import AsyncMysqlClient, AsyncRedisClient
@@ -88,10 +88,12 @@ class BeeconPlugin(plugin.Plugin):
         if checkin_keyword:
             chat_id = chat.id
             from_user = message.from_user
+            cmd = json.loads(checkin_keyword).get("command")
+            self.log.debug("Checking keyword: %s, command: %s", checkin_keyword, cmd)
 
             payloads = await self._construct_user_api_payloads(from_user)
             payloads.update({
-                "command": checkin_keyword,
+                "command": cmd,
                 "targetId": chat_id,
                 "targetType": 0,
             })
@@ -190,7 +192,7 @@ class BeeconPlugin(plugin.Plugin):
         return None
 
 
-    @listener.filters(filters.group)
+    @command.filters(filters.group)
     async def cmd_checkin(self, ctx: command.Context) -> Optional[str]:
         msg = ctx.message
 
@@ -257,7 +259,7 @@ class BeeconPlugin(plugin.Plugin):
         return payloads
 
 
-    @listener.filters(filters.group)
+    @command.filters(filters.group)
     async def cmd_invite(self, ctx: command.Context) -> Optional[str]:
         msg = ctx.message
 
