@@ -71,18 +71,22 @@ class BeeconPlugin(plugin.Plugin):
                     reply_context = await self.text(None, "invite-link", invite_link)
                     await message.reply(reply_context)
 
-        checkin_cmd = await self.bot.redis.get(f"checkin_{chat.id}")
-        if not checkin_cmd:
+        checkin_word = await self.bot.redis.get(f"checkin_{chat.id}")
+
+        self.log.info("Debug checking: %s", checkin_word)
+
+        if not checkin_word:
             return None
 
         try:
+            checkin_cmd = checkin_word.decode("utf-8")
             cmd = checkin_cmd[1:-1]
+
             if cmd != message.text:
                 return None
 
             chat_id = chat.id
             from_user = message.from_user
-            checkin_cmd = checkin_cmd.decode("utf-8")
             self.log.debug("Checking keyword: %s", checkin_cmd)
 
             payloads = await self._construct_user_api_payloads(from_user)
