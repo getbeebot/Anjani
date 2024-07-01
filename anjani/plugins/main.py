@@ -297,8 +297,7 @@ class Main(plugin.Plugin):
                         "botId": bot_id
                     }
 
-                    api = util.apiclient.APIClient.init_from_env()
-                    awards = await api.distribute_join_rewards(payloads)
+                    awards = await self.bot.apiclient.distribute_join_rewards(payloads)
                     if awards:
                         reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
                         project_url = await twa.get_chat_project_link(group_id, bot_id)

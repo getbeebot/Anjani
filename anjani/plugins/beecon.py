@@ -1,9 +1,6 @@
 import json
 from datetime import datetime, timezone
 
-import websockets
-from websockets.client import connect
-
 import aiofiles
 import aiofiles.os as aio_os
 import os
@@ -24,8 +21,8 @@ from pyrogram.enums.parse_mode import ParseMode
 
 from anjani import listener, plugin, command
 from anjani.util.tg import build_button
-from anjani.util.twa import TWA
-from anjani.util.apiclient import APIClient
+from anjani.util.twa import TWA_V2
+from anjani.util.db import AsyncMysqlClient, AsyncRedisClient
 
 import boto3
 
@@ -40,8 +37,13 @@ class BeeconPlugin(plugin.Plugin):
     aws_ak = os.getenv("AWS_AK")
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
-    twa = TWA()
-    api = APIClient.init_from_env()
+    twa = TWA_V2
+
+    async def on_load(self) -> None:
+        self.twa = TWA_V2(AsyncMysqlClient.init_from_env(), AsyncRedisClient.init_from_env())
+
+    async def on_stop(self) -> None:
+        await self.twa.ensure_db_closed()
 
     async def on_message(self, message: Message) -> None:
         data = "".join(str(message).split())
@@ -75,7 +77,7 @@ class BeeconPlugin(plugin.Plugin):
 
             if code:
                 payloads = { "botId": self.bot.uid, "inviteCode": code }
-                invite_link = await self.api.get_invite_link(payloads)
+                invite_link = await self.bot.apiclient.get_invite_link(payloads)
 
                 if invite_link:
                     reply_context = await self.text(None, "invite-link", invite_link)
@@ -102,7 +104,7 @@ class BeeconPlugin(plugin.Plugin):
                 )
             ]])
 
-            reply_context = await self.api.checkin(payloads)
+            reply_context = await self.bot.apiclient.checkin(payloads)
             reply_msg = await message.reply(
                 text=reply_context,
                 reply_to_message_id=message.id,
@@ -215,7 +217,7 @@ class BeeconPlugin(plugin.Plugin):
                 )
             ]]
 
-            reply_text = await self.api.checkin(payloads)
+            reply_text = await self.bot.apiclient.checkin(payloads)
 
             await ctx.respond(
                 reply_text,
@@ -264,7 +266,7 @@ class BeeconPlugin(plugin.Plugin):
 
         try:
             project_id = await self.twa.get_chat_project_id(group_id)
-            project_link = await self.twa.generate_project_detail_link(project_id, self.bot.uid)
+            project_link = self.twa.generate_project_detail_link(project_id, self.bot.uid)
             button = [[InlineKeyboardButton("View more", url=project_link)]]
 
             payloads = {
@@ -274,7 +276,7 @@ class BeeconPlugin(plugin.Plugin):
                 "size": top_number,
             }
 
-            (invited_number, rewards, reward_name) = await self.api.get_invite_log(payloads)
+            (invited_number, rewards, reward_name) = await self.bot.apiclient.get_invite_log(payloads)
 
             reply_text = "Sorry, you havn't inivte others yet."
             if invited_number and rewards and reward_name:

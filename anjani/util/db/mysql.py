@@ -1,12 +1,9 @@
 from os import getenv
-from pathlib import Path
 import logging
 from typing import Any, Dict, Sequence
 
-from dotenv import load_dotenv
 from mysql.connector.aio import connect
 
-from anjani import DEFAULT_CONFIG_PATH
 
 class AsyncMysqlClient:
     def __init__(self, host: str, port: int, user: str, password: str, database: str) -> None:
@@ -36,6 +33,7 @@ class AsyncMysqlClient:
                 user=self.user, password=self.password,
                 database=self.database,
                 auth_plugin="mysql_native_password")
+
         except Exception as e:
             self.log.error("Error connecting to MySQL: %s", e)
             self.conn = None

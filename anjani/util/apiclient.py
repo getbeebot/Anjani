@@ -51,9 +51,6 @@ class APIClient:
             else:
                self.log.error("Distribute join rewards error: %s", await resp.text())
 
-        if not self.http.closed:
-            await self.http.close()
-
         return rewards
 
     async def create_project(self, payloads: dict) -> Optional[int]:
@@ -79,9 +76,6 @@ class APIClient:
             else:
                 self.log.error("Create project error: %s", await resp.text())
 
-        if not self.http.closed:
-            await self.http.close()
-
         return project_id
 
     async def get_invite_link(self, payloads: dict) -> Optional[str]:
@@ -104,9 +98,6 @@ class APIClient:
                 invite_link = res.get("inviteLink")
             else:
                 self.log.error("Get invite link error: %s", await resp.text())
-
-        if not self.http.closed:
-            await self.http.close()
 
         return invite_link
 
@@ -138,9 +129,6 @@ class APIClient:
             else:
                 self.log.error("Checkin unknow error: %s", await resp.text())
 
-        if not self.http.closed:
-            await self.http.close()
-
         return ret
 
     async def get_invite_log(self, payloads: dict) -> Optional[tuple]:
@@ -168,8 +156,5 @@ class APIClient:
                 reward_name = res.get("alias")
             else:
                 self.log.error("Get invite log error: %s", await resp.text())
-
-        if not self.http.closed:
-            await self.http.close()
 
         return (invited_number, rewards, reward_name)

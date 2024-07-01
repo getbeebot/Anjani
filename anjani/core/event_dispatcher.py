@@ -336,8 +336,8 @@ class EventDispatcher(MixinBase):
 
         payloads = json.loads(json.dumps(payloads))
 
-        apiclient = util.apiclient.APIClient.init_from_env()
-        project_id = await apiclient.create_project(payloads)
+        # apiclient = util.apiclient.APIClient.init_from_env()
+        project_id = await self.apiclient.create_project(payloads)
 
         if not project_id:
             err_msg = await get_template("group-init-failed")
@@ -445,8 +445,8 @@ class EventDispatcher(MixinBase):
                         "inviteLink": invite_link.invite_link,
                         "botId": self.uid,
                     }
-                    api = util.apiclient.APIClient.init_from_env()
-                    rewards = await api.distribute_join_rewards(payloads)
+                    # api = util.apiclient.APIClient.init_from_env()
+                    rewards = await self.apiclient.distribute_join_rewards(payloads)
                     reply_text = await get_template("rewards-claimed")
                     if rewards:
                         reply_text = reply_text.format(rewards=rewards, mention=from_user.mention)

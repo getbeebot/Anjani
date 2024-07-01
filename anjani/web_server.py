@@ -21,7 +21,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from .util.config import Config
-from .util.twa import TWA
+from .util.twa import TWA, TWA_V2
 from .language import get_template
 
 from .server.tgclient import TGClient
@@ -131,6 +131,7 @@ async def auto_push_notification():
         bot_id = bot.id
 
         twa = TWA()
+
         rows = await twa.get_group_id_with_project(bot_id)
         if not rows:
             log.warning("There's not project to push notification")
@@ -190,6 +191,7 @@ async def auto_push_leaderboard():
         bot_id = bot.id
 
         twa = TWA()
+
         rows = await twa.get_group_id_with_project(bot_id)
         if not rows:
             log.warning("There's not project to push notification")
@@ -233,6 +235,7 @@ async def auto_push_leaderboard():
                         log.error("Get user rank error with java api %s", await resp.text())
     except Exception as e:
         log.error(f"Leaderboard push error: {e}")
+
 
 async def member_check_handler(request: BaseRequest) -> Response:
     ret_data = { "ok": False }
