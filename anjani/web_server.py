@@ -14,14 +14,12 @@ from aiohttp.web import Response, BaseRequest
 
 import aiohttp_cors
 
-import asyncio
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from .util.config import Config
-from .util.twa import TWA, TWA_V2
+from .util.twa import TWA
 from .language import get_template
 
 from .server.tgclient import TGClient
