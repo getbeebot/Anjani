@@ -76,16 +76,17 @@ class BeeconPlugin(plugin.Plugin):
         if checkin_cmd:
             chat_id = chat.id
             from_user = message.from_user
+            checkin_cmd = checkin_cmd.decode("utf-8")
             self.log.debug("Checking keyword: %s", checkin_cmd)
 
             payloads = await self._construct_user_api_payloads(from_user)
             payloads.update({
-                "command": checkin_cmd,
+                "command": checkin_cmd[1:-1],
                 "targetId": chat_id,
                 "targetType": 0,
             })
 
-            project_id = await self.bot.mysql.query_project_id_by_chat_id(chat_id, self.bot.uid)
+            project_id = await self.bot.mysql.query_project_id_by_chat_id(chat_id)
             project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
             button = InlineKeyboardMarkup([[

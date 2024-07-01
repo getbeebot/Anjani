@@ -315,7 +315,7 @@ class Main(plugin.Plugin):
                     awards = await self.bot.apiclient.distribute_join_rewards(payloads)
                     if awards:
                         reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
-                        project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id, bot_id)
+                        project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id )
                         project_url= util.misc.generate_project_detail_link(project_id, bot_id)
 
                         project_btn = InlineKeyboardMarkup([[
@@ -420,7 +420,7 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        is_exist = await self.bot.mysql.query_project_id_by_chat_id(chat.id, self.bot.uid)
+        is_exist = await self.bot.mysql.query_project_id_by_chat_id(chat.id)
         # if not is_exist:
         #     pass
 
