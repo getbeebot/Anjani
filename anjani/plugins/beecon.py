@@ -71,9 +71,16 @@ class BeeconPlugin(plugin.Plugin):
                     reply_context = await self.text(None, "invite-link", invite_link)
                     await message.reply(reply_context)
 
-        checkin_cmd = await self.bot.redis.get(f"checkin_{chat.id}")
+        checkin_keyword = await self.bot.redis.get(f"checkin_{chat.id}")
+        if not checkin_keyword:
+            return None
 
-        if checkin_cmd:
+        try:
+            checkin_cmd = checkin_keyword.decode("utf-8")
+            cmd = checkin_cmd[1:-1]
+            if cmd != message.text:
+                return None
+
             chat_id = chat.id
             from_user = message.from_user
             checkin_cmd = checkin_cmd.decode("utf-8")
@@ -105,8 +112,11 @@ class BeeconPlugin(plugin.Plugin):
             )
             # auto delete check in message
             # loop = asyncio.get_running_loop()
-            self.bot.loop.create_task(self._delete_msg(chat_id, message.id, 60))
+            # self.bot.loop.create_task(self._delete_msg(chat_id, message.id, 60))
             self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
+        except Exception as e:
+                self.log.error("Keyword checkin error: %s", e)
+
 
     async def _delete_msg(self, chat_id: int, message_id: int, delay: int):
         if not delay:
