@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import os
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.enums import ChatType
 from pyrogram.errors import PeerIdInvalid
 
 import aiohttp
@@ -331,6 +332,11 @@ async def send_message_handler(request: BaseRequest) -> Response:
             uri = config.TWA_LINK
 
         button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
+
+        chat = await tgclient.client.get_chat(chat_id)
+        if chat.type == ChatType.CHANNEL:
+            log.warning("Chat type is channel, not sending notification. Channel: %s, content: %s", chat.title, payloads)
+            return
 
         content: str = ""
         notify_type = data.get("notifyType")
