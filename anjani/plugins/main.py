@@ -248,42 +248,42 @@ class Main(plugin.Plugin):
             except MessageNotModified:
                 pass
 
-    @listener.filters(filters.regex(r"addme"))
+    @listener.filters(filters.regex(r"addme|forkme"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
-        """ add me to group or channel"""
+        match = query.matches[0].group()
         chat = query.message.chat
-        group_btn_text = await self.text(None, "add-me-to-group", noformat=True)
-        channel_btn_text = await self.text(None, "add-me-to-channel", noformat=True)
-        buttons = InlineKeyboardMarkup([
-            [InlineKeyboardButton(text=group_btn_text, url=f"t.me/{self.bot.user.username}?startgroup=true")],
-            [InlineKeyboardButton(text=channel_btn_text, url=f"t.me/{self.bot.user.username}?startchannel=true")]
-        ])
-        group_or_channel = await self.text(None, "group-or-channel", noformat=True)
-        await self.bot.client.send_message(
+
+        if match == "addme":
+            group_btn_text = await self.text(None, "add-me-to-group", noformat=True)
+            channel_btn_text = await self.text(None, "add-me-to-channel", noformat=True)
+            buttons = InlineKeyboardMarkup([
+                [InlineKeyboardButton(text=group_btn_text, url=f"t.me/{self.bot.user.username}?startgroup=true")],
+                [InlineKeyboardButton(text=channel_btn_text, url=f"t.me/{self.bot.user.username}?startchannel=true")]
+            ])
+            group_or_channel = await self.text(None, "group-or-channel", noformat=True)
+            await self.bot.client.send_message(
+                    chat.id,
+                    group_or_channel,
+                    reply_markup=buttons,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+        elif match == "forkme":
+            btn_text = await self.text(None, "forkme-contact-button", noformat=True)
+            btn_link = await self.text(None, "forkme-contact-link", noformat=True)
+            forkme_desc = await self.text(None, "forkme-description", noformat=True)
+
+            button = InlineKeyboardMarkup([[
+                InlineKeyboardButton(text=btn_text, url=btn_link)
+            ]])
+
+            await self.bot.client.send_message(
                 chat.id,
-                group_or_channel,
-                reply_markup=buttons,
-                parse_mode=ParseMode.MARKDOWN
+                forkme_desc,
+                reply_markup=button,
+                parse_mode=ParseMode.MARKDOWN,
             )
-
-    @listener.filters(filters.regex(r"forkme"))
-    async def on_callback_query(self, query: CallbackQuery) -> None:
-        """Fork me for multi-merchant"""
-        chat = query.message.chat
-        btn_text = await self.text(None, "forkme-contact-button", noformat=True)
-        btn_link = await self.text(None, "forkme-contact-link", noformat=True)
-        forkme_desc = await self.text(None, "forkme-description", noformat=True)
-
-        button = InlineKeyboardMarkup([[
-            InlineKeyboardButton(text=btn_text, url=btn_link)
-        ]])
-
-        await self.bot.client.send_message(
-            chat.id,
-            forkme_desc,
-            reply_markup=button,
-            parse_mode=ParseMode.MARKDOWN,
-        )
+        else:
+            pass
 
     async def cmd_start(self, ctx: command.Context) -> Optional[str]:
         """Bot start command"""
