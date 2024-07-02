@@ -42,7 +42,6 @@ from pyrogram.types import (
 )
 
 from anjani import command, filters, listener, plugin, util
-from anjani.util.twa import TWA
 from .language import LANG_FLAG
 
 if TYPE_CHECKING:
@@ -249,16 +248,30 @@ class Main(plugin.Plugin):
             except MessageNotModified:
                 pass
 
+    @listener.filters(filters.regex(r"addme"))
+    async def on_callback_query(self, query: CallbackQuery) -> None:
+        """ add me to group or channel"""
+        chat = query.message.chat
+        group_btn_text = await self.text(None, "add-me-to-group", noformat=True)
+        channel_btn_text = await self.text(None, "add-me-to-channel", noformat=True)
+        buttons = InlineKeyboardMarkup([
+            [InlineKeyboardButton(text=group_btn_text, url=f"t.me/{self.bot.user.username}?startgroup=true")],
+            [InlineKeyboardButton(text=channel_btn_text, url=f"t.me/{self.bot.user.username}?startchannel=true")]
+        ])
+        group_or_channel = await self.text(None, "group-or-channel", noformat=True)
+        await self.bot.client.send_message(
+                chat.id,
+                group_or_channel,
+                reply_markup=buttons,
+                parse_mode=ParseMode.MARKDOWN
+            )
+
     async def cmd_start(self, ctx: command.Context) -> Optional[str]:
         """Bot start command"""
         chat = ctx.chat
 
-        twa = TWA()
-
         guide_img_link = await self.text(None, "guide-img", noformat=True)
         engage_img_link = await self.text(None, "engage-img", noformat=True)
-
-        self.log.error(f"guide: {guide_img_link}, engage: {engage_img_link}")
 
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             if ctx.input and ctx.input == "help":
@@ -282,7 +295,45 @@ class Main(plugin.Plugin):
                         ctx.respond(await self.text(chat.id, "language-set-succes", LANG_FLAG["en"])),
                     )
 
-            if ctx.input:
+            if ctx.input and ctx.input != "true":
+                self.log.info("Start inputs %s", ctx.input)
+
+                args = util.misc.decode_args(ctx.input)
+                if isinstance(args, list):
+                    claim_reply = await self.text(None, "claim-reply", noformat=True)
+                    await ctx.respond(claim_reply)
+                    group_id = args[0]
+                    invite_link = args[1]
+                    bot_id = self.bot.uid
+                    payloads = {
+                        "chatId": group_id,
+                        "tgUserId": chat.id,
+                        "inviteLink": invite_link,
+                        "botId": bot_id
+                    }
+
+                    awards = await self.bot.apiclient.distribute_join_rewards(payloads)
+                    if awards:
+                        reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
+                        project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id )
+                        project_url= util.misc.generate_project_detail_link(project_id, bot_id)
+
+                        project_btn = InlineKeyboardMarkup([[
+                            InlineKeyboardButton(
+                                text=reward_btn_text,
+                                url=project_url
+                            )
+                        ]])
+                        reply_text = await self.text(None, "rewards-claimed", mention=ctx.author.mention, rewards=awards)
+                        await self.bot.client.send_message(
+                            chat_id=group_id,
+                            text=reply_text,
+                            reply_markup=project_btn,
+                            parse_mode=ParseMode.MARKDOWN
+                        )
+                        return None
+
+
                 rules_re = re.compile(r"rules_(.*)")
                 if rules_re.search(ctx.input):
                     plug: "Rules" = self.bot.plugins["Rules"]  # type: ignore
@@ -315,14 +366,14 @@ class Main(plugin.Plugin):
             buttons: List[InlineKeyboardButton] = []
 
             group_buttons = []
-            group_projects = await twa.get_user_owned_groups(chat.id, self.bot.uid)
+            group_projects = await self.bot.mysql.query_user_owned_groups(chat.id, self.bot.uid)
             if not group_projects:
                 pass
             else:
                 line_buttons = []
                 for row in group_projects:
                     (project_id, group_name) = row
-                    project_link = twa.generate_project_detail_link(project_id, self.bot.uid)
+                    project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
                     group_button = InlineKeyboardButton(text=group_name, url=project_link)
                     line_buttons.append(group_button)
                 # Two group button one line
@@ -337,7 +388,8 @@ class Main(plugin.Plugin):
                 [
                     InlineKeyboardButton(  # Add bot as Admin button
                         text=await self.text(chat.id, "add-to-group-button"),
-                        url=f"t.me/{self.bot.user.username}?startgroup=true",
+                        # url=f"t.me/{self.bot.user.username}?startgroup=true",
+                        callback_data="addme"
                     ),
                 ],
                 [
@@ -368,7 +420,7 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        is_exist = await twa.get_chat_project_id(chat.id)
+        is_exist = await self.bot.mysql.query_project_id_by_chat_id(chat.id)
         # if not is_exist:
         #     pass
 
@@ -377,7 +429,7 @@ class Main(plugin.Plugin):
         while counter < 5 and not project_id:
             await asyncio.sleep(1)
             counter += 1
-            project_id = await twa.get_chat_project_id(chat.id)
+            project_id = await self.bot.mysql.query_project_id_by_chat_id(chat.id)
 
         # no project for group, error exception
         if not project_id:
@@ -394,12 +446,12 @@ class Main(plugin.Plugin):
             )
             return None
 
-        project_link = twa.generate_project_detail_link(project_id, self.bot.uid)
+        project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
         buttons = [[InlineKeyboardButton(text=await self.text(chat.id, "create-project-button"),url=project_link)]]
 
-        tasks = await twa.get_chat_tasks(chat.id)
-        participants = await twa.get_chat_activity_participants(chat.id)
+        tasks = await self.bot.mysql.query_project_tasks(chat.id)
+        participants = await self.bot.mysql.query_project_participants(chat.id)
 
         if tasks and participants:
             group_context = await self.text(chat.id, "group-start-pm", noformat=True)
@@ -424,6 +476,24 @@ class Main(plugin.Plugin):
             {"$set": {"language": language}},
             upsert=True,
         )
+
+    async def _distribute_rewards(self, uri: str, payloads: dict) -> Optional[str]:
+        awards = None
+        try:
+            headers = {
+                "Content-Type": "application/json",
+                "Botid": str(self.bot.uid),
+            }
+            self.log.info(f"Java API for inviting rewards request: payloads - {payloads}, headers - {headers}")
+            async with self.bot.http.put(uri, json=payloads, headers=headers) as resp:
+                self.log.info(f"Java API response: %s", await resp.text())
+                res = await resp.json()
+                data = res.get("data")
+                awards = data.get("awardsDes") if data else None
+        except Exception as e:
+            self.log.error("Java API distribute error: %s", e)
+
+        return awards
 
     async def cmd_help(self, ctx: command.Context) -> None:
         """Bot plugins helper"""

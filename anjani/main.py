@@ -63,7 +63,7 @@ def _setup_log() -> None:
 
     if log_color:
         formatter = colorlog.ColoredFormatter(
-            "  %(log_color)s%(levelname)-8s%(reset)s  |  "
+            "  %(log_color)s %(asctime)s %(levelname)-8s%(reset)s  |  "
             "%(name)-15s  |  %(log_color)s%(message)s%(reset)s"
         )
     else:
@@ -87,7 +87,6 @@ def _setup_log() -> None:
     logging.getLogger("botocore").setLevel(logging.WARNING)
     logging.getLogger("boto3").setLevel(logging.WARNING)
     logging.getLogger("s3transfer").setLevel(logging.WARNING)
-    logging.getLogger("mysql").setLevel(logging.WARNING)
 
 
 async def client_server(loop) -> None:

@@ -289,7 +289,6 @@ language-help: |
   You can choose your language preference!\n
   **Available languages:**
   - 🇺🇸 English.
-  - 🇨🇳 中文
   Commands:
   ×  /setlang | /lang | /language : set your preferred language.\n
   **Note**
@@ -711,3 +710,17 @@ checkin-button: "👀 View more rewards"
 engage-img: "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
 guide-img: "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/stepbystep.png"
 #endreion
+
+#region rewards
+rewards-to-claim-button: "Verify you are human and claim."
+rewards-to-claim: "Hey there {}, there're rewards for your joining."
+rewards-claimed: "Thank you for joining, {mention}, **{rewards}** has distributed to your account"
+rewards-msg-button: "Engage more, earn more"
+claim-reply: "Verify success, start distributing your rewards..."
+#endregion
+
+#region addme
+add-me-to-group: "Add me to group"
+add-me-to-channel: "Add me to channel"
+group-or-channel: "Group or channel?"
+#endregion

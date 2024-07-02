@@ -22,6 +22,9 @@ import aiohttp
 import pyrogram
 
 from anjani.util.config import Config
+from anjani.util.apiclient import APIClient
+from anjani.util.db import MysqlPoolClient
+from anjani.util.db import AsyncRedisClient
 
 from .command_dispatcher import CommandDispatcher
 from .database_provider import DatabaseProvider
@@ -38,6 +41,9 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
     config: Config
     loop: asyncio.AbstractEventLoop
     stopping: bool
+    apiclient: APIClient
+    mysql: MysqlPoolClient
+    redis: AsyncRedisClient
 
     def __init__(self, config: Config):
         self.config = config
@@ -50,6 +56,9 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
 
         # Initialize aiohttp session last in case another mixin fails
         self.http = aiohttp.ClientSession()
+        self.apiclient = APIClient.init_from_env()
+        self.mysql = MysqlPoolClient.init_from_env()
+        self.redis = AsyncRedisClient.init_from_env()
 
     @classmethod
     async def init_and_run(
@@ -75,6 +84,11 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
             await self.dispatch_event("stop")
             if self.client.is_connected:
                 await self.client.stop()
+
+
+        await self.mysql.close()
+        await self.redis.close()
+        await self.apiclient.http.close()
 
         await self.http.close()
         await self.db.close()

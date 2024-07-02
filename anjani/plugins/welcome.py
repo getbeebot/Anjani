@@ -49,7 +49,6 @@ from anjani.util.tg import (
     parse_button,
     revert_button,
 )
-from anjani.util.twa import TWA
 
 
 class Greeting(plugin.Plugin):
@@ -162,7 +161,8 @@ class Greeting(plugin.Plugin):
                     if button:
                         button = build_button(button)
                     else:
-                        url = await TWA.get_chat_project_link(chat.id, self.bot.uid)
+                        project_id = await self.bot.mysql.query_project_id_by_chat_id(chat.id, self.bot.uid)
+                        url = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
                         button = build_button([("🕹 Enter", url, False)])
                     msg = None

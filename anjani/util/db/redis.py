@@ -33,6 +33,9 @@ class AsyncRedisClient:
             self.connection = None
 
     async def get(self, key):
+        if not self.connection:
+            await self.connect()
+
         if self.connection:
             return await self.connection.get(key)
         else:
@@ -40,12 +43,18 @@ class AsyncRedisClient:
             return None
 
     async def set(self, key, value):
+        if not self.connection:
+            await self.connect()
+
         if self.connection:
             await self.connection.set(key, value)
         else:
             self.log.error("Not connected to Redis server!")
 
     async def delete(self, key):
+        if not self.connection:
+            await self.connect()
+
         if self.connection:
             try:
                 return await self.connection.delete(key)

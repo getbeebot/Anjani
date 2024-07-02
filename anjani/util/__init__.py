@@ -26,6 +26,7 @@ from . import (  # skipcq: PY-W2000
     tg,
     time,
     types,
+    apiclient,
 )
 
 run_sync = async_helper.run_sync
