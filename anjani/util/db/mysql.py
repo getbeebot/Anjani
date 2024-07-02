@@ -121,7 +121,7 @@ class MysqlPoolClient:
             return None
 
     async def retrieve_group_id_with_project(self, bot_id: int):
-        sql = "SELECT DISTINCT bp.id, bp.target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = bp.target_id WHERE bp.target_id IS NOT NULL AND tutg.bot_id=%s"
+        sql = "SELECT DISTINCT bp.id, bp.target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = bp.target_id WHERE bp.target_id IS NOT NULL AND tutg.bot_id=%s AND tutg.chat_type=0"
         res = await self.query(sql, (bot_id, ))
         return res
 
