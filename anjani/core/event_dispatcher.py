@@ -404,6 +404,10 @@ class EventDispatcher(MixinBase):
 
 
             if updated.new_chat_member and updated.invite_link:
+                # do not push notification to channel
+                if chat.type == ChatType.CHANNEL:
+                    return None
+
                 from_user = updated.from_user
                 invite_link = updated.invite_link
 
