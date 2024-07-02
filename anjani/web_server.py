@@ -353,6 +353,17 @@ async def send_message_handler(request: BaseRequest) -> Response:
         elif notify_type == 3:  # lottory draw winner announce
             template = await get_template("lottery-end")
             content = build_lottery_end_msg(template, **data)
+            luckdraw_img_link = await get_template("luckydraw-img")
+
+            await tgclient.send_photo(
+                chat_id,
+                luckdraw_img_link,
+                caption=content,
+                reply_markup=button
+            )
+            ret_data.update({"ok": True})
+            return web_response.json_response(ret_data)
+
         elif notify_type == 4:  # sending file to community admin
             filename = data.get("lotteryFileName")
             chat_id = data.get("owner")

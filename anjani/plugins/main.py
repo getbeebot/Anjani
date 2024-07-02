@@ -266,6 +266,25 @@ class Main(plugin.Plugin):
                 parse_mode=ParseMode.MARKDOWN
             )
 
+    @listener.filters(filters.regex(r"forkme"))
+    async def on_callback_query(self, query: CallbackQuery) -> None:
+        """Fork me for multi-merchant"""
+        chat = query.message.chat
+        btn_text = await self.text(None, "forkme-contact-button", noformat=True)
+        btn_link = await self.text(None, "forkme-contact-link", noformat=True)
+        forkme_desc = await self.text(None, "forkme-description", noformat=True)
+
+        button = InlineKeyboardMarkup([[
+            InlineKeyboardButton(text=btn_text, url=btn_link)
+        ]])
+
+        await self.bot.client.send_message(
+            chat.id,
+            forkme_desc,
+            reply_markup=button,
+            parse_mode=ParseMode.MARKDOWN,
+        )
+
     async def cmd_start(self, ctx: command.Context) -> Optional[str]:
         """Bot start command"""
         chat = ctx.chat
@@ -403,6 +422,12 @@ class Main(plugin.Plugin):
                     )
 
                 ],
+                [
+                    InlineKeyboardButton(
+                        text=await self.text(None, "forkme-button", noformat=True),
+                        callback_data="forkme",
+                    )
+                ]
                 # [
                 #     InlineKeyboardButton(
                 #         text=await self.text(chat.id, "language-button"),
