@@ -197,10 +197,14 @@ class Main(plugin.Plugin):
 
         return pairs
 
-    @listener.filters(filters.regex(r"help_(.*)"))
+    @listener.filters(filters.regex(r"help_(.*)|(addme)|(forkme)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
         """Bot helper button"""
         match = query.matches[0].group(1)
+
+        if not match:
+            match = query.matches[0].group()
+
         chat = query.message.chat
 
         if match == "back":
@@ -218,6 +222,35 @@ class Main(plugin.Plugin):
                 await query.message.delete()
             except MessageDeleteForbidden:
                 await query.answer("I can't delete the message")
+        elif match == "addme":
+            group_btn_text = await self.text(None, "add-me-to-group", noformat=True)
+            channel_btn_text = await self.text(None, "add-me-to-channel", noformat=True)
+            buttons = InlineKeyboardMarkup([
+                [InlineKeyboardButton(text=group_btn_text, url=f"t.me/{self.bot.user.username}?startgroup=true")],
+                [InlineKeyboardButton(text=channel_btn_text, url=f"t.me/{self.bot.user.username}?startchannel=true")]
+            ])
+            group_or_channel = await self.text(None, "group-or-channel", noformat=True)
+            await self.bot.client.send_message(
+                    chat.id,
+                    group_or_channel,
+                    reply_markup=buttons,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+        elif match == "forkme":
+            btn_text = await self.text(None, "forkme-contact-button", noformat=True)
+            btn_link = await self.text(None, "forkme-contact-link", noformat=True)
+            forkme_desc = await self.text(None, "forkme-description", noformat=True)
+
+            button = InlineKeyboardMarkup([[
+                InlineKeyboardButton(text=btn_text, url=btn_link)
+            ]])
+
+            await self.bot.client.send_message(
+                chat.id,
+                forkme_desc,
+                reply_markup=button,
+                parse_mode=ParseMode.MARKDOWN,
+            )
         elif match:
             plug = re.compile(r"plugin\((\w+)\)").match(match)
             if not plug:
@@ -247,43 +280,6 @@ class Main(plugin.Plugin):
                 )
             except MessageNotModified:
                 pass
-
-    @listener.filters(filters.regex(r"addme|forkme"))
-    async def on_callback_query(self, query: CallbackQuery) -> None:
-        match = query.matches[0].group()
-        chat = query.message.chat
-
-        if match == "addme":
-            group_btn_text = await self.text(None, "add-me-to-group", noformat=True)
-            channel_btn_text = await self.text(None, "add-me-to-channel", noformat=True)
-            buttons = InlineKeyboardMarkup([
-                [InlineKeyboardButton(text=group_btn_text, url=f"t.me/{self.bot.user.username}?startgroup=true")],
-                [InlineKeyboardButton(text=channel_btn_text, url=f"t.me/{self.bot.user.username}?startchannel=true")]
-            ])
-            group_or_channel = await self.text(None, "group-or-channel", noformat=True)
-            await self.bot.client.send_message(
-                    chat.id,
-                    group_or_channel,
-                    reply_markup=buttons,
-                    parse_mode=ParseMode.MARKDOWN
-                )
-        elif match == "forkme":
-            btn_text = await self.text(None, "forkme-contact-button", noformat=True)
-            btn_link = await self.text(None, "forkme-contact-link", noformat=True)
-            forkme_desc = await self.text(None, "forkme-description", noformat=True)
-
-            button = InlineKeyboardMarkup([[
-                InlineKeyboardButton(text=btn_text, url=btn_link)
-            ]])
-
-            await self.bot.client.send_message(
-                chat.id,
-                forkme_desc,
-                reply_markup=button,
-                parse_mode=ParseMode.MARKDOWN,
-            )
-        else:
-            pass
 
     async def cmd_start(self, ctx: command.Context) -> Optional[str]:
         """Bot start command"""
