@@ -521,9 +521,9 @@ spamshield-view: |
 topic-button: Topic
 topic-help: |
   Telegram Topics makes your group divided into different chats within the group (or forum).
-  This plugin help you manage your topic on Anjani.
+  This plugin help you manage your topic on Beecon.
 
-  A Topic group need to set a default "action topic" that will be used for greetings and more other action by Anjani.
+  A Topic group need to set a default "action topic" that will be used for greetings and more other action by Beecon.
 
   **Admin Commands:**
   × /setactiontopic | /setdefaulttopic: Set the current topic as the action topic of this forum.
