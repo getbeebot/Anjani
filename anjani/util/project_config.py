@@ -1,10 +1,13 @@
 """Configurations for Project"""
 import logging
 import json
+
+from dataclasses import dataclass
 from .db import MysqlPoolClient
 
 log = logging.getLogger("BotNotificationConfig")
 
+@dataclass
 class BotNotificationConfig:
     def __init__(
         self,
@@ -25,9 +28,6 @@ class BotNotificationConfig:
         self.draw = draw
         self.verify = verify
         self.newtask = newtask
-
-    def __dict__(self):
-        return self.__dict__
 
     @classmethod
     def from_json(cls, json_data):

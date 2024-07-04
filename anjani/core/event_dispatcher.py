@@ -453,7 +453,7 @@ class EventDispatcher(MixinBase):
                     }
 
                     btn_text = await get_template("rewards-msg-button")
-                    project_link = util.misc.generate_project_detail_link(project_id)
+                    project_link = util.misc.generate_project_detail_link(project_id, self.uid)
                     button = InlineKeyboardMarkup([
                         [InlineKeyboardButton(text=btn_text, url=project_link)]
                     ])

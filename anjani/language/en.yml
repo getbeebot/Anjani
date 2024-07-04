@@ -735,6 +735,24 @@ forkme-description: |
   Make your own band, bot and UI with the same experience ✨
 #endregion
 
+
+#region project-config
+# disable
+overview-0-button: " overview 0"
+newdraw-0-button: "newdraw 0"
+userjoin-0-button: "userjoin 0"
+draw-0-button: "draw 0"
+verify-0-button: "verify 0"
+newtask-0-button: "newtask 0"
+# enable
+overview-1-button: "overview 1"
+newdraw-1-button: "newdraw 1"
+userjoin-1-button: "userjoin 1"
+draw-1-button: "draw 1"
+verify-1-button: "verify 1"
+newtask-1-button: "newtask 1"
+#endregion
+
 #region giveaway
 giveaway-title: "Giveaway"
 giveaway-button: "Join"
