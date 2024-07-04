@@ -365,16 +365,20 @@ class Main(plugin.Plugin):
 
             project_id = int(c_match.group(1))
 
-            config_str = await self.bot.redis.get(f"project_config_{project_id}")
+            query_key = f"project_config_{project_id}"
+            config_value = await self.bot.redis.get(query_key)
             if not project_config:
                 config = BotNotificationConfig(project_id)
                 config.__dict__
-                key = f"project_config_{project_id}"
-                value = json.dumps(config.__dict__)
-                await self.bot.reids.set(f"project_config_{project_id}", )
+                value = json.dumps(config.__dict__).encode("utf-8")
+                await self.bot.reids.set(query_key, value)
             else:
+                project_config = BotNotificationConfig.from_json(config_value.decode("utf-8"))
+                if c_match.group(2) and c_match.group(3):
+                    setting_key = c_match.group(3)
+                    project_config.__getattribute__(setting_key)
+            # TODO:
 
-            project_config = BotNotificationConfig.from_json(config_str)
             config_btns = await self.project_config_builder(project_id)
 
 
