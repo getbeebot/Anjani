@@ -161,7 +161,7 @@ class Greeting(plugin.Plugin):
                     if button:
                         button = build_button(button)
                     else:
-                        project_id = await self.bot.mysql.query_project_id_by_chat_id(chat.id)
+                        project_id = await self.bot.mysql.get_chat_project_id(chat.id)
                         url = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
                         button = build_button([("🕹 Enter", url, False)])

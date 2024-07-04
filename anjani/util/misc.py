@@ -102,7 +102,3 @@ def do_nothing(*args: Any, **kwargs: Any) -> None:
 
 class StopPropagation(Exception):
     """Exception that raised to stop propagating an event"""
-
-
-class InvalidArgumentError(Exception):
-    """Wrong argument type for web server request"""

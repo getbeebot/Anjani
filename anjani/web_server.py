@@ -1,8 +1,11 @@
+import os
 import base64
 import json
 import logging
+
 from datetime import datetime, timezone
-import os
+
+from typing import Dict, List
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums import ChatType
@@ -16,17 +19,16 @@ from aiohttp.web import Response, BaseRequest
 import aiohttp_cors
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from .util.config import Config
 from .util.misc import (
     generate_project_detail_link,
-    generate_project_leaderboard_link,
-    InvalidArgumentError
+    generate_project_leaderboard_link
 )
 from .util.apiclient import APIClient
 from .util.db import MysqlPoolClient, AsyncRedisClient
+from .util.project_config import BotNotificationConfig
 from .language import get_template
 
 from .server.tgclient import TGClient
@@ -112,74 +114,83 @@ async def start_server() -> None:
     await site.start()
     log.info(f"Web server listening on http://{host}:{port}")
 
-    cron_job()
+    await cron_job()
 
 
-def cron_job():
+async def cron_job():
     scheduler = AsyncIOScheduler()
 
-    # TODO: more flexible configuration
-    # trigger = CronTrigger(minute="*", second="*/10")
-    interval = config.AUTO_NOTIFY_INTERVAL
-    # trigger = IntervalTrigger(hours=interval)
-    trigger = IntervalTrigger(seconds=interval)
-    scheduler.add_job(auto_push_notification, trigger=trigger)
+    bot = await tgclient.client.get_me()
+    bot_id = bot.id
 
-    leaderboard_trigger = CronTrigger(day_of_week="sat", hour="14", minute="15")
-    scheduler.add_job(auto_push_leaderboard, trigger=leaderboard_trigger)
+    project_intervals = await get_project_intervals(bot_id)
+    for interval, projects in project_intervals.items():
+        trigger = IntervalTrigger(seconds=interval)
+        scheduler.add_job(push_overview, args = [projects, bot_id], trigger=trigger)
 
     scheduler.start()
 
+async def get_project_intervals(bot_id):
+    rows = await mysql.get_project_ids(bot_id)
 
-async def auto_push_notification():
-    try:
-        bot = await tgclient.client.get_me()
-        bot_id = bot.id
+    if not rows:
+        log.warn("Threre's not project to push notification")
+        return None
 
-        rows = await mysql.retrieve_group_id_with_project(bot_id)
+    res: Dict[int, List[tuple]] = {}
 
-        if not rows:
-            log.warning("There's not project to push notification")
+    for row in rows:
+        (project_id, group_id) = row
+        project_config = await BotNotificationConfig.get_project_config(mysql, project_id)
+
+        if not project_config:
+            project_config = BotNotificationConfig(project_id)
+
+        interval = project_config.overview_frequency
+        if not res.get(interval):
+            res.update({interval: [(project_id, group_id)]})
+        else:
+            res[interval].append((project_id, group_id))
+
+    return res
+
+async def push_overview(projects: List[tuple], bot_id: int):
+    for project in projects:
+        (project_id, group_id) = project
+        project_link = generate_project_detail_link(project_id, bot_id)
+        button = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
+        )
+        tasks = await mysql.get_project_tasks(project_id)
+        participants = await mysql.get_project_participants(project_id)
+
+        log.info(f"Auto push notification group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}")
+
+        if tasks and participants > 7:
+            group_context = await get_template("group-start-pm")
+            group_notify_msg = group_context.format(tasks=tasks,participants=participants)
+        elif tasks:
+            group_context = await get_template("group-notify-no-participants")
+            group_notify_msg = group_context.format(tasks=tasks)
+        else:
+            log.warn("Not meet nofity condition, skipped: %s", (group_id, project_id, bot_id))
             return
 
-        for row in rows:
-            (project_id, group_id) = row
-            project_link = generate_project_detail_link(project_id, bot_id)
-            button = InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
-            )
-            tasks = await mysql.query_project_tasks(group_id)
-            participants = await mysql.query_project_participants(group_id)
+        # delete last notification
+        pre_msg = await redis.get(f"notify_{group_id}")
+        if pre_msg:
+            await tgclient.client.delete_messages(group_id, int(pre_msg))
 
-            log.info(f"Auto push notification group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}")
+        engage_img = await get_template("engage-img")
 
-            if tasks and participants > 7:
-                group_context = await get_template("group-start-pm")
-                group_notify_msg = group_context.format(tasks=tasks,participants=participants)
-            elif tasks:
-                group_context = await get_template("group-notify-no-participants")
-                group_notify_msg = group_context.format(tasks=tasks)
-            else:
-                continue
-
-            # delete last notification
-            pre_msg = await redis.get(f"notify_{group_id}")
-            if pre_msg:
-                await tgclient.client.delete_messages(group_id, int(pre_msg))
-
-            engage_img = await get_template("engage-img")
-
-            msg = await tgclient.send_photo(
-                group_id,
-                engage_img,
-                caption=group_notify_msg,
-                reply_markup=button,
-            )
-            if msg:
-                await redis.set(f"notify_{group_id}", msg.id)
-
-    except Exception as e:
-        log.error(f"auto push notification error: {e}")
+        msg = await tgclient.send_photo(
+            group_id,
+            engage_img,
+            caption=group_notify_msg,
+            reply_markup=button,
+        )
+        if msg:
+            await redis.set(f"notify_{group_id}", msg.id)
 
 
 def sorted_by_rank(data):
@@ -195,7 +206,7 @@ async def auto_push_leaderboard():
         bot = await tgclient.client.get_me()
         bot_id = bot.id
 
-        rows = await mysql.retrieve_group_id_with_project(bot_id)
+        rows = await mysql.get_project_ids(bot_id)
 
         if not rows:
             log.warning("There's not project to push notification")
@@ -308,7 +319,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
         chat_type = payloads.get("type")
 
         if not chat_type:
-            raise InvalidArgumentError("No type argument, please checkout the request arguments.")
+            return web_response.json_response({"ok": False, "error": "No type argument, please checkout the request arguments."}, status=200)
 
         assert isinstance(chat_type, int), "type argument should be int, but got an non-int, please check it out"
 
@@ -320,7 +331,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
             chat_id = data.get("owner")
 
         if not chat_id:
-            raise InvalidArgumentError("No chat_id or owner, please checkout the request arguments.")
+            return web_response.json_response({"ok": False, "error": "No chat_id or owner, please checkout the request arguments."}, status=200)
 
         assert isinstance(chat_id, str) or isinstance(chat_id, int), "chatId/data.owner not found or not correct type"
 
@@ -333,10 +344,15 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
 
+        project_id = await mysql.get_chat_project_id(chat_id)
+        config = await BotNotificationConfig.get_project_config(mysql, project_id)
+        if not config:
+            config = BotNotificationConfig(project_id)
+
         chat = await tgclient.client.get_chat(chat_id)
         if chat.type == ChatType.CHANNEL:
             log.warning("Chat type is channel, not sending notification. Channel: %s, content: %s", chat.title, payloads)
-            return
+            return web_response.json_response({"ok": False, "error": "I'm not push notification to channel"}, status=200)
 
         content: str = ""
         notify_type = data.get("notifyType")
@@ -344,13 +360,13 @@ async def send_message_handler(request: BaseRequest) -> Response:
         engage_img_link = await get_template("engage-img")
 
         lottery_type = data.get("lotteryType")
-        if notify_type == 1:    # create lottery task
+        if notify_type == 1 and config.enable_new_draw_notify:    # create lottery task
             template = await get_template(f"lottery-create-{lottery_type}")
             content = build_lottery_create_msg(template, **data)
-        elif notify_type == 2:  # user entered the draw
+        elif notify_type == 2 and config.enable_user_join_notify:  # user entered the draw
             template = await get_template(f"lottery-join-{lottery_type}")
             content = build_lottery_join_msg(template, **data)
-        elif notify_type == 3:  # lottory draw winner announce
+        elif notify_type == 3 and config.enable_draw_annonce:  # lottory draw winner announce
             template = await get_template("lottery-end")
             content = build_lottery_end_msg(template, **data)
             luckdraw_img_link = await get_template("luckydraw-img")
@@ -376,7 +392,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
             ret_data.update({"ok": True})
             return web_response.json_response(ret_data)
-        elif notify_type == 5:
+        elif notify_type == 5 and config.enable_new_task:
             content = await get_template("task-creation")
             await tgclient.send_photo(
                 chat_id,
@@ -387,7 +403,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
             ret_data.update({"ok": True})
             return web_response.json_response(ret_data)
         else:
-            raise InvalidArgumentError("Not support notifyType")
+            log.warning("Not push notification for request: %s", payloads)
 
         # sending message
         log.info(f"sending message {content}")
@@ -531,7 +547,6 @@ async def check_bot_privilege(request: BaseRequest) -> Response:
         })
 
     return web_response.json_response(ret_data, status=200)
-
 
 async def send_alert_handler(request: BaseRequest) -> Response:
     ret_data = {"ok": False}

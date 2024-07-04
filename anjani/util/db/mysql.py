@@ -111,7 +111,7 @@ class MysqlPoolClient:
             values = (username, nickname, avatar, user_id)
             await self.update(sql, values)
 
-    async def query_project_id_by_chat_id(self, chat_id: int) -> int:
+    async def get_chat_project_id(self, chat_id: int) -> int:
         sql = "SELECT id FROM bot_project WHERE target_id=%s"
         row = await self.query_one(sql, (chat_id, ))
         if row:
@@ -120,25 +120,28 @@ class MysqlPoolClient:
         else:
             return None
 
-    async def retrieve_group_id_with_project(self, bot_id: int):
-        sql = "SELECT DISTINCT bp.id, bp.target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = bp.target_id WHERE bp.target_id IS NOT NULL AND tutg.bot_id=%s AND tutg.chat_type=0"
+    async def get_project_ids(self, bot_id: int):
+        sql = "SELECT DISTINCT bp.id, target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = bp.target_id WHERE bp.target_id IS NOT NULL AND tutg.bot_id=%s AND tutg.chat_type=0"
         res = await self.query(sql, (bot_id, ))
         return res
 
-    async def query_user_owned_groups(self, user_id: int, bot_id: int):
+    async def get_user_projects(self, user_id: int, bot_id: int):
         sql = "SELECT DISTINCT bp.id AS project_id, bp.name FROM bot_project AS bp JOIN tz_app_connect AS tac ON bp.owner_id = tac.user_id JOIN tz_user_tg_group AS tutg on bp.target_id = tutg.chat_id WHERE biz_user_id = %s AND bp.deleted = 0 AND tutg.bot_id = %s"
         values = (user_id, bot_id)
         res = await self.query(sql, values)
         return res
 
-    async def query_project_tasks(self, chat_id: int):
-        project_id = await self.query_project_id_by_chat_id(chat_id)
+    async def get_project_tasks(self, project_id: int):
         sql = "SELECT COUNT(*) FROM beebot.bot_task WHERE project_id = %s AND deleted <> 1"
         (count, )= await self.query_one(sql, (project_id, ))
         return count
 
-    async def query_project_participants(self, chat_id: int):
-        project_id = await self.query_project_id_by_chat_id(chat_id)
+    async def get_project_participants(self, project_id: int):
         sql = "SELECT COUNT(*) FROM beebot.bot_user_action WHERE project_id = %s"
         (count, ) = await self.query_one(sql, (project_id, ))
         return count
+
+    async def get_project_brief(self, project_id: int):
+        sql = "SELECT name, description FROM beebot.bot_project WHERE id = %s"
+        res = await self.query_one(sql, (project_id, ))
+        return res

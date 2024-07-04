@@ -359,6 +359,7 @@ class EventDispatcher(MixinBase):
                 "owner_tg_id": admin.id,
                 "bot_id": self.uid,
             })
+
             async with client.connect("ws://127.0.0.1:8080/ws") as ws:
                 try:
                     await ws.send(notify_msg)
@@ -366,6 +367,9 @@ class EventDispatcher(MixinBase):
                     self.log.info("Project create notify: %s", msg)
                 except websockets.ConnectionClosed:
                     pass
+
+            project_config = util.project_config.BotNotificationConfig(project_id)
+            await util.project_config.BotNotificationConfig.update_or_create_project_config(self.mysql, project_config)
 
     async def dispatch_event(
         self: "Anjani",
@@ -402,7 +406,6 @@ class EventDispatcher(MixinBase):
                 await self.save_chat_info(chat)
                 await self.create_project_on_join(updated)
 
-
             if updated.new_chat_member and updated.invite_link:
                 # do not push notification to channel
                 if chat.type == ChatType.CHANNEL:
@@ -411,8 +414,12 @@ class EventDispatcher(MixinBase):
                 from_user = updated.from_user
                 invite_link = updated.invite_link
 
-                is_verify = os.getenv("IS_VERIFY", False)
-                if is_verify:
+                project_id = await self.mysql.get_chat_project_id(chat.id)
+                config = await util.project_config.BotNotificationConfig.get_project_config(project_id)
+
+                self.log.debug("Chat %s(%s) project config: %s", chat.title, chat.id, config)
+
+                if config.enable_rewards_verify:
                     payloads = [chat.id, invite_link.invite_link]
 
                     verify_args = util.misc.encode_args(payloads)
@@ -438,12 +445,23 @@ class EventDispatcher(MixinBase):
                         "inviteLink": invite_link.invite_link,
                         "botId": self.uid,
                     }
+
+                    btn_text = await get_template("rewards-msg-button")
+                    project_link = util.misc.generate_project_detail_link(project_id)
+                    button = InlineKeyboardMarkup([
+                        [InlineKeyboardButton(text=btn_text, url=project_link)]
+                    ])
+
                     # api = util.apiclient.APIClient.init_from_env()
                     rewards = await self.apiclient.distribute_join_rewards(payloads)
                     reply_text = await get_template("rewards-claimed")
                     if rewards:
                         reply_text = reply_text.format(rewards=rewards, mention=from_user.mention)
-                        await self.client.send_message(chat.id, reply_text)
+                        await self.client.send_message(
+                            chat_id=chat.id,
+                            text=reply_text,
+                            reply_markup=button
+                        )
 
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():
