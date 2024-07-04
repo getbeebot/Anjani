@@ -17,6 +17,7 @@
 import os
 import asyncio
 import re
+import json
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, ClassVar, List, Optional
 
@@ -43,6 +44,7 @@ from pyrogram.types import (
 
 from anjani import command, filters, listener, plugin, util
 from .language import LANG_FLAG
+from anjani.util.project_config import BotNotificationConfig
 
 if TYPE_CHECKING:
     from .rules import Rules
@@ -357,11 +359,26 @@ class Main(plugin.Plugin):
             else:
                 raise ValueError("Unable to find project")
         elif match.startswith("config"):
-            config = re.compile(r"config_([0-9]+(_([a-zA-Z]+)_([0-9]+))?)").match(match)
-            if not config:
+            c_match = re.compile(r"config_(\d+)_?((\w+)_(\d+))").match(match)
+            if not c_match:
                 raise ValueError("Unable to find project config")
 
-            project_id = int(config.group(1))
+            project_id = int(c_match.group(1))
+
+            config_str = await self.bot.redis.get(f"project_config_{project_id}")
+            if not project_config:
+                config = BotNotificationConfig(project_id)
+                config.__dict__
+                key = f"project_config_{project_id}"
+                value = json.dumps(config.__dict__)
+                await self.bot.reids.set(f"project_config_{project_id}", )
+            else:
+
+            project_config = BotNotificationConfig.from_json(config_str)
+            config_btns = await self.project_config_builder(project_id)
+
+
+
 
 
         elif match:

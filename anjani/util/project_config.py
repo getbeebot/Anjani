@@ -1,6 +1,6 @@
 """Configurations for Project"""
 import logging
-
+import json
 from .db import MysqlPoolClient
 
 log = logging.getLogger("BotNotificationConfig")
@@ -9,22 +9,30 @@ class BotNotificationConfig:
     def __init__(
         self,
         project_id,
-        enable_overview=1,
-        overview_frequency=14400,
-        enable_new_draw_notify=1,
-        enable_user_join_notify=1,
-        enable_draw_annonce=1,
-        enable_rewards_verify=0,
-        enable_new_task=1
+        overview=1,
+        ovduration=14400,
+        newdraw=1,
+        userjoin=1,
+        draw=1,
+        verify=0,
+        newtask=1
     ):
         self.project_id = project_id
-        self.enable_overview = enable_overview
-        self.overview_frequency = overview_frequency
-        self.enable_new_draw_notify = enable_new_draw_notify
-        self.enable_user_join_notify = enable_user_join_notify
-        self.enable_draw_annonce = enable_draw_annonce
-        self.enable_rewards_verify = enable_rewards_verify
-        self.enable_new_task = enable_new_task
+        self.overview = overview
+        self.ovduration = ovduration
+        self.newdraw = newdraw
+        self.userjoin = userjoin
+        self.draw = draw
+        self.verify = verify
+        self.newtask = newtask
+
+    def __dict__(self):
+        return self.__dict__
+
+    @classmethod
+    def from_json(cls, json_data):
+        data = json.loads(json_data)
+        return cls(**data)
 
     @staticmethod
     async def get_project_config(mysql: MysqlPoolClient, project_id: int):
@@ -46,13 +54,13 @@ class BotNotificationConfig:
         if config:
             return BotNotificationConfig(
                 project_id=project_id,
-                enable_overview=config[0],
-                overview_frequency=config[1],
-                enable_new_draw_notify=config[2],
-                enable_user_join_notify=config[3],
-                enable_draw_annonce=config[4],
-                enable_rewards_verify=config[5],
-                enable_new_task=config[6]
+                overview=config[0],
+                ovduration=config[1],
+                newdraw=config[2],
+                userjoin=config[3],
+                draw=config[4],
+                verify=config[5],
+                newtask=config[6]
             )
 
     @staticmethod
@@ -76,13 +84,13 @@ class BotNotificationConfig:
             await mysql.update(
                 update_query,
                 (
-                    config.enable_overview,
-                    config.overview_frequency,
-                    config.enable_new_draw_notify,
-                    config.enable_user_join_notify,
-                    config.enable_draw_annonce,
-                    config.enable_rewards_verify,
-                    config.enable_new_task,
+                    config.overview,
+                    config.ovduration,
+                    config.newdraw,
+                    config.userjoin,
+                    config.draw,
+                    config.verify,
+                    config.newtask,
                     config.project_id
                 )
             )
@@ -103,12 +111,12 @@ class BotNotificationConfig:
                 insert_query,
                 (
                     config.project_id,
-                    config.enable_overview,
-                    config.overview_frequency,
-                    config.enable_new_draw_notify,
-                    config.enable_user_join_notify,
-                    config.enable_draw_annonce,
-                    config.enable_rewards_verify,
-                    config.enable_new_task
+                    config.overview,
+                    config.ovduration,
+                    config.newdraw,
+                    config.userjoin,
+                    config.draw,
+                    config.verify,
+                    config.newtask
                 )
             )
