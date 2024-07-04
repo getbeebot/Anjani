@@ -520,7 +520,7 @@ async def check_bot_privilege(request: BaseRequest) -> Response:
             "can_restrict_members",
             "can_change_info",
             "can_invite_users",
-            "can_pin_messages",
+            # "can_pin_messages",
         ]
 
         for privilege in privileges:

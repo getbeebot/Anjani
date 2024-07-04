@@ -331,7 +331,7 @@ class BeeconPlugin(plugin.Plugin):
         return
 
     async def on_inline_query(self, query: InlineQuery) -> None:
-        self.log.debug("inline query: %s", query)
+        self.log.debug("inline query: %s", "".join(str(query).split()))
 
         pattern = re.compile(r"giveaway:(\d+):(\d+)")
         match = pattern.search(query.query)
@@ -340,7 +340,6 @@ class BeeconPlugin(plugin.Plugin):
             task_id = match.group(2)
 
             task_url = util.misc.generate_task_detail_link(project_id, task_id, self.bot.uid)
-            self.log.error("Debugging project_id: %s, task_id: %s, url: %s", project_id, task_id, task_url)
 
             btn_text = await self.text(None, "giveaway-button")
             button = InlineKeyboardMarkup([
