@@ -411,7 +411,7 @@ class EventDispatcher(MixinBase):
                 invite_link = updated.invite_link
 
                 project_id = await self.mysql.get_chat_project_id(chat.id)
-                config = await util.project_config.BotNotificationConfig.get_project_config(project_id)
+                config = await util.project_config.BotNotificationConfig.get_project_config(self.mysql, project_id)
 
                 self.log.debug("Chat %s(%s) project config: %s", chat.title, chat.id, config)
 
