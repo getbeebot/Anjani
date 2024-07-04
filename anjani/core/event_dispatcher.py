@@ -407,10 +407,6 @@ class EventDispatcher(MixinBase):
                 await self.create_project_on_join(updated)
 
             if updated.new_chat_member and updated.invite_link:
-                # do not push notification to channel
-                if chat.type == ChatType.CHANNEL:
-                    return None
-
                 from_user = updated.from_user
                 invite_link = updated.invite_link
 
@@ -433,11 +429,21 @@ class EventDispatcher(MixinBase):
                     ]])
                     reply_text = await get_template("rewards-to-claim")
                     reply_text = reply_text.format(from_user.mention)
-                    await self.client.send_message(
-                        chat_id=chat.id,
-                        text=reply_text,
-                        reply_markup=button
-                    )
+                    if chat.type == ChatType.CHANNEL:
+                        try:
+                            await self.client.send_message(
+                                chat_id=from_user.id,
+                                text=reply_text,
+                                reply_markup=button
+                            )
+                        except Exception as e:
+                            self.log.warn("Unable to push notification %s to user %s, error: %s", reply_text, from_user, e)
+                    else:
+                        await self.client.send_message(
+                            chat_id=chat.id,
+                            text=reply_text,
+                            reply_markup=button
+                        )
                 else:
                     payloads = {
                         "chatId": chat.id,
@@ -452,16 +458,21 @@ class EventDispatcher(MixinBase):
                         [InlineKeyboardButton(text=btn_text, url=project_link)]
                     ])
 
-                    # api = util.apiclient.APIClient.init_from_env()
                     rewards = await self.apiclient.distribute_join_rewards(payloads)
                     reply_text = await get_template("rewards-claimed")
                     if rewards:
                         reply_text = reply_text.format(rewards=rewards, mention=from_user.mention)
-                        await self.client.send_message(
-                            chat_id=chat.id,
-                            text=reply_text,
-                            reply_markup=button
-                        )
+                        if chat.type == ChatType.CHANNEL:
+                            try:
+                                await self.client.send_message(from_user.id,reply_text)
+                            except Exception as e:
+                                self.log.warn("Unable to push notification %s to user %s, error: %s", reply_text, from_user, e)
+                        else:
+                            await self.client.send_message(
+                                chat_id=chat.id,
+                                text=reply_text,
+                                reply_markup=button
+                            )
 
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():
