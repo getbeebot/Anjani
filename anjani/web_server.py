@@ -214,8 +214,6 @@ async def auto_push_leaderboard():
 
         for row in rows:
             (project_id, group_id) = row
-            api_uri = os.getenv("API_URL")
-            url = f"{api_uri}/p/project/myRank"
 
             payloads = {
                 "projectId": project_id,
@@ -360,13 +358,13 @@ async def send_message_handler(request: BaseRequest) -> Response:
         engage_img_link = await get_template("engage-img")
 
         lottery_type = data.get("lotteryType")
-        if notify_type == 1 and config.enable_new_draw_notify:    # create lottery task
+        if notify_type == 1 and config.newdraw:    # create lottery task
             template = await get_template(f"lottery-create-{lottery_type}")
             content = build_lottery_create_msg(template, **data)
-        elif notify_type == 2 and config.enable_user_join_notify:  # user entered the draw
+        elif notify_type == 2 and config.userjoin:  # user entered the draw
             template = await get_template(f"lottery-join-{lottery_type}")
             content = build_lottery_join_msg(template, **data)
-        elif notify_type == 3 and config.enable_draw_annonce:  # lottory draw winner announce
+        elif notify_type == 3 and config.draw:  # lottory draw winner announce
             template = await get_template("lottery-end")
             content = build_lottery_end_msg(template, **data)
             luckdraw_img_link = await get_template("luckydraw-img")
@@ -392,7 +390,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
             ret_data.update({"ok": True})
             return web_response.json_response(ret_data)
-        elif notify_type == 5 and config.enable_new_task:
+        elif notify_type == 5 and config.newtask:
             content = await get_template("task-creation")
             await tgclient.send_photo(
                 chat_id,
