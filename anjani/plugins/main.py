@@ -232,7 +232,7 @@ class Main(plugin.Plugin):
         buttons: List[InlineKeyboardButton] = []
         for k, v in project_config.__dict__.items():
             # ignore project_id attribute
-            if k == "project_id" or k == "ovduration":
+            if k == "project_id":
                 continue
 
             btn_text = await self.text(None, f"{k}-{v}-button")
@@ -244,6 +244,24 @@ class Main(plugin.Plugin):
 
         configs = [buttons[i * 2 : (i + 1) * 2] for i in range((len(buttons) + 2 - 1) // 2)]
         return configs
+
+    async def duration_config_builder(self, project_id: int) -> List[List[InlineKeyboardButton]]:
+        project_config = await self.get_project_config(project_id)
+        if not project_config:
+            project_config = BotNotificationConfig(project_id)
+
+        one_hour = 3600
+        durations = [one_hour * i for i in range(1, 25)]
+        btns: List[InlineKeyboardButton] = []
+        for hr, secs in enumerate(durations):
+            btn_text = ""
+            if secs == project_config.ovduration:
+                btn_text += "✔️ "
+            btn_text += str(hr + 1)
+            btn = InlineKeyboardButton(text=btn_text, callback_data=f"help_config_{project_id}_ovduration_{secs}")
+            btns.append(btn)
+
+        return [btns[i * 3 : (i + 1) * 3] for i in range((len(btns) + 3 - 1) // 3)]
 
     async def get_project_config(self, project_id: int):
         query_key = f"project_config_{project_id}"
@@ -324,7 +342,7 @@ class Main(plugin.Plugin):
                 )
                 keyboard = InlineKeyboardMarkup(project_btns)
                 try:
-                    await query.edit_message_reply_markup(keyboard)
+                    await query.edit_message_text(text="Please choose one of community to setup", reply_markup=keyboard)
                 except MessageNotModified:
                     pass
             elif match_p == "back":
@@ -408,6 +426,22 @@ class Main(plugin.Plugin):
 
             if c_match.group(2) and c_match.group(3):
                 attr_key = c_match.group(2)
+
+                if attr_key == "ovduration":
+                    ovduration = c_match.group(3)
+                    setattr(project_config, attr_key, int(ovduration))
+                    await self.update_project_config(project_config)
+
+                    duration_btns = await self.duration_config_builder(project_id)
+                    duration_btns.append([InlineKeyboardButton(text=await self.text(None, "back-button"), callback_data=f"help_config_{project_id}")])
+                    try:
+                        text = "Please choose duration:"
+                        keyboard = InlineKeyboardMarkup(duration_btns)
+                        await query.edit_message_text(text=text,reply_markup=keyboard)
+                        return
+                    except Exception as e:
+                        self.log.error("Duration button callback: %s error: %s", c_match, e)
+
                 cur_value = getattr(project_config, attr_key)
 
                 self.log.debug("Debuging config button, config: %s, config key: %s, value: %s", project_config, attr_key, cur_value)
