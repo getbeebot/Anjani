@@ -498,6 +498,8 @@ async def check_bot_privilege(request: BaseRequest) -> Response:
         member = await tgclient.client.get_chat_member(int(chat_id), bot.id)
         bot_privileges = member.privileges
 
+        log.debug("Debuging: bot privileges %s", member)
+
         privileges = [
             "can_manage_chat",
             "can_delete_messages",
