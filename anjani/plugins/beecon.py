@@ -17,13 +17,12 @@ from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQuery,
-    InlineQueryResult,
     InlineQueryResultArticle,
     InputTextMessageContent,
 )
 from pyrogram.enums.parse_mode import ParseMode
 
-from anjani import plugin, command, util
+from anjani import plugin, command, util, listener
 
 import boto3
 
@@ -331,21 +330,38 @@ class BeeconPlugin(plugin.Plugin):
         )
         return
 
-    # async def on_inline_query(self, query: InlineQuery) -> None:
-    #     self.log.error("inline query: %s", query)
-    #     button = InlineKeyboardMarkup([
-    #         [InlineKeyboardButton(text="Beecon", url="https://beecon.me")]
-    #     ])
-    #     input_msg_content = InputTextMessageContent(
-    #         message_text="I'm so tired for it",
-    #         parse_mode=ParseMode.MARKDOWN
-    #     )
-    #     res = [
-    #         InlineQueryResultArticle(
-    #             title="fuck it",
-    #             input_message_content=input_msg_content,
-    #             description="This is a descirption of inline query answer",
-    #             reply_markup=button,
-    #         )
-    #     ]
-    #     await query.answer(res)
+    async def on_inline_query(self, query: InlineQuery) -> None:
+        self.log.debug("inline query: %s", query)
+
+        pattern = re.compile(r"giveaway:(\d+):(\d+)")
+        match = pattern.search(query.query)
+        if match:
+            project_id = match.group(1)
+            task_id = match.group(2)
+
+            task_url = util.misc.generate_task_detail_link(project_id, task_id, self.bot.uid)
+            self.log.error("Debugging project_id: %s, task_id: %s, url: %s", project_id, task_id, task_url)
+
+            btn_text = await self.text(None, "giveaway-button")
+            button = InlineKeyboardMarkup([
+                [InlineKeyboardButton(text=btn_text, url=task_url)]
+            ])
+
+            prompt_title = await self.text(None, "giveaway-title")
+            prompt_desc = await self.text(None, "giveaway-description")
+
+            giveaway_template = await self.text(None, "giveaway-template")
+
+            input_msg_content = InputTextMessageContent(
+                message_text=giveaway_template,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            reply = [
+                InlineQueryResultArticle(
+                    title=prompt_title,
+                    input_message_content=input_msg_content,
+                    description=prompt_desc,
+                    reply_markup=button,
+                )
+            ]
+            await query.answer(reply)

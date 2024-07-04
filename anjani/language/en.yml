@@ -734,3 +734,10 @@ forkme-description: |
   Same function, different bot 🤖
   Make your own band, bot and UI with the same experience ✨
 #endregion
+
+#region giveaway
+giveaway-title: "Giveaway"
+giveaway-button: "Join"
+giveaway-description: "This is a message for giveaway activity"
+giveaway-template: "Welcome to join our community to get more rewards"
+#endregion
