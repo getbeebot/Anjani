@@ -382,7 +382,6 @@ async def send_message_handler(request: BaseRequest) -> Response:
             )
 
             ret_data = {"res": "ok"}
-            return
         elif notify_type == 3 and config.draw:  # lottory draw winner announce
             template = await get_template("lottery-end")
             content = build_lottery_end_msg(template, **data)
