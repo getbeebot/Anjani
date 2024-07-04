@@ -146,7 +146,7 @@ async def get_project_intervals(bot_id):
         if not project_config:
             project_config = BotNotificationConfig(project_id)
 
-        interval = project_config.overview_frequency
+        interval = project_config.ovduration
         if not res.get(interval):
             res.update({interval: [(project_id, group_id)]})
         else:

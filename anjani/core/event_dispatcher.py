@@ -415,7 +415,7 @@ class EventDispatcher(MixinBase):
 
                 self.log.debug("Chat %s(%s) project config: %s", chat.title, chat.id, config)
 
-                if config.enable_rewards_verify:
+                if config.verify:
                     payloads = [chat.id, invite_link.invite_link]
 
                     verify_args = util.misc.encode_args(payloads)

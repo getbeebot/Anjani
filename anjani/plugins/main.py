@@ -17,6 +17,7 @@
 import os
 import asyncio
 import re
+import json
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, ClassVar, List, Optional
 
@@ -43,6 +44,7 @@ from pyrogram.types import (
 
 from anjani import command, filters, listener, plugin, util
 from .language import LANG_FLAG
+from anjani.util.project_config import BotNotificationConfig
 
 if TYPE_CHECKING:
     from .rules import Rules
@@ -217,13 +219,43 @@ class Main(plugin.Plugin):
         return projects
 
     async def project_config_builder(self, project_id: int) -> List[List[InlineKeyboardButton]]:
-        # key_name
-        # TODO: display all configuration buttons
-        config_keys = []
-        for k in config_keys:
-            btn = await self.text(None, k)
-            k_btn = InlineKeyboardButton(text=btn, callback_data=f"help_config_{project_id}")
-        pass
+        configs: List[List[InlineKeyboardButton]] = []
+
+        project_config = await self.get_project_config(project_id)
+        # if there's no redis cache, query mysql db
+        if not project_config:
+            project_config = await BotNotificationConfig.get_project_config(self.bot.mysql, project_id)
+        # if there's no db records, create a new one
+        if not project_config:
+            project_config = BotNotificationConfig(project_id)
+
+        buttons: List[InlineKeyboardButton] = []
+        for k, v in project_config.__dict__.items():
+            # ignore project_id attribute
+            if k == "project_id" or k == "ovduration":
+                continue
+
+            btn_text = await self.text(None, f"{k}-{v}-button")
+            btn = InlineKeyboardButton(text=btn_text, callback_data=f"help_config_{project_id}_{k}_{v}")
+            buttons.append(btn)
+
+        # ensure the config saved to redis
+        await self.update_project_config(project_config)
+
+        configs = [buttons[i * 2 : (i + 1) * 2] for i in range((len(buttons) + 2 - 1) // 2)]
+        return configs
+
+    async def get_project_config(self, project_id: int):
+        query_key = f"project_config_{project_id}"
+        json_data = await self.bot.redis.get(query_key)
+        if json_data:
+            return BotNotificationConfig.from_json(json_data.decode("utf-8"))
+
+    async def update_project_config(self, config: BotNotificationConfig):
+        query_key = f"project_config_{config.project_id}"
+        value = json.dumps(config.__dict__).encode("utf-8")
+        await self.bot.redis.set(query_key, value)
+
 
     @listener.filters(filters.regex(r"help_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
@@ -347,6 +379,10 @@ class Main(plugin.Plugin):
                     ]
                 ])
                 try:
+                    # sync project config to db every time go to project breif page
+                    project_config = await self.get_project_config(project_id)
+                    if project_config:
+                        await BotNotificationConfig.update_or_create_project_config(self.bot.mysql, project_config)
                     await query.edit_message_text(
                         text=text,
                         reply_markup=keyboard,
@@ -357,11 +393,50 @@ class Main(plugin.Plugin):
             else:
                 raise ValueError("Unable to find project")
         elif match.startswith("config"):
-            config = re.compile(r"config_([0-9]+(_([a-zA-Z]+)_([0-9]+))?)").match(match)
-            if not config:
+            c_match = re.compile(r"config_(\d+)_?([a-zA-Z]+)?_?(\d+)?").match(match)
+            if not c_match:
                 raise ValueError("Unable to find project config")
 
-            project_id = int(config.group(1))
+            project_id = int(c_match.group(1))
+
+            project_config = await self.get_project_config(project_id)
+            if not project_config:
+                project_config = BotNotificationConfig(project_id)
+                await self.update_project_config(project_config)
+
+            self.log.debug("Debugging config: %s", c_match)
+
+            if c_match.group(2) and c_match.group(3):
+                attr_key = c_match.group(2)
+                cur_value = getattr(project_config, attr_key)
+
+                self.log.debug("Debuging config button, config: %s, config key: %s, value: %s", project_config, attr_key, cur_value)
+
+                setattr(project_config, attr_key, cur_value ^ 1)
+
+                self.log.debug("Debugging after processing, config: %s", project_config)
+
+                await self.update_project_config(project_config)
+
+            config_btns = await self.project_config_builder(project_id)
+            try:
+                config_btns.append(
+                    [InlineKeyboardButton(text=await self.text(None, "back-button"), callback_data=f"help_project_{project_id}")]
+                )
+
+                (project_name, project_desc) = await self.bot.mysql.get_project_brief(project_id)
+
+                text = f"**Community**: {project_name}\n"
+                if project_desc:
+                    text += f"**Description**: {project_desc}"
+
+                keyboard = InlineKeyboardMarkup(config_btns)
+                await query.edit_message_text(
+                    text=text,
+                    reply_markup=keyboard
+                )
+            except Exception as e:
+                self.log.error("Config callback error: %s", e)
 
 
         elif match:
@@ -493,7 +568,7 @@ class Main(plugin.Plugin):
 
             keyboard = []
             # TODO: disable project config buttons cause it's not done
-            project_buttons = await self.project_builder(chat.id, True)
+            project_buttons = await self.project_builder(chat.id)
             if project_buttons:
                 keyboard.extend(project_buttons)
 
