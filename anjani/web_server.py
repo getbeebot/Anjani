@@ -361,13 +361,34 @@ async def send_message_handler(request: BaseRequest) -> Response:
         if notify_type == 1 and config.newdraw:    # create lottery task
             template = await get_template(f"lottery-create-{lottery_type}")
             content = build_lottery_create_msg(template, **data)
+            log.info(f"sending message {content}")
+            await tgclient.send_photo(
+                chat_id,
+                engage_img_link,
+                caption=content,
+                reply_markup=button,
+            )
+
+            ret_data = {"res": "ok"}
         elif notify_type == 2 and config.userjoin:  # user entered the draw
             template = await get_template(f"lottery-join-{lottery_type}")
             content = build_lottery_join_msg(template, **data)
+            log.info(f"sending message {content}")
+            await tgclient.send_photo(
+                chat_id,
+                engage_img_link,
+                caption=content,
+                reply_markup=button,
+            )
+
+            ret_data = {"res": "ok"}
+            return
         elif notify_type == 3 and config.draw:  # lottory draw winner announce
             template = await get_template("lottery-end")
             content = build_lottery_end_msg(template, **data)
             luckdraw_img_link = await get_template("luckydraw-img")
+
+            log.info(f"sending message {content}")
 
             await tgclient.send_photo(
                 chat_id,
@@ -376,8 +397,6 @@ async def send_message_handler(request: BaseRequest) -> Response:
                 reply_markup=button
             )
             ret_data.update({"ok": True})
-            return web_response.json_response(ret_data)
-
         elif notify_type == 4:  # sending file to community admin
             filename = data.get("lotteryFileName")
             chat_id = data.get("owner")
@@ -386,10 +405,10 @@ async def send_message_handler(request: BaseRequest) -> Response:
             content = f"Please download the winners data via {download_link}"
 
             await tgclient.send_message(chat_id, content)
+
             log.info(f"send {download_link} to {chat_id}")
 
             ret_data.update({"ok": True})
-            return web_response.json_response(ret_data)
         elif notify_type == 5 and config.newtask:
             content = await get_template("task-creation")
             await tgclient.send_photo(
@@ -399,20 +418,9 @@ async def send_message_handler(request: BaseRequest) -> Response:
                 reply_markup=button,
             )
             ret_data.update({"ok": True})
-            return web_response.json_response(ret_data)
         else:
             log.warning("Not push notification for request: %s", payloads)
-
-        # sending message
-        log.info(f"sending message {content}")
-        await tgclient.send_photo(
-            chat_id,
-            engage_img_link,
-            caption=content,
-            reply_markup=button,
-        )
-
-        ret_data = {"res": "ok"}
+            ret_data.update({"ok": False, "error": "reject by setting"})
 
     except Exception as e:
         log.error(f"Sending occurs error: {str(e)}")
@@ -420,8 +428,8 @@ async def send_message_handler(request: BaseRequest) -> Response:
             "ok": False,
             "error": str(e),
         })
-
     return web_response.json_response(ret_data, status=200)
+
 
 
 connected_clients = set()
