@@ -198,7 +198,7 @@ class Main(plugin.Plugin):
         return pairs
 
 
-    async def project_builder(self, chat_id: int) -> List[List[InlineKeyboardButton]]:
+    async def project_builder(self, chat_id: int, is_link: bool = False) -> List[List[InlineKeyboardButton]]:
         projects: List[List[InlineKeyboardButton]] = []
         user_projects = await self.bot.mysql.get_user_projects(chat_id, self.bot.uid)
 
@@ -207,7 +207,11 @@ class Main(plugin.Plugin):
         buttons = []
         for project in user_projects:
             (project_id, project_name) = project
-            project_button = InlineKeyboardButton(text=project_name, callback_data=f"help_project_{project_id}")
+            if is_link:
+                project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+                project_button = InlineKeyboardButton(text=project_name, url=project_link)
+            else:
+                project_button = InlineKeyboardButton(text=project_name, callback_data=f"help_project_{project_id}")
             buttons.append(project_button)
         projects = [buttons[i * 2 : (i + 1) * 2] for i in range((len(buttons) + 2 - 1) // 2)]
         return projects
@@ -488,8 +492,8 @@ class Main(plugin.Plugin):
 
 
             keyboard = []
-
-            project_buttons = await self.project_builder(chat.id)
+            # TODO: disable project config buttons cause it's not done
+            project_buttons = await self.project_builder(chat.id, True)
             if project_buttons:
                 keyboard.extend(project_buttons)
 
