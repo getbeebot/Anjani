@@ -511,6 +511,8 @@ class Main(plugin.Plugin):
         engage_img_link = await self.text(None, "engage-img")
 
         if chat.type == ChatType.PRIVATE:  # only send in PM's
+            # for start bot task
+            await self.bot.mysql.save_start_record(chat.id, self.bot.uid)
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
                 await ctx.respond(
@@ -601,7 +603,6 @@ class Main(plugin.Plugin):
 
 
             keyboard = []
-            # TODO: disable project config buttons cause it's not done
             project_buttons = await self.project_builder(chat.id)
             if project_buttons:
                 keyboard.extend(project_buttons)

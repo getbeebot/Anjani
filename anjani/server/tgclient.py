@@ -25,7 +25,7 @@ class TGClient:
             api_hash=config.API_HASH,
             bot_token=config.BOT_TOKEN
         )
-        self.s3 = boto3.client("s3", aws_access_key_id=config.AWS_AK, aws_secret_access_key=config.AWS_SK)
+        self.s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=config.AWS_AK, aws_secret_access_key=config.AWS_SK)
         self.s3_bucket = config.AWS_S3_BUCKET
 
 

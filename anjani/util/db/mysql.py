@@ -145,3 +145,12 @@ class MysqlPoolClient:
         sql = "SELECT name, description FROM beebot.bot_project WHERE id = %s"
         res = await self.query_one(sql, (project_id, ))
         return res
+
+    async def save_start_record(self, chat_id: int, bot_id: int):
+        # query before insert
+        sql = "SELECT * FROM tg_user_start_bot WHERE chat_id = %s AND bot_id = %s"
+        values = (chat_id, bot_id)
+        res = await self.query_one(sql, values)
+        if not res:
+            sql = "INSERT INTO tg_user_start_bot (chat_id, bot_id) VALUES (%s, %s)"
+            await self.update(sql, values)

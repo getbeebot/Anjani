@@ -172,7 +172,7 @@ class BeeconPlugin(plugin.Plugin):
 
             await self.bot.client.download_media(file_id, file_name=f"../downloads/{filename}")
 
-            s3 = boto3.client("s3", aws_access_key_id=self.aws_ak, aws_secret_access_key=self.aws_sk)
+            s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=self.aws_ak, aws_secret_access_key=self.aws_sk)
             s3.upload_file(
                 filepath,
                 self.aws_s3_bucket,

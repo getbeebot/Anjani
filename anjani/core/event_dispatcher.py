@@ -222,7 +222,7 @@ class EventDispatcher(MixinBase):
                 filepath = os.path.join("downloads", filename)
 
                 await self.client.download_media(file_id, file_name=f"../downloads/{filename}")
-                s3 = boto3.client("s3", aws_access_key_id=self.config.AWS_AK, aws_secret_access_key=self.config.AWS_SK)
+                s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=self.config.AWS_AK, aws_secret_access_key=self.config.AWS_SK)
                 s3.upload_file(filepath, self.config.AWS_S3_BUCKET, filename, ExtraArgs={"ContentType": "image/jpeg"})
                 await aio_os.remove(filepath)
                 return f"https://{self.config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{filename}"
