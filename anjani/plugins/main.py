@@ -232,7 +232,7 @@ class Main(plugin.Plugin):
         buttons: List[InlineKeyboardButton] = []
         for k, v in project_config.__dict__.items():
             # ignore project_id, ovduration attribute
-            if k == "project_id" or k == "ovduration":
+            if k == "project_id" or k == "ovduration" or k == "verify":
                 continue
 
             btn_text = await self.text(None, f"{k}-{v}-button")
@@ -385,7 +385,7 @@ class Main(plugin.Plugin):
                     [
                         InlineKeyboardButton(text="Edit", url=project_link),
                         InlineKeyboardButton(
-                            text="Setting",
+                            text="Bot Notification",
                             callback_data=f"help_config_{project_id}"
                         )
                     ],
@@ -444,11 +444,7 @@ class Main(plugin.Plugin):
 
                 cur_value = getattr(project_config, attr_key)
 
-                self.log.debug("Debuging config button, config: %s, config key: %s, value: %s", project_config, attr_key, cur_value)
-
                 setattr(project_config, attr_key, cur_value ^ 1)
-
-                self.log.debug("Debugging after processing, config: %s", project_config)
 
                 await self.update_project_config(project_config)
 

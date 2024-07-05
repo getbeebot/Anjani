@@ -146,6 +146,10 @@ async def get_project_intervals(bot_id):
         if not project_config:
             project_config = BotNotificationConfig(project_id)
 
+        # Skip the disabled overview project
+        if not project_config.overview:
+            continue
+
         interval = project_config.ovduration
         if not res.get(interval):
             res.update({interval: [(project_id, group_id)]})
@@ -157,6 +161,15 @@ async def get_project_intervals(bot_id):
 async def push_overview(projects: List[tuple], bot_id: int):
     for project in projects:
         (project_id, group_id) = project
+
+        project_config = await BotNotificationConfig.get_project_config(mysql, project_id)
+        if not project_config:
+            project_config = BotNotificationConfig(project_id)
+
+        # Skip the disabled overview project
+        if not project_config.overview:
+            continue
+
         project_link = generate_project_detail_link(project_id, bot_id)
         button = InlineKeyboardMarkup(
         [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
