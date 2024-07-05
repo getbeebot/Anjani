@@ -14,11 +14,15 @@ from pyrogram.enums.chat_type import ChatType
 from pyrogram.types import (
     User,
     Message,
-    InlineKeyboardButton, InlineKeyboardMarkup
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InlineQuery,
+    InlineQueryResultArticle,
+    InputTextMessageContent,
 )
 from pyrogram.enums.parse_mode import ParseMode
 
-from anjani import plugin, command, util
+from anjani import plugin, command, util, listener
 
 import boto3
 
@@ -96,7 +100,7 @@ class BeeconPlugin(plugin.Plugin):
                 "targetType": 0,
             })
 
-            project_id = await self.bot.mysql.query_project_id_by_chat_id(chat_id)
+            project_id = await self.bot.mysql.get_chat_project_id(chat_id)
             project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
             button = InlineKeyboardMarkup([[
@@ -119,7 +123,6 @@ class BeeconPlugin(plugin.Plugin):
             self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
         except Exception as e:
                 self.log.error("Keyword checkin error: %s", e)
-
 
     async def _delete_msg(self, chat_id: int, message_id: int, delay: int):
         if not delay:
@@ -169,7 +172,7 @@ class BeeconPlugin(plugin.Plugin):
 
             await self.bot.client.download_media(file_id, file_name=f"../downloads/{filename}")
 
-            s3 = boto3.client("s3", aws_access_key_id=self.aws_ak, aws_secret_access_key=self.aws_sk)
+            s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=self.aws_ak, aws_secret_access_key=self.aws_sk)
             s3.upload_file(
                 filepath,
                 self.aws_s3_bucket,
@@ -183,7 +186,6 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(f"retrieving group pic failed: {str(e)}")
 
-
     async def get_group_description(self, group_id: int) -> str | None:
         try:
             chat = await self.bot.client.get_chat(group_id)
@@ -193,7 +195,6 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             self.log.error(str(e))
         return None
-
 
     @command.filters(filters.group)
     async def cmd_checkin(self, ctx: command.Context) -> Optional[str]:
@@ -214,7 +215,7 @@ class BeeconPlugin(plugin.Plugin):
 
             payloads = json.loads(json.dumps(payloads))
 
-            project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id)
+            project_id = await self.bot.mysql.get_chat_project_id(group_id)
             project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
             button = [[
@@ -234,7 +235,6 @@ class BeeconPlugin(plugin.Plugin):
             )
         except Exception as e:
             self.log.error(e)
-
 
     async def _construct_user_api_payloads(self, user: User) -> dict:
         payloads = {}
@@ -263,7 +263,6 @@ class BeeconPlugin(plugin.Plugin):
 
         return payloads
 
-
     @command.filters(filters.group)
     async def cmd_invite(self, ctx: command.Context) -> Optional[str]:
         msg = ctx.message
@@ -272,7 +271,7 @@ class BeeconPlugin(plugin.Plugin):
         top_number = 10
 
         try:
-            project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id)
+            project_id = await self.bot.mysql.get_chat_project_id(group_id)
             project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
             button = [[InlineKeyboardButton("View more", url=project_link)]]
 
@@ -299,3 +298,69 @@ class BeeconPlugin(plugin.Plugin):
 
         except Exception as e:
             self.log.error("CMD /invite error: %s", e)
+
+    async def cmd_forkme(self, ctx: command.Context) -> Optional[str]:
+        """Fork the bot command"""
+        chat = ctx.chat
+
+        if chat.type != ChatType.PRIVATE:
+            await ctx.respond(
+                await self.text(None, "help-chat"),
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            text=await self.text(None, "help-chat-button"),
+                            url=f"t.me/{self.bot.user.username}?start=help",
+                        )
+                    ]
+                ])
+            )
+            return
+
+        btn_text = await self.text(None, "forkme-contact-button", noformat=True)
+        btn_link = await self.text(None, "forkme-contact-link", noformat=True)
+        forkme_desc = await self.text(None, "forkme-description", noformat=True)
+
+        button = InlineKeyboardMarkup([[
+            InlineKeyboardButton(text=btn_text, url=btn_link)
+        ]])
+        await ctx.respond(
+            text=forkme_desc,
+            reply_markup=button,
+        )
+        return
+
+    async def on_inline_query(self, query: InlineQuery) -> None:
+        self.log.debug("inline query: %s", "".join(str(query).split()))
+
+        pattern = re.compile(r"giveaway:(\d+):(\d+)")
+        match = pattern.search(query.query)
+        if match:
+            project_id = match.group(1)
+            task_id = match.group(2)
+
+            task_url = util.misc.generate_task_detail_link(project_id, task_id, self.bot.uid)
+
+            btn_text = await self.text(None, "giveaway-button")
+            button = InlineKeyboardMarkup([
+                [InlineKeyboardButton(text=btn_text, url=task_url)]
+            ])
+
+            prompt_title = await self.text(None, "giveaway-title")
+            prompt_desc = await self.text(None, "giveaway-description")
+
+            giveaway_template = await self.text(None, "giveaway-template")
+
+            input_msg_content = InputTextMessageContent(
+                message_text=giveaway_template,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            reply = [
+                InlineQueryResultArticle(
+                    title=prompt_title,
+                    input_message_content=input_msg_content,
+                    description=prompt_desc,
+                    reply_markup=button,
+                )
+            ]
+            await query.answer(reply)

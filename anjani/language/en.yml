@@ -732,5 +732,54 @@ forkme-contact-button: "Contact US"
 forkme-contact-link: "t.me/arbalists"
 forkme-description: |
   Same function, different bot 🤖
-  Make your own bot and UI with the same experience ✨
+  Make your own brand, bot and UI with the same experience ✨
+#endregion
+
+
+#region project-config
+ovduration-3600-button: "1 hrs"
+ovduration-7200-button: "2 hrs"
+ovduration-10800-button: "3 hrs"
+ovduration-14400-button: "4 hrs"
+ovduration-18000-button: "5 hrs"
+ovduration-21600-button: "6 hrs"
+ovduration-25200-button: "7 hrs"
+ovduration-28800-button: "8 hrs"
+ovduration-32400-button: "9 hrs"
+ovduration-36000-button: "10 hrs"
+ovduration-39600-button: "11 hrs"
+ovduration-43200-button: "12 hrs"
+ovduration-46800-button: "13 hrs"
+ovduration-50400-button: "14 hrs"
+ovduration-54000-button: "15 hrs"
+ovduration-57600-button: "16 hrs"
+ovduration-61200-button: "17 hrs"
+ovduration-64800-button: "18 hrs"
+ovduration-68400-button: "19 hrs"
+ovduration-72000-button: "20 hrs"
+ovduration-75600-button: "21 hrs"
+ovduration-79200-button: "22 hrs"
+ovduration-82800-button: "23 hrs"
+ovduration-86400-button: "24 hrs"
+# disable
+overview-0-button: "Schedule Notice"
+newdraw-0-button: "New Luckydraw"
+userjoin-0-button: "Luckydraw Entry"
+draw-0-button: "Luckydraw Result"
+verify-0-button: "Human Verify"
+newtask-0-button: "New Task"
+# enable
+overview-1-button: "✔️ Schedule Notice"
+newdraw-1-button: "✔️ New Luckydraw"
+userjoin-1-button: "✔️ Luckydraw Entry"
+draw-1-button: "✔️ Luckydraw Result"
+verify-1-button: "✔️ Human Verify"
+newtask-1-button: "✔️ New Task"
+#endregion
+
+#region giveaway
+giveaway-title: "Giveaway"
+giveaway-button: "Join"
+giveaway-description: "This is a message for giveaway activity"
+giveaway-template: "Welcome to join our community to get more rewards"
 #endregion

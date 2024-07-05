@@ -222,7 +222,7 @@ class EventDispatcher(MixinBase):
                 filepath = os.path.join("downloads", filename)
 
                 await self.client.download_media(file_id, file_name=f"../downloads/{filename}")
-                s3 = boto3.client("s3", aws_access_key_id=self.config.AWS_AK, aws_secret_access_key=self.config.AWS_SK)
+                s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=self.config.AWS_AK, aws_secret_access_key=self.config.AWS_SK)
                 s3.upload_file(filepath, self.config.AWS_S3_BUCKET, filename, ExtraArgs={"ContentType": "image/jpeg"})
                 await aio_os.remove(filepath)
                 return f"https://{self.config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{filename}"
@@ -359,6 +359,7 @@ class EventDispatcher(MixinBase):
                 "owner_tg_id": admin.id,
                 "bot_id": self.uid,
             })
+
             async with client.connect("ws://127.0.0.1:8080/ws") as ws:
                 try:
                     await ws.send(notify_msg)
@@ -366,6 +367,9 @@ class EventDispatcher(MixinBase):
                     self.log.info("Project create notify: %s", msg)
                 except websockets.ConnectionClosed:
                     pass
+
+            project_config = util.project_config.BotNotificationConfig(project_id)
+            await util.project_config.BotNotificationConfig.update_or_create_project_config(self.mysql, project_config)
 
     async def dispatch_event(
         self: "Anjani",
@@ -402,13 +406,16 @@ class EventDispatcher(MixinBase):
                 await self.save_chat_info(chat)
                 await self.create_project_on_join(updated)
 
-
             if updated.new_chat_member and updated.invite_link:
                 from_user = updated.from_user
                 invite_link = updated.invite_link
 
-                is_verify = os.getenv("IS_VERIFY", False)
-                if is_verify:
+                project_id = await self.mysql.get_chat_project_id(chat.id)
+                config = await util.project_config.BotNotificationConfig.get_project_config(self.mysql, project_id)
+
+                self.log.debug("Chat %s(%s) project config: %s", chat.title, chat.id, config)
+
+                if config.verify:
                     payloads = [chat.id, invite_link.invite_link]
 
                     verify_args = util.misc.encode_args(payloads)
@@ -427,10 +434,10 @@ class EventDispatcher(MixinBase):
                             await self.client.send_message(
                                 chat_id=from_user.id,
                                 text=reply_text,
-                                reply_markup=button,
+                                reply_markup=button
                             )
                         except Exception as e:
-                            self.log.warn("Can not push notification %s to user: %s", reply_text, from_user)
+                            self.log.warn("Unable to push notification %s to user %s, error: %s", reply_text, from_user, e)
                     else:
                         await self.client.send_message(
                             chat_id=chat.id,
@@ -444,18 +451,32 @@ class EventDispatcher(MixinBase):
                         "inviteLink": invite_link.invite_link,
                         "botId": self.uid,
                     }
+
+                    btn_text = await get_template("rewards-msg-button")
+                    project_link = util.misc.generate_project_detail_link(project_id, self.uid)
+                    button = InlineKeyboardMarkup([
+                        [InlineKeyboardButton(text=btn_text, url=project_link)]
+                    ])
+
                     rewards = await self.apiclient.distribute_join_rewards(payloads)
                     reply_text = await get_template("rewards-claimed")
                     if rewards:
                         reply_text = reply_text.format(rewards=rewards, mention=from_user.mention)
                         if chat.type == ChatType.CHANNEL:
                             try:
-                                await self.client.send_message(from_user.id, reply_text)
+                                await self.client.send_message(
+                                    chat_id=from_user.id,
+                                    text=reply_text,
+                                    reply_markup=button
+                                )
                             except Exception as e:
-                                self.log.warn("Can not push notification %s to user: %s", reply_text, from_user)
-                            pass
+                                self.log.warn("Unable to push notification %s to user %s, error: %s", reply_text, from_user, e)
                         else:
-                            await self.client.send_message(chat.id, reply_text)
+                            await self.client.send_message(
+                                chat_id=chat.id,
+                                text=reply_text,
+                                reply_markup=button
+                            )
 
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():

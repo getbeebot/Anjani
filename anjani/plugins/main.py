@@ -17,6 +17,7 @@
 import os
 import asyncio
 import re
+import json
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, ClassVar, List, Optional
 
@@ -38,11 +39,12 @@ from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    Message,
+    Message, InputMediaPhoto,
 )
 
 from anjani import command, filters, listener, plugin, util
 from .language import LANG_FLAG
+from anjani.util.project_config import BotNotificationConfig
 
 if TYPE_CHECKING:
     from .rules import Rules
@@ -197,13 +199,86 @@ class Main(plugin.Plugin):
 
         return pairs
 
-    @listener.filters(filters.regex(r"help_(.*)|(addme)|(forkme)"))
+
+    async def project_builder(self, chat_id: int, is_link: bool = False) -> List[List[InlineKeyboardButton]]:
+        projects: List[List[InlineKeyboardButton]] = []
+        user_projects = await self.bot.mysql.get_user_projects(chat_id, self.bot.uid)
+
+        if not user_projects:
+            return
+        buttons = []
+        for project in user_projects:
+            (project_id, project_name) = project
+            if is_link:
+                project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+                project_button = InlineKeyboardButton(text=project_name, url=project_link)
+            else:
+                project_button = InlineKeyboardButton(text=project_name, callback_data=f"help_project_{project_id}")
+            buttons.append(project_button)
+        projects = [buttons[i * 2 : (i + 1) * 2] for i in range((len(buttons) + 2 - 1) // 2)]
+        return projects
+
+    async def project_config_builder(self, project_id: int) -> List[List[InlineKeyboardButton]]:
+        configs: List[List[InlineKeyboardButton]] = []
+
+        project_config = await self.get_project_config(project_id)
+        # if there's no redis cache, query mysql db
+        if not project_config:
+            project_config = await BotNotificationConfig.get_project_config(self.bot.mysql, project_id)
+        # if there's no db records, create a new one
+        if not project_config:
+            project_config = BotNotificationConfig(project_id)
+
+        buttons: List[InlineKeyboardButton] = []
+        for k, v in project_config.__dict__.items():
+            # ignore project_id, ovduration attribute
+            if k == "project_id" or k == "ovduration" or k == "verify":
+                continue
+
+            btn_text = await self.text(None, f"{k}-{v}-button")
+            btn = InlineKeyboardButton(text=btn_text, callback_data=f"help_config_{project_id}_{k}_{v}")
+            buttons.append(btn)
+
+        # ensure the config saved to redis
+        await self.update_project_config(project_config)
+
+        configs = [buttons[i * 2 : (i + 1) * 2] for i in range((len(buttons) + 2 - 1) // 2)]
+        return configs
+
+    async def duration_config_builder(self, project_id: int) -> List[List[InlineKeyboardButton]]:
+        project_config = await self.get_project_config(project_id)
+        if not project_config:
+            project_config = BotNotificationConfig(project_id)
+
+        one_hour = 3600
+        durations = [one_hour * i for i in range(1, 25)]
+        btns: List[InlineKeyboardButton] = []
+        for hr, secs in enumerate(durations):
+            btn_text = ""
+            if secs == project_config.ovduration:
+                btn_text += "✔️ "
+            btn_text += str(hr + 1)
+            btn = InlineKeyboardButton(text=btn_text, callback_data=f"help_config_{project_id}_ovduration_{secs}")
+            btns.append(btn)
+
+        return [btns[i * 3 : (i + 1) * 3] for i in range((len(btns) + 3 - 1) // 3)]
+
+    async def get_project_config(self, project_id: int):
+        query_key = f"project_config_{project_id}"
+        json_data = await self.bot.redis.get(query_key)
+        if json_data:
+            return BotNotificationConfig.from_json(json_data.decode("utf-8"))
+
+    async def update_project_config(self, config: BotNotificationConfig):
+        query_key = f"project_config_{config.project_id}"
+        value = json.dumps(config.__dict__).encode("utf-8")
+        await self.bot.redis.set(query_key, value)
+
+
+    @listener.filters(filters.regex(r"help_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
         """Bot helper button"""
         match = query.matches[0].group(1)
-
-        if not match:
-            match = query.matches[0].group()
 
         chat = query.message.chat
 
@@ -251,6 +326,149 @@ class Main(plugin.Plugin):
                 reply_markup=button,
                 parse_mode=ParseMode.MARKDOWN,
             )
+        elif match.startswith("project"):
+            project = re.compile(r"project_([0-9]+|overview|back)").match(match)
+            if not project:
+                raise ValueError("Unable to find project")
+
+            match_p = project.group(1)
+            if match_p == "overview":
+                user_id = query.from_user.id
+                project_btns = await self.project_builder(user_id)
+                project_btns.append(
+                    [
+                        InlineKeyboardButton(text=await self.text(None, "back-button"), callback_data="help_project_back")
+                    ]
+                )
+                keyboard = InlineKeyboardMarkup(project_btns)
+                try:
+                    await query.edit_message_text(text="Please choose one of community to setup", reply_markup=keyboard)
+                except MessageNotModified:
+                    pass
+            elif match_p == "back":
+                user_id = query.from_user.id
+                project_btns = await self.project_builder(user_id)
+                faq_link = os.getenv("FAQ", "beecon.me")
+                channel_link = os.getenv("CHANNEL", "beecon.me")
+                project_btns.extend([
+                    [
+                        InlineKeyboardButton(text=await self.text(None, "add-to-group-button"), callback_data="help_addme")
+                    ],
+                    [
+                        InlineKeyboardButton(text=await self.text(None, "faq-button"), url=faq_link),
+                        InlineKeyboardButton(text=await self.text(None, "channel-button"), url=channel_link)
+                    ],
+                    [
+                        InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
+                    ]
+                ])
+                keyboard = InlineKeyboardMarkup(project_btns)
+                try:
+                    await query.edit_message_text(
+                        text=await self.text(None, "start-pm", self.bot.user.username),
+                        reply_markup=keyboard,
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                except MessageNotModified:
+                    pass
+            elif match_p.isdigit():
+                project_id = int(project.group(1))
+                project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+
+                (project_name, project_desc) = await self.bot.mysql.get_project_brief(project_id)
+
+                text = f"**Community**: {project_name}\n"
+                if project_desc:
+                    text += f"**Description**: {project_desc}"
+
+                keyboard = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(text="Edit", url=project_link),
+                        InlineKeyboardButton(
+                            text="Bot Notification",
+                            callback_data=f"help_config_{project_id}"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text=await self.text(None, "back-button"),
+                            callback_data="help_project_overview"
+                        )
+                    ]
+                ])
+                try:
+                    # sync project config to db every time go to project breif page
+                    project_config = await self.get_project_config(project_id)
+                    if project_config:
+                        await BotNotificationConfig.update_or_create_project_config(self.bot.mysql, project_config)
+                    await query.edit_message_text(
+                        text=text,
+                        reply_markup=keyboard,
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                except MessageNotModified:
+                    pass
+            else:
+                raise ValueError("Unable to find project")
+        elif match.startswith("config"):
+            c_match = re.compile(r"config_(\d+)_?([a-zA-Z]+)?_?(\d+)?").match(match)
+            if not c_match:
+                raise ValueError("Unable to find project config")
+
+            project_id = int(c_match.group(1))
+
+            project_config = await self.get_project_config(project_id)
+            if not project_config:
+                project_config = BotNotificationConfig(project_id)
+                await self.update_project_config(project_config)
+
+            self.log.debug("Debugging config: %s", c_match)
+
+            if c_match.group(2) and c_match.group(3):
+                attr_key = c_match.group(2)
+
+                if attr_key == "ovduration":
+                    ovduration = c_match.group(3)
+                    setattr(project_config, attr_key, int(ovduration))
+                    await self.update_project_config(project_config)
+
+                    duration_btns = await self.duration_config_builder(project_id)
+                    duration_btns.append([InlineKeyboardButton(text=await self.text(None, "back-button"), callback_data=f"help_config_{project_id}")])
+                    try:
+                        text = "Please choose duration:"
+                        keyboard = InlineKeyboardMarkup(duration_btns)
+                        await query.edit_message_text(text=text,reply_markup=keyboard)
+                        return
+                    except Exception as e:
+                        self.log.error("Duration button callback: %s error: %s", c_match, e)
+
+                cur_value = getattr(project_config, attr_key)
+
+                setattr(project_config, attr_key, cur_value ^ 1)
+
+                await self.update_project_config(project_config)
+
+            config_btns = await self.project_config_builder(project_id)
+            try:
+                config_btns.append(
+                    [InlineKeyboardButton(text=await self.text(None, "back-button"), callback_data=f"help_project_{project_id}")]
+                )
+
+                (project_name, project_desc) = await self.bot.mysql.get_project_brief(project_id)
+
+                text = f"**Community**: {project_name}\n"
+                if project_desc:
+                    text += f"**Description**: {project_desc}"
+
+                keyboard = InlineKeyboardMarkup(config_btns)
+                await query.edit_message_text(
+                    text=text,
+                    reply_markup=keyboard
+                )
+            except Exception as e:
+                self.log.error("Config callback error: %s", e)
+
+
         elif match:
             plug = re.compile(r"plugin\((\w+)\)").match(match)
             if not plug:
@@ -285,10 +503,16 @@ class Main(plugin.Plugin):
         """Bot start command"""
         chat = ctx.chat
 
-        guide_img_link = await self.text(None, "guide-img", noformat=True)
-        engage_img_link = await self.text(None, "engage-img", noformat=True)
+        guide_img_link = await self.text(None, "guide-img")
+        engage_img_link = await self.text(None, "engage-img")
 
         if chat.type == ChatType.PRIVATE:  # only send in PM's
+            # for start bot task
+            try:
+                await self.bot.mysql.save_start_record(chat.id, self.bot.uid)
+            except Exception as e:
+                self.log.warn("Saving start bot records error: %s", e)
+
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
                 await ctx.respond(
@@ -330,7 +554,7 @@ class Main(plugin.Plugin):
                     awards = await self.bot.apiclient.distribute_join_rewards(payloads)
                     if awards:
                         reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
-                        project_id = await self.bot.mysql.query_project_id_by_chat_id(group_id )
+                        project_id = await self.bot.mysql.get_chat_project_id(group_id )
                         project_url= util.misc.generate_project_detail_link(project_id, bot_id)
 
                         project_btn = InlineKeyboardMarkup([[
@@ -378,70 +602,37 @@ class Main(plugin.Plugin):
                     return
 
 
-            buttons: List[InlineKeyboardButton] = []
-
-            group_buttons = []
-            group_projects = await self.bot.mysql.query_user_owned_groups(chat.id, self.bot.uid)
-            if not group_projects:
-                pass
-            else:
-                line_buttons = []
-                for row in group_projects:
-                    (project_id, group_name) = row
-                    project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
-                    group_button = InlineKeyboardButton(text=group_name, url=project_link)
-                    line_buttons.append(group_button)
-                # Two group button one line
-                group_buttons = [line_buttons[i * 2: (i+1) * 2] for i in range((len(line_buttons) + 2 - 1) // 2)]
-
-            buttons.extend(group_buttons)
+            keyboard = []
+            project_buttons = await self.project_builder(chat.id)
+            if project_buttons:
+                keyboard.extend(project_buttons)
 
             faq_link = os.getenv("FAQ", "beecon.me")
             channel_link = os.getenv("CHANNEL", "beecon.me")
 
-            buttons.extend([
+            keyboard.extend([
                 [
-                    InlineKeyboardButton(  # Add bot as Admin button
-                        text=await self.text(chat.id, "add-to-group-button"),
-                        # url=f"t.me/{self.bot.user.username}?startgroup=true",
-                        callback_data="addme"
-                    ),
+                    InlineKeyboardButton(text=await self.text(chat.id, "add-to-group-button"), callback_data="help_addme")
                 ],
                 [
-                    InlineKeyboardButton(  # FAQ button
-                        text = await self.text(chat.id, "faq-button"),
-                        url=faq_link,
-                    ),
-                    InlineKeyboardButton(
-                        text=await self.text(chat.id, "channel-button"),
-                        url=channel_link,
-                    )
-
+                    InlineKeyboardButton(text = await self.text(chat.id, "faq-button"), url=faq_link),
+                    InlineKeyboardButton(text=await self.text(chat.id, "channel-button"), url=channel_link)
                 ],
                 [
-                    InlineKeyboardButton(
-                        text=await self.text(None, "forkme-button", noformat=True),
-                        callback_data="forkme",
-                    )
+                    InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
                 ]
-                # [
-                #     InlineKeyboardButton(
-                #         text=await self.text(chat.id, "language-button"),
-                #         url=f"t.me/{self.bot.user.username}?start=language",
-                #     ),
-                # ],
             ])
 
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot.user.username),
                 photo=guide_img_link,
-                reply_markup=InlineKeyboardMarkup(buttons),
+                reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode=ParseMode.MARKDOWN,
             )
             return None
 
         # group start message
-        is_exist = await self.bot.mysql.query_project_id_by_chat_id(chat.id)
+        is_exist = await self.bot.mysql.get_chat_project_id(chat.id)
         # if not is_exist:
         #     pass
 
@@ -450,7 +641,7 @@ class Main(plugin.Plugin):
         while counter < 5 and not project_id:
             await asyncio.sleep(1)
             counter += 1
-            project_id = await self.bot.mysql.query_project_id_by_chat_id(chat.id)
+            project_id = await self.bot.mysql.get_chat_project_id(chat.id)
 
         # no project for group, error exception
         if not project_id:
@@ -471,8 +662,8 @@ class Main(plugin.Plugin):
 
         buttons = [[InlineKeyboardButton(text=await self.text(chat.id, "create-project-button"),url=project_link)]]
 
-        tasks = await self.bot.mysql.query_project_tasks(chat.id)
-        participants = await self.bot.mysql.query_project_participants(chat.id)
+        tasks = await self.bot.mysql.get_project_tasks(project_id)
+        participants = await self.bot.mysql.get_project_participants(project_id)
 
         if tasks and participants:
             group_context = await self.text(chat.id, "group-start-pm", noformat=True)
@@ -497,24 +688,6 @@ class Main(plugin.Plugin):
             {"$set": {"language": language}},
             upsert=True,
         )
-
-    async def _distribute_rewards(self, uri: str, payloads: dict) -> Optional[str]:
-        awards = None
-        try:
-            headers = {
-                "Content-Type": "application/json",
-                "Botid": str(self.bot.uid),
-            }
-            self.log.info(f"Java API for inviting rewards request: payloads - {payloads}, headers - {headers}")
-            async with self.bot.http.put(uri, json=payloads, headers=headers) as resp:
-                self.log.info(f"Java API response: %s", await resp.text())
-                res = await resp.json()
-                data = res.get("data")
-                awards = data.get("awardsDes") if data else None
-        except Exception as e:
-            self.log.error("Java API distribute error: %s", e)
-
-        return awards
 
     async def cmd_help(self, ctx: command.Context) -> None:
         """Bot plugins helper"""
