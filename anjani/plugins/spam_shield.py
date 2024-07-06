@@ -261,10 +261,16 @@ class SpamShield(plugin.Plugin):
 
     async def check(self, user: User, chat: Chat, message: Message) -> bool:
         """Shield checker action."""
-        cas, sw, spam = await asyncio.gather(
-            self.cas_check(user), self.get_ban(user.id), self.check_spam(user.id)
+        # cas, sw, spam = await asyncio.gather(
+        #     self.cas_check(user), self.get_ban(user.id), self.check_spam(user.id)
+        # )
+        # if not (cas or sw or spam):
+        #     return False
+
+        sw, spam = await asyncio.gather(
+            self.get_ban(user.id), self.check_spam(user.id)
         )
-        if not (cas or sw or spam):
+        if not (sw or spam):
             return False
 
         userlink = user.mention
@@ -272,9 +278,9 @@ class SpamShield(plugin.Plugin):
         chat_link = f"[{chat.id}](https://t.me/{chat_username})" if chat_username else str(chat.id)
         reason = ""
         banner = ""
-        if cas:
-            banner = "[Combot Anti Spam](t.me/combot)"
-            reason = f"[Link]({cas})"
+        # if cas:
+        #     banner = "[Combot Anti Spam](t.me/combot)"
+        #     reason = f"[Link]({cas})"
         if sw:
             if not banner:
                 banner = "[Spam Watch](t.me/SpamWatch)"
