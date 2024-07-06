@@ -665,6 +665,8 @@ class Main(plugin.Plugin):
         tasks = await self.bot.mysql.get_project_tasks(project_id)
         participants = await self.bot.mysql.get_project_participants(project_id)
 
+        self.log.debug("In start command, project %s has %s tasks and %s participants", project_id, tasks, participants)
+
         if tasks and participants:
             group_context = await self.text(chat.id, "group-start-pm", noformat=True)
             group_start_msg = group_context.format(tasks=tasks, participants=participants)
