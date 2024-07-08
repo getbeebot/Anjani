@@ -33,6 +33,9 @@ from .language import get_template
 
 from .server.tgclient import TGClient
 from .server.notification import (
+    build_congrats_msg,
+    build_congrats_records,
+    build_invitation_records,
     build_lottery_create_msg,
     build_lottery_end_msg,
     build_lottery_join_msg,
@@ -367,8 +370,12 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         content: str = ""
         notify_type = data.get("notifyType")
-        # engage_img_link =  "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
         engage_img_link = await get_template("engage-img")
+
+        lucky_draw_url = ""
+        lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=lucky_draw_url)
+
+        withdraw_btn = InlineKeyboardButton(text="Go to withdraw", url=f"t.me/beecon_wallet_bot?start=true")
 
         lottery_type = data.get("lotteryType")
         if notify_type == 1 and config.newdraw:    # create lottery task
@@ -430,6 +437,44 @@ async def send_message_handler(request: BaseRequest) -> Response:
                 reply_markup=button,
             )
             ret_data.update({"ok": True})
+        elif notify_type == 6: # private congrats
+            template = await get_template("congrats-draw")
+            content = build_congrats_msg(template, **data)
+
+            keyboard = InlineKeyboardMarkup([
+                [lucky_draw_btn],
+                [withdraw_btn]
+            ])
+            await tgclient.send_message(
+                chat_id=chat_id,
+                content=content,
+                reply_markup=keyboard,
+            )
+        elif notify_type == 7: # congrats records
+            template = await get_template("congrats-records")
+            content = build_congrats_records(template, **data)
+
+            keyboard = InlineKeyboardMarkup([
+                [lucky_draw_btn],
+                [withdraw_btn],
+            ])
+            await tgclient.send_message(
+                chat_id=chat_id,
+                content=content,
+                reply_markup=keyboard,
+            )
+        elif notify_type == 8: # invitation records
+            template = await get_template("invitation-records")
+            content = build_invitation_records(template, **data)
+
+            keyboard = InlineKeyboardMarkup([
+                [lucky_draw_btn],
+            ])
+            await tgclient.send_message(
+                chat_id=chat_id,
+                content=content,
+                reply_markup=keyboard,
+            )
         else:
             log.warning("Not push notification for request: %s", payloads)
             ret_data.update({"ok": False, "error": "reject by setting"})

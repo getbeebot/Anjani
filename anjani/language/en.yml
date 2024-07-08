@@ -783,3 +783,24 @@ giveaway-button: "Join"
 giveaway-description: "This is a message for giveaway activity"
 giveaway-template: "Welcome to join our community to get more rewards"
 #endregion
+
+#region giveaway-union
+congrats-draw: |
+  **Congratulations!!!**
+  Prize: {prize}
+  From: {source}
+  Draw Time: {drawtime}
+
+congrats-records: |
+  **Reward records**
+  Total amount: {amount}
+  From: {source}\n
+  {records}
+
+invitation-records: |
+  **Invitation records**
+  Total: {amount}
+  From: {source}\n
+  {records}
+
+#endregion

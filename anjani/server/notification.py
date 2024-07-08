@@ -50,3 +50,35 @@ def build_lottery_end_msg(template: str, **args) -> str:
 
 def format_msg_timestamp(ms: int) -> str:
     return datetime.fromtimestamp(timestamp=ms/1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
+
+def build_congrats_msg(template: str, **args) -> str:
+    prize = args.get("prize")
+    source = args.get("source")
+    drawtime = args.get("time")
+    return template.format(prize=prize, source=source, drawtime=drawtime)
+
+def build_congrats_records(template: str, **args) -> str:
+    amount = args.get("amount")
+    source = args.get("source")
+    records = args.get("records")
+
+    r_text = ""
+    # TODO: formating congrats records
+    for i, r in enumerate(records):
+        record = f"{i+1}. {r}\n"
+        r_text += record
+
+    return template.format(amount=amount, source=source, records=r_text)
+
+def build_invitation_records(template: str, **args) -> str:
+    amount = args.get("amount")
+    source = args.get("source")
+    records = args.get("records")
+
+    r_text = ""
+    # TODO: formating invitation records
+    for i, r in enumerate(records):
+        record = f"{i+1}. {r}\n"
+        r_text += record
+
+    return template.format(amount=amount,source=source,records=r_text)
