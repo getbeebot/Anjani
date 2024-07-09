@@ -789,7 +789,7 @@ congrats-draw: |
   **Congratulations!!!**
   **Prize**: {prize}
   **From**: {source}
-  **Draw Time**: {drawtime}
+  **Date**: {drawtime}
 
 congrats-records: |
   **Reward records**

@@ -111,8 +111,8 @@ async def start_server() -> None:
 
     await runner.setup()
 
-    host = config.WEBSERVER_HOST
-    port = config.WEBSERVER_PORT
+    host = os.getenv("WEBSERVER_HOST", "0.0.0.0")
+    port = int(os.getenv("WEBSERVER_PORT", 8080))
     site = web.TCPSite(runner, host, port)
     await site.start()
     log.info(f"Web server listening on http://{host}:{port}")
@@ -351,7 +351,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         chat_id = int(chat_id)
 
-        uri = data.get("uri") or config.TWA_LINK
+        uri = data.get("uri") or os.getenv("TWA_LINK")
 
         button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
 
@@ -415,7 +415,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
         elif notify_type == 4:  # sending file to community admin
             filename = data.get("lotteryFileName")
             chat_id = data.get("owner")
-            base_link = config.WEBSITE
+            base_link = os.getenv("WEBSITE")
             download_link = f"{base_link}/downloads/{filename}"
             content = f"Please download the winners data via {download_link}"
 
@@ -441,9 +441,10 @@ async def send_message_handler(request: BaseRequest) -> Response:
                 [lucky_draw_btn],
                 [withdraw_btn]
             ])
-            await tgclient.send_message(
+            await tgclient.send_photo(
                 chat_id=chat_id,
-                content=content,
+                photo=os.getenv("UNION_DRAW_IMG"),
+                caption=content,
                 reply_markup=keyboard,
             )
             ret_data.update({"ok": True})
