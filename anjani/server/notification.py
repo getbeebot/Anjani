@@ -60,10 +60,10 @@ def build_congrats_msg(template: str, **args) -> str:
 def build_congrats_records(template: str, **args) -> str:
     source = "beecon"
     records = args.get("drawLogList")
-    amount_records = [int(item.get("prizeAmount")) for item in records]
-    unit_records = [item.get("symbolAlias") for item in records]
-    time_records = [item.get("rewardTime") for item in records]
-    records_arr = [f'{i+1}. Prize: {v[0]} {v[1]}\n   Date: {v[2]}' for i, v in enumerate(zip(amount_records, unit_records, time_records))]
+    amount_records = [float(item.get("prizeAmount")) for item in records]
+    unit_records = [item.get("symbolAlias") or "USDT" for item in records]
+    time_records = [format_msg_timestamp(int(item.get("rewardTime"))) for item in records]
+    records_arr = [f'{i+1}. Prize: {v[0]} {v[1]}\n    Date: {v[2]}' for i, v in enumerate(zip(amount_records, unit_records, time_records))]
     r_text = "\n".join(records_arr)
 
     amount = sum(amount_records)
@@ -75,8 +75,8 @@ def build_invitation_records(template: str, **args) -> str:
     source = "beecon"
     records = args.get("inviteList")
     id_records = [item.get("inviteeUserName") for item in records]
-    time_records = [item.get("inviteTime") for item in records]
-    records_arr = [f'{i+1}. ID: {v[0]}\n   Date: {v[1]}' for i, v in enumerate(zip(id_records, time_records))]
+    time_records = [format_msg_timestamp(int(item.get("inviteTime"))) for item in records]
+    records_arr = [f'{i+1}. ID: {v[0]}\n    Date: {v[1]}' for i, v in enumerate(zip(id_records, time_records))]
 
     r_text = "\n".join(records_arr)
 

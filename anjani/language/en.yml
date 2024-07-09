@@ -787,20 +787,20 @@ giveaway-template: "Welcome to join our community to get more rewards"
 #region giveaway-union
 congrats-draw: |
   **Congratulations!!!**
-  Prize: {prize}
-  From: {source}
-  Draw Time: {drawtime}
+  **Prize**: {prize}
+  **From**: {source}
+  **Draw Time**: {drawtime}
 
 congrats-records: |
   **Reward records**
-  Total amount: {amount}
-  From: {source}\n
+  **Total amount**: {amount}
+  **From**: {source}
   {records}
 
 invitation-records: |
   **Invitation records**
-  Total: {amount}
-  From: {source}\n
+  **Total**: {amount}
+  **From**: {source}
   {records}
 
 #endregion
