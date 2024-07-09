@@ -351,10 +351,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         chat_id = int(chat_id)
 
-        uri = data.get("uri")
-
-        if not uri:
-            uri = config.TWA_LINK
+        uri = data.get("uri") or config.TWA_LINK
 
         button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
 
@@ -372,8 +369,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
         notify_type = data.get("notifyType")
         engage_img_link = await get_template("engage-img")
 
-        lucky_draw_url = ""
-        lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=lucky_draw_url)
+        lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
 
         withdraw_btn = InlineKeyboardButton(text="Go to withdraw", url=f"t.me/beecon_wallet_bot?start=true")
 
@@ -450,6 +446,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
                 content=content,
                 reply_markup=keyboard,
             )
+            ret_data.update({"ok": True})
         elif notify_type == 7: # congrats records
             template = await get_template("congrats-records")
             content = build_congrats_records(template, **data)
@@ -463,6 +460,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
                 content=content,
                 reply_markup=keyboard,
             )
+            ret_data.update({"ok": True})
         elif notify_type == 8: # invitation records
             template = await get_template("invitation-records")
             content = build_invitation_records(template, **data)
@@ -475,6 +473,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
                 content=content,
                 reply_markup=keyboard,
             )
+            ret_data.update({"ok": True})
         else:
             log.warning("Not push notification for request: %s", payloads)
             ret_data.update({"ok": False, "error": "reject by setting"})
@@ -486,7 +485,6 @@ async def send_message_handler(request: BaseRequest) -> Response:
             "error": str(e),
         })
     return web_response.json_response(ret_data, status=200)
-
 
 
 connected_clients = set()

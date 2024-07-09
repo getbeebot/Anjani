@@ -41,8 +41,8 @@ def decode_args(args_str: str) -> dict:
 def generate_project_detail_link(project_id: int, bot_id: int):
     payloads = {
         "target": "projectDetail",
-        "id": project_id,
-        "botid": bot_id
+        "id": int(project_id),
+        "botid": int(bot_id),
     }
     args = encode_args(payloads)
     return f"{TWA_LINK}={args}"
@@ -50,9 +50,9 @@ def generate_project_detail_link(project_id: int, bot_id: int):
 def generate_task_detail_link(project_id: int, task_id: int, bot_id: int):
     payloads = {
         "target": "taskShare",
-        "id": project_id,
-        "subid": task_id,
-        "botid": bot_id
+        "id": int(project_id),
+        "subid": int(task_id),
+        "botid": int(bot_id),
     }
     args = encode_args(payloads)
     return f"{TWA_LINK}={args}"
@@ -60,8 +60,8 @@ def generate_task_detail_link(project_id: int, task_id: int, bot_id: int):
 def generate_project_leaderboard_link(project_id: int, bot_id: int):
     payloads = {
         "target": "leaderBoard",
-        "id": project_id,
-        "botid": bot_id,
+        "id": int(project_id),
+        "botid": int(bot_id),
     }
     args = encode_args(payloads)
     return f"{TWA_LINK}={args}"

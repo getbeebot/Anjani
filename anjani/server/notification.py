@@ -53,32 +53,33 @@ def format_msg_timestamp(ms: int) -> str:
 
 def build_congrats_msg(template: str, **args) -> str:
     prize = args.get("prize")
-    source = args.get("source")
-    drawtime = args.get("time")
+    source = "beecon"
+    drawtime = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
     return template.format(prize=prize, source=source, drawtime=drawtime)
 
 def build_congrats_records(template: str, **args) -> str:
-    amount = args.get("amount")
-    source = args.get("source")
-    records = args.get("records")
+    source = "beecon"
+    records = args.get("drawLogList")
+    amount_records = [int(item.get("prizeAmount")) for item in records]
+    unit_records = [item.get("symbolAlias") for item in records]
+    time_records = [item.get("rewardTime") for item in records]
+    records_arr = [f'{i+1}. Prize: {v[0]} {v[1]}\n   Date: {v[2]}' for i, v in enumerate(zip(amount_records, unit_records, time_records))]
+    r_text = "\n".join(records_arr)
 
-    r_text = ""
-    # TODO: formating congrats records
-    for i, r in enumerate(records):
-        record = f"{i+1}. {r}\n"
-        r_text += record
+    amount = sum(amount_records)
+    a_text = f"{amount} {unit_records[0]}"
 
-    return template.format(amount=amount, source=source, records=r_text)
+    return template.format(amount=a_text, source=source, records=r_text)
 
 def build_invitation_records(template: str, **args) -> str:
-    amount = args.get("amount")
-    source = args.get("source")
-    records = args.get("records")
+    source = "beecon"
+    records = args.get("inviteList")
+    id_records = [item.get("inviteeUserName") for item in records]
+    time_records = [item.get("inviteTime") for item in records]
+    records_arr = [f'{i+1}. ID: {v[0]}\n   Date: {v[1]}' for i, v in enumerate(zip(id_records, time_records))]
 
-    r_text = ""
-    # TODO: formating invitation records
-    for i, r in enumerate(records):
-        record = f"{i+1}. {r}\n"
-        r_text += record
+    r_text = "\n".join(records_arr)
+
+    amount = len(records)
 
     return template.format(amount=amount,source=source,records=r_text)
