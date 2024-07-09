@@ -356,9 +356,9 @@ async def send_message_handler(request: BaseRequest) -> Response:
         button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
 
         project_id = await mysql.get_chat_project_id(chat_id)
-        config = await BotNotificationConfig.get_project_config(mysql, project_id)
-        if not config:
-            config = BotNotificationConfig(project_id)
+        project_config = await BotNotificationConfig.get_project_config(mysql, project_id)
+        if not project_config:
+            project_config = BotNotificationConfig(project_id)
 
         chat = await tgclient.client.get_chat(chat_id)
         if chat.type == ChatType.CHANNEL:
@@ -374,7 +374,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
         withdraw_btn = InlineKeyboardButton(text="Go to withdraw", url=f"t.me/beecon_wallet_bot?start=true")
 
         lottery_type = data.get("lotteryType")
-        if notify_type == 1 and config.newdraw:    # create lottery task
+        if notify_type == 1 and project_config.newdraw:    # create lottery task
             template = await get_template(f"lottery-create-{lottery_type}")
             content = build_lottery_create_msg(template, **data)
             log.info(f"sending message {content}")
@@ -386,7 +386,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
             )
 
             ret_data = {"res": "ok"}
-        elif notify_type == 2 and config.userjoin:  # user entered the draw
+        elif notify_type == 2 and project_config.userjoin:  # user entered the draw
             template = await get_template(f"lottery-join-{lottery_type}")
             content = build_lottery_join_msg(template, **data)
             log.info(f"sending message {content}")
@@ -398,7 +398,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
             )
 
             ret_data = {"res": "ok"}
-        elif notify_type == 3 and config.draw:  # lottory draw winner announce
+        elif notify_type == 3 and project_config.draw:  # lottory draw winner announce
             template = await get_template("lottery-end")
             content = build_lottery_end_msg(template, **data)
             luckdraw_img_link = await get_template("luckydraw-img")
@@ -424,7 +424,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
             log.info(f"send {download_link} to {chat_id}")
 
             ret_data.update({"ok": True})
-        elif notify_type == 5 and config.newtask:
+        elif notify_type == 5 and project_config.newtask:
             content = await get_template("task-creation")
             await tgclient.send_photo(
                 chat_id,
