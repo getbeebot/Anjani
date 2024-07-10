@@ -59,12 +59,10 @@ def format_msg_timestamp(ms: int) -> str:
 
 def build_congrats_msg(template: str, **args) -> str:
     prize = args.get("prize")
-    source = "beecon"
     drawtime = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
-    return template.format(prize=prize, source=source, drawtime=drawtime)
+    return template.format(prize=prize, drawtime=drawtime)
 
 def build_congrats_records(template: str, **args) -> str:
-    source = "beecon"
     records = args.get("drawLogList")
     amount_records = [float(item.get("prizeAmount")) for item in records]
     unit_records = [item.get("symbolAlias") or "USDT" for item in records]
@@ -75,10 +73,9 @@ def build_congrats_records(template: str, **args) -> str:
     amount = sum(amount_records)
     a_text = f"{amount} {unit_records[0]}"
 
-    return template.format(amount=a_text, source=source, records=r_text)
+    return template.format(amount=a_text, records=r_text)
 
 def build_invitation_records(template: str, **args) -> str:
-    source = "beecon"
     records = args.get("inviteList")
     id_records = [item.get("inviteeUserName") for item in records]
     time_records = [format_msg_timestamp(int(item.get("inviteTime"))) for item in records]
@@ -88,4 +85,4 @@ def build_invitation_records(template: str, **args) -> str:
 
     amount = len(records)
 
-    return template.format(amount=amount,source=source,records=r_text)
+    return template.format(amount=amount,records=r_text)
