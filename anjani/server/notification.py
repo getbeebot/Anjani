@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 def build_lottery_create_msg(template: str, **args) -> str:
@@ -49,7 +49,13 @@ def build_lottery_end_msg(template: str, **args) -> str:
 
 
 def format_msg_timestamp(ms: int) -> str:
-    return datetime.fromtimestamp(timestamp=ms/1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
+    try:
+        # for some un-known reason, java request timestamp is utc-8
+        # to make the time correct, add 8h
+        tz_delta = timedelta(hours=8)
+        return datetime.fromtimestamp(timestamp=ms/1000, tz=timezone(tz_delta)).strftime("%Y-%m-%d %H:%M:%S (UTC)")
+    except Exception as e:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
 
 def build_congrats_msg(template: str, **args) -> str:
     prize = args.get("prize")

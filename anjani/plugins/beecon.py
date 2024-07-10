@@ -18,6 +18,7 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     InlineQuery,
     InlineQueryResultArticle,
+    InlineQueryResultPhoto,
     InputTextMessageContent,
 )
 from pyrogram.enums.parse_mode import ParseMode
@@ -47,6 +48,10 @@ class BeeconPlugin(plugin.Plugin):
         chat = message.chat
 
         if chat.type == ChatType.PRIVATE:
+
+            res = await self.bot.mysql.query_one("select * from sky_activity_lottery_user_draw_log where id = 180")
+            self.log.error("Debuging datetime: %s", res)
+
             context = message.text
             # return if no text message
             if not context:
@@ -184,7 +189,7 @@ class BeeconPlugin(plugin.Plugin):
 
             return f"https://{self.aws_s3_bucket}.s3.ap-southeast-1.amazonaws.com/{filename}"
         except Exception as e:
-            self.log.error(f"retrieving group pic failed: {str(e)}")
+            self.log.warn(f"retrieving group pic failed: {str(e)}")
 
     async def get_group_description(self, group_id: int) -> str | None:
         try:
@@ -193,7 +198,7 @@ class BeeconPlugin(plugin.Plugin):
                 return chat.description
 
         except Exception as e:
-            self.log.error(str(e))
+            self.log.warn(str(e))
         return None
 
     @command.filters(filters.group)
@@ -333,34 +338,68 @@ class BeeconPlugin(plugin.Plugin):
     async def on_inline_query(self, query: InlineQuery) -> None:
         self.log.debug("inline query: %s", "".join(str(query).split()))
 
-        pattern = re.compile(r"giveaway:(\d+):(\d+)")
+        pattern = re.compile(r"ld-(\d+)-(\d+)-(\w+)")
         match = pattern.search(query.query)
         if match:
             project_id = match.group(1)
             task_id = match.group(2)
+            lang = match.group(3)
 
-            task_url = util.misc.generate_task_detail_link(project_id, task_id, self.bot.uid)
+            self.log.debug("Inline query: project_id %s, task_id %s, lang %s", project_id, task_id, lang)
 
-            btn_text = await self.text(None, "giveaway-button")
-            button = InlineKeyboardMarkup([
-                [InlineKeyboardButton(text=btn_text, url=task_url)]
+            task_url = util.misc.generate_luckydraw_link(project_id, task_id)
+
+            sql = "SELECT btn_desc, des, pics FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
+            sql_res = await self.bot.mysql.query_one(sql, (project_id, task_id, lang))
+
+            if not sql_res:
+                warning_content = InputTextMessageContent("Not set")
+                reply = [
+                    InlineQueryResultArticle(
+                        title="Warning",
+                        input_message_content=warning_content,
+                        description=f"There's not info set for project {project_id}, task {task_id} in language {lang}"
+                    )
+                ]
+                await query.answer(reply)
+                return
+
+            (btn_desc, desc, pics) = sql_res
+
+            if not btn_desc:
+                self.log.warn("Project %s task %s lang %s not set btn_desc", project_id, task_id, lang)
+
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        text=json.loads(btn_desc).get("text") or "View",
+                        url=task_url
+                    )
+                ]
             ])
 
-            prompt_title = await self.text(None, "giveaway-title")
-            prompt_desc = await self.text(None, "giveaway-description")
+            prompt_title = f"{project_id}-{task_id}-{lang}"
 
-            giveaway_template = await self.text(None, "giveaway-template")
-
-            input_msg_content = InputTextMessageContent(
-                message_text=giveaway_template,
+            reply_msg = InputTextMessageContent(
+                message_text=desc,
                 parse_mode=ParseMode.MARKDOWN
             )
-            reply = [
-                InlineQueryResultArticle(
+
+            if not pics:
+                reply_res = InlineQueryResultArticle(
                     title=prompt_title,
-                    input_message_content=input_msg_content,
-                    description=prompt_desc,
-                    reply_markup=button,
+                    input_message_content=reply_msg,
+                    description=desc,
+                    reply_markup=keyboard
                 )
-            ]
-            await query.answer(reply)
+            else:
+                reply_res = InlineQueryResultPhoto(
+                    photo_url=pics,
+                    title=prompt_title,
+                    input_message_content=reply_msg,
+                    description=desc,
+                    reply_markup=keyboard
+                )
+
+            self.log.error("Reply res %s", reply_res)
+            await query.answer([reply_res])
