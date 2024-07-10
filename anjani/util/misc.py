@@ -39,32 +39,41 @@ def decode_args(args_str: str) -> dict:
     return msgpack.unpackb(p_args)
 
 def generate_project_detail_link(project_id: int, bot_id: int):
-    payloads = {
-        "target": "projectDetail",
-        "id": int(project_id),
-        "botid": int(bot_id),
-    }
-    args = encode_args(payloads)
-    return f"{TWA_LINK}={args}"
+    if project_id:
+        payloads = {
+            "target": "projectDetail",
+            "id": int(project_id),
+            "botid": int(bot_id),
+        }
+        args = encode_args(payloads)
+        return f"{TWA_LINK}={args}"
+    else:
+        return TWA_LINK
 
 def generate_task_detail_link(project_id: int, task_id: int, bot_id: int):
-    payloads = {
-        "target": "taskShare",
-        "id": int(project_id),
-        "subid": int(task_id),
-        "botid": int(bot_id),
-    }
-    args = encode_args(payloads)
-    return f"{TWA_LINK}={args}"
+    if project_id:
+        payloads = {
+            "target": "taskShare",
+            "id": int(project_id),
+            "subid": int(task_id),
+            "botid": int(bot_id),
+        }
+        args = encode_args(payloads)
+        return f"{TWA_LINK}={args}"
+    else:
+        return TWA_LINK
 
 def generate_project_leaderboard_link(project_id: int, bot_id: int):
-    payloads = {
-        "target": "leaderBoard",
-        "id": int(project_id),
-        "botid": int(bot_id),
-    }
-    args = encode_args(payloads)
-    return f"{TWA_LINK}={args}"
+    if project_id:
+        payloads = {
+            "target": "leaderBoard",
+            "id": int(project_id),
+            "botid": int(bot_id),
+        }
+        args = encode_args(payloads)
+        return f"{TWA_LINK}={args}"
+    else:
+        return TWA_LINK
 
 def check_filters(filters: Union[Filter, CustomFilter], anjani: "Anjani") -> None:
     """Recursively check filters to set :obj:`~Anjani` into :obj:`~CustomFilter` if needed"""
