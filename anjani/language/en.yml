@@ -788,19 +788,16 @@ giveaway-template: "Welcome to join our community to get more rewards"
 congrats-draw: |
   **Congratulations!!!**
   **Prize**: {prize}
-  **From**: {source}
   **Date**: {drawtime}
 
 congrats-records: |
   **Reward records**
   **Total amount**: {amount}
-  **From**: {source}
   {records}
 
 invitation-records: |
   **Invitation records**
   **Total**: {amount}
-  **From**: {source}
   {records}
 
 #endregion
