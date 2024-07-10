@@ -371,7 +371,7 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
 
-        withdraw_btn = InlineKeyboardButton(text="Go to withdraw", url=f"t.me/beecon_wallet_bot?start=true")
+        withdraw_btn = InlineKeyboardButton(text="Withdraw", url=f"t.me/beecon_wallet_bot?start=true")
 
         lottery_type = data.get("lotteryType")
         if notify_type == 1 and project_config.newdraw:    # create lottery task
