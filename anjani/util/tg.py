@@ -354,7 +354,7 @@ def get_text(
             if lang == "en":
                 return (
                     f"**NO LANGUAGE STRING FOR '{text_name}' in '{lang}'**\n"
-                    "Beecon"
+                    "Banknote Plane"
                 )
 
             bot.log.warning("NO LANGUAGE STRING FOR '%s' in '%s'", text_name, lang)
