@@ -70,7 +70,7 @@ def build_congrats_records(template: str, **args) -> str:
     amount_records = [float(item.get("prizeAmount")) for item in records]
     unit_records = [item.get("symbolAlias") or "USDT" for item in records]
     time_records = [format_msg_timestamp(int(item.get("rewardTime"))) for item in records]
-    records_arr = [f'**Record {i+1}**\n>Prize: {v[0]} {v[1]}\n> Date: {v[2]}' for i, v in enumerate(zip(amount_records, unit_records, time_records))]
+    records_arr = [f'**Record {i+1}**\n> Prize: {v[0]} {v[1]}\n> Date: {v[2]}' for i, v in enumerate(zip(amount_records, unit_records, time_records))]
     r_text = "\n".join(records_arr)
 
     amount = sum(amount_records)
