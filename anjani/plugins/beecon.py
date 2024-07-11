@@ -376,12 +376,11 @@ class BeeconPlugin(plugin.Plugin):
 
             prompt_title = f"{project_id}-{task_id}-{lang}"
 
-            reply_msg = InputTextMessageContent(
-                message_text=desc,
-                parse_mode=ParseMode.MARKDOWN
-            )
-
             if not pics:
+                reply_msg = InputTextMessageContent(
+                    message_text=desc,
+                    parse_mode=ParseMode.MARKDOWN
+                )
                 reply_res = InlineQueryResultArticle(
                     title=prompt_title,
                     input_message_content=reply_msg,
@@ -392,10 +391,11 @@ class BeeconPlugin(plugin.Plugin):
                 reply_res = InlineQueryResultPhoto(
                     photo_url=pics,
                     title=prompt_title,
-                    input_message_content=reply_msg,
+                    caption=desc,
                     description=desc,
                     reply_markup=keyboard
                 )
 
-            self.log.error("Reply res %s", reply_res)
+            self.log.debug("Reply res %s", reply_res)
+
             await query.answer([reply_res])
