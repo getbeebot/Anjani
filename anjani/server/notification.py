@@ -64,6 +64,9 @@ def build_congrats_msg(template: str, **args) -> str:
 
 def build_congrats_records(template: str, **args) -> str:
     records = args.get("drawLogList")
+    if not records:
+        return "There's no records for you yet."
+
     amount_records = [float(item.get("prizeAmount")) for item in records]
     unit_records = [item.get("symbolAlias") or "USDT" for item in records]
     time_records = [format_msg_timestamp(int(item.get("rewardTime"))) for item in records]
@@ -75,8 +78,18 @@ def build_congrats_records(template: str, **args) -> str:
 
     return template.format(amount=a_text, records=r_text)
 
+def build_invitation_notify(template: str, **args) -> str:
+    invitation = args.get("invitation")
+    invitee = invitation.get("inviteeUserName")
+    remind_draw_times = invitation.get("leftDrawTimes")
+
+    return template.format(invitee=invitee, draw=remind_draw_times)
+
 def build_invitation_records(template: str, **args) -> str:
     records = args.get("inviteList")
+    if not records:
+        return "There's no records for you yet"
+
     id_records = [item.get("inviteeUserName") for item in records]
     time_records = [format_msg_timestamp(int(item.get("inviteTime"))) for item in records]
     records_arr = [f'{i+1}. ID: {v[0]}\n    Date: {v[1]}' for i, v in enumerate(zip(id_records, time_records))]

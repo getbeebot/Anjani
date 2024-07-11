@@ -35,6 +35,7 @@ from .server.tgclient import TGClient
 from .server.notification import (
     build_congrats_msg,
     build_congrats_records,
+    build_invitation_notify,
     build_invitation_records,
     build_lottery_create_msg,
     build_lottery_end_msg,
@@ -473,6 +474,19 @@ async def send_message_handler(request: BaseRequest) -> Response:
                 chat_id=chat_id,
                 content=content,
                 reply_markup=keyboard,
+            )
+            ret_data.update({"ok": True})
+        elif notify_type == 9: # invitation success notify
+            template = await get_template("invitation-notify")
+            content = build_invitation_notify(template, **data)
+
+            keyboard = InlineKeyboardMarkup([
+                [lucky_draw_btn]
+            ])
+            await tgclient.send_message(
+                chat_id=chat_id,
+                content=content,
+                reply_markup=keyboard
             )
             ret_data.update({"ok": True})
         else:
