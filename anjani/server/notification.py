@@ -63,9 +63,17 @@ def build_congrats_msg(template: str, **args) -> str:
     return template.format(prize=prize, drawtime=drawtime)
 
 def build_congrats_records(template: str, **args) -> str:
-    records = args.get("drawLogList")
-    if not records:
+    draw_records = args.get("drawLogList")
+    if not draw_records:
         return "There's no records for you yet."
+
+    count = len(draw_records)
+    amount = sum([float(item.get("prizeAmount")) for item in records])
+
+    if count > 20:
+        records = draw_records[0:20]
+    else:
+        records = draw_records
 
     amount_records = [float(item.get("prizeAmount")) for item in records]
     unit_records = [item.get("symbolAlias") or "USDT" for item in records]
@@ -73,10 +81,9 @@ def build_congrats_records(template: str, **args) -> str:
     records_arr = [f'**Record {i+1}**\n> Prize: {v[0]} {v[1]}\n> Date: {v[2]}' for i, v in enumerate(zip(amount_records, unit_records, time_records))]
     r_text = "\n".join(records_arr)
 
-    amount = sum(amount_records)
     a_text = f"{amount} {unit_records[0]}"
 
-    return template.format(amount=a_text, records=r_text)
+    return template.format(amount=a_text, count=count, records=r_text)
 
 def build_invitation_notify(template: str, **args) -> str:
     invitation = args.get("invitation")
@@ -86,9 +93,16 @@ def build_invitation_notify(template: str, **args) -> str:
     return template.format(invitee=invitee, draw=remind_draw_times)
 
 def build_invitation_records(template: str, **args) -> str:
-    records = args.get("inviteList")
-    if not records:
+    invite_records = args.get("inviteList")
+    if not invite_records:
         return "There's no records for you yet"
+
+    count = len(invite_records)
+
+    if count > 20:
+        records = invite_records[0:20]
+    else:
+        records = invite_records
 
     id_records = [item.get("inviteeUserName") for item in records]
     time_records = [format_msg_timestamp(int(item.get("inviteTime"))) for item in records]
@@ -98,4 +112,4 @@ def build_invitation_records(template: str, **args) -> str:
 
     amount = len(records)
 
-    return template.format(amount=amount,records=r_text)
+    return template.format(amount=amount, count=count, records=r_text)

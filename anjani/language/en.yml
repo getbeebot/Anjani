@@ -793,11 +793,13 @@ congrats-draw: |
 congrats-records: |
   **Reward records**
   **Total amount**: {amount}
+  **Records Count**: {count}
   {records}
 
 invitation-records: |
   **Invitation records**
   **Total**: {amount}
+  **Records Count**: {count}
   {records}
 invitation-notify: "You have invited **{invitee}**, and you may now draw **{draw}** times."
 #endregion
