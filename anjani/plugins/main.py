@@ -504,7 +504,8 @@ class Main(plugin.Plugin):
         chat = ctx.chat
 
         guide_img_link = await self.text(None, "guide-img")
-        engage_img_link = await self.text(None, "engage-img")
+        # engage_img_link = await self.text(None, "engage-img")
+        engage_img_link = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
 
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             # for start bot task
