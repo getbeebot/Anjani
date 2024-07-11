@@ -50,7 +50,7 @@ class BotNotificationConfig:
         """
         config = await mysql.query_one(query, (project_id, ))
 
-        log.debug("Getting project config: %s", config.__dict__)
+        log.debug("Getting project config: %s", config)
 
         try:
             if config:
