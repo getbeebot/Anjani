@@ -198,7 +198,8 @@ async def push_overview(projects: List[tuple], bot_id: int):
         if pre_msg:
             await tgclient.client.delete_messages(group_id, int(pre_msg))
 
-        engage_img = await get_template("engage-img")
+        # engage_img = await get_template("engage-img")
+        engage_img = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
 
         msg = await tgclient.send_photo(
             group_id,
@@ -368,7 +369,8 @@ async def send_message_handler(request: BaseRequest) -> Response:
 
         content: str = ""
         notify_type = data.get("notifyType")
-        engage_img_link = await get_template("engage-img")
+        # engage_img_link = await get_template("engage-img")
+        engage_img_link = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
 
         lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
 

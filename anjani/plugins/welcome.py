@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import asyncio
 from html import escape
 from typing import (
@@ -170,7 +171,8 @@ class Greeting(plugin.Plugin):
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
-                                await self.text(None, "engage-img", noformat=True),
+                                # await self.text(None, "engage-img"),
+                                os.getenv("ENGAGE_IMG","https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"),
                                 caption=formatted_text,
                                 message_thread_id=thread_id,
                                 reply_to_message_id=reply_to,

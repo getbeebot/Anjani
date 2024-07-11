@@ -352,10 +352,7 @@ def get_text(
             )
         except KeyError:
             if lang == "en":
-                return (
-                    f"**NO LANGUAGE STRING FOR '{text_name}' in '{lang}'**\n"
-                    "Beecon"
-                )
+                return (f"**NO LANGUAGE STRING FOR '{text_name}' in '{lang}'**")
 
             bot.log.warning("NO LANGUAGE STRING FOR '%s' in '%s'", text_name, lang)
             return _get_text("en")
