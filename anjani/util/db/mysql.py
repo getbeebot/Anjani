@@ -114,10 +114,14 @@ class MysqlPoolClient:
     async def get_chat_project_id(self, chat_id: int) -> int:
         sql = "SELECT id FROM bot_project WHERE target_id=%s"
         row = await self.query_one(sql, (chat_id, ))
-        if row:
-            (project_id, ) =  row
-            return project_id
-        else:
+        try:
+            if row:
+                (project_id, ) =  row
+                return project_id
+            else:
+                return None
+        except Exception as e:
+            self.log.warn("Get chat %s project id error: %s", chat_id, e)
             return None
 
     async def get_project_ids(self, bot_id: int):

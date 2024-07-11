@@ -50,19 +50,23 @@ class BotNotificationConfig:
         """
         config = await mysql.query_one(query, (project_id, ))
 
-        log.debug("Getting project config: %s", config)
+        log.debug("Getting project config: %s", config.__dict__)
 
-        if config:
-            return BotNotificationConfig(
-                project_id=project_id,
-                overview=config[0],
-                ovduration=config[1],
-                newdraw=config[2],
-                userjoin=config[3],
-                draw=config[4],
-                verify=config[5],
-                newtask=config[6]
-            )
+        try:
+            if config:
+                return BotNotificationConfig(
+                    project_id=project_id,
+                    overview=config[0],
+                    ovduration=config[1],
+                    newdraw=config[2],
+                    userjoin=config[3],
+                    draw=config[4],
+                    verify=config[5],
+                    newtask=config[6]
+                )
+        except Exception as e:
+            log.warn("Get project %s config error: %s", project_id, e)
+            return BotNotificationConfig(project_id)
 
     @staticmethod
     async def update_or_create_project_config(mysql: MysqlPoolClient, config: "BotNotificationConfig"):
