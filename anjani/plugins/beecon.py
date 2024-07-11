@@ -48,10 +48,6 @@ class BeeconPlugin(plugin.Plugin):
         chat = message.chat
 
         if chat.type == ChatType.PRIVATE:
-
-            res = await self.bot.mysql.query_one("select * from sky_activity_lottery_user_draw_log where id = 180")
-            self.log.error("Debuging datetime: %s", res)
-
             context = message.text
             # return if no text message
             if not context:
