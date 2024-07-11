@@ -68,7 +68,7 @@ def build_congrats_records(template: str, **args) -> str:
         return "There's no records for you yet."
 
     count = len(draw_records)
-    amount = sum([float(item.get("prizeAmount")) for item in records])
+    amount = sum([float(item.get("prizeAmount")) for item in draw_records])
 
     if count > 20:
         records = draw_records[0:20]
@@ -110,6 +110,4 @@ def build_invitation_records(template: str, **args) -> str:
 
     r_text = "\n".join(records_arr)
 
-    amount = len(records)
-
-    return template.format(amount=amount, count=count, records=r_text)
+    return template.format(amount=count, count=count, records=r_text)
