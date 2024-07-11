@@ -55,6 +55,8 @@ class Main(plugin.Plugin):
 
     name: ClassVar[str] = "Main"
 
+    mysql: util.db.MysqlPoolClient
+
     bot_name: str
     db: util.db.AsyncCollection
     lang_db: util.db.AsyncCollection
@@ -88,6 +90,9 @@ class Main(plugin.Plugin):
                 self.bot.chats_languages[document["chat_id"]] = document["language"]
 
     async def on_load(self) -> None:
+        self.mysql = util.db.MysqlPoolClient.init_from_env()
+        await self.mysql.connect()
+
         self.db = self.bot.db.get_collection("SESSION")
         self.lang_db = self.bot.db.get_collection("LANGUAGE")
         self._start_db_stream()
@@ -173,6 +178,8 @@ class Main(plugin.Plugin):
             # for language db
             self._db_stream.cancel()
 
+            await self.mysql.close()
+
 
     async def send_to_log(self, text: str, *args: Any, **kwargs: Any) -> Optional[Message]:
         if not self.bot.config.LOG_CHANNEL:
@@ -202,7 +209,7 @@ class Main(plugin.Plugin):
 
     async def project_builder(self, chat_id: int, is_link: bool = False) -> List[List[InlineKeyboardButton]]:
         projects: List[List[InlineKeyboardButton]] = []
-        user_projects = await self.bot.mysql.get_user_projects(chat_id, self.bot.uid)
+        user_projects = await self.mysql.get_user_projects(chat_id, self.bot.uid)
 
         if not user_projects:
             return
@@ -224,7 +231,7 @@ class Main(plugin.Plugin):
         project_config = await self.get_project_config(project_id)
         # if there's no redis cache, query mysql db
         if not project_config:
-            project_config = await BotNotificationConfig.get_project_config(self.bot.mysql, project_id)
+            project_config = await BotNotificationConfig.get_project_config(self.mysql, project_id)
         # if there's no db records, create a new one
         if not project_config:
             project_config = BotNotificationConfig(project_id)
@@ -375,7 +382,7 @@ class Main(plugin.Plugin):
                 project_id = int(project.group(1))
                 project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
-                (project_name, project_desc) = await self.bot.mysql.get_project_brief(project_id)
+                (project_name, project_desc) = await self.mysql.get_project_brief(project_id)
 
                 text = f"**Community**: {project_name}\n"
                 if project_desc:
@@ -400,7 +407,7 @@ class Main(plugin.Plugin):
                     # sync project config to db every time go to project breif page
                     project_config = await self.get_project_config(project_id)
                     if project_config:
-                        await BotNotificationConfig.update_or_create_project_config(self.bot.mysql, project_config)
+                        await BotNotificationConfig.update_or_create_project_config(self.mysql, project_config)
                     await query.edit_message_text(
                         text=text,
                         reply_markup=keyboard,
@@ -454,7 +461,7 @@ class Main(plugin.Plugin):
                     [InlineKeyboardButton(text=await self.text(None, "back-button"), callback_data=f"help_project_{project_id}")]
                 )
 
-                (project_name, project_desc) = await self.bot.mysql.get_project_brief(project_id)
+                (project_name, project_desc) = await self.mysql.get_project_brief(project_id)
 
                 text = f"**Community**: {project_name}\n"
                 if project_desc:
@@ -511,7 +518,7 @@ class Main(plugin.Plugin):
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             # for start bot task
             try:
-                await self.bot.mysql.save_start_record(chat.id, self.bot.uid)
+                await self.mysql.save_start_record(chat.id, self.bot.uid)
             except Exception as e:
                 self.log.warn("Saving start bot records error: %s", e)
 
@@ -556,7 +563,7 @@ class Main(plugin.Plugin):
                     awards = await self.bot.apiclient.distribute_join_rewards(payloads)
                     if awards:
                         reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
-                        project_id = await self.bot.mysql.get_chat_project_id(group_id )
+                        project_id = await self.mysql.get_chat_project_id(group_id )
                         project_url= util.misc.generate_project_detail_link(project_id, bot_id)
 
                         project_btn = InlineKeyboardMarkup([[
@@ -634,7 +641,7 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        is_exist = await self.bot.mysql.get_chat_project_id(chat.id)
+        is_exist = await self.mysql.get_chat_project_id(chat.id)
         # if not is_exist:
         #     pass
 
@@ -643,7 +650,7 @@ class Main(plugin.Plugin):
         while counter < 5 and not project_id:
             await asyncio.sleep(1)
             counter += 1
-            project_id = await self.bot.mysql.get_chat_project_id(chat.id)
+            project_id = await self.mysql.get_chat_project_id(chat.id)
 
         # no project for group, error exception
         if not project_id:
@@ -664,8 +671,8 @@ class Main(plugin.Plugin):
 
         buttons = [[InlineKeyboardButton(text=await self.text(chat.id, "create-project-button"),url=project_link)]]
 
-        tasks = await self.bot.mysql.get_project_tasks(project_id)
-        participants = await self.bot.mysql.get_project_participants(project_id)
+        tasks = await self.mysql.get_project_tasks(project_id)
+        participants = await self.mysql.get_project_participants(project_id)
 
         self.log.debug("In start command, project %s has %s tasks and %s participants", project_id, tasks, participants)
 

@@ -39,6 +39,15 @@ class BeeconPlugin(plugin.Plugin):
     aws_sk = os.getenv("AWS_SK")
     aws_s3_bucket = os.getenv("AWS_S3_BUCKET")
 
+    mysql: util.db.MysqlPoolClient
+
+    async def on_load(self) -> None:
+        self.mysql = util.db.MysqlPoolClient.init_from_env()
+        await self.mysql.connect()
+
+    async def on_stop(self) -> None:
+        await self.mysql.close()
+
     async def on_message(self, message: Message) -> None:
         data = "".join(str(message).split())
         self.log.debug(f"Receiving message: {data}")
@@ -102,7 +111,7 @@ class BeeconPlugin(plugin.Plugin):
                 "targetType": 0,
             })
 
-            project_id = await self.bot.mysql.get_chat_project_id(chat_id)
+            project_id = await self.mysql.get_chat_project_id(chat_id)
             project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
             button = InlineKeyboardMarkup([[
@@ -195,7 +204,7 @@ class BeeconPlugin(plugin.Plugin):
                 return chat.description
 
         except Exception as e:
-            self.log.warn(str(e))
+            self.log.warn("Get group %s description error %s", group_id, e)
         return None
 
     @command.filters(filters.group)
@@ -208,35 +217,32 @@ class BeeconPlugin(plugin.Plugin):
 
         payloads = await self._construct_user_api_payloads(from_user)
 
-        try:
-            payloads.update({
-                "command": "checkin",
-                "targetId": group_id,
-                "targetType": 0,
-            })
+        payloads.update({
+            "command": "checkin",
+            "targetId": group_id,
+            "targetType": 0,
+        })
 
-            payloads = json.loads(json.dumps(payloads))
+        payloads = json.loads(json.dumps(payloads))
 
-            project_id = await self.bot.mysql.get_chat_project_id(group_id)
-            project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+        project_id = await self.mysql.get_chat_project_id(group_id)
+        project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
-            button = [[
-                InlineKeyboardButton(
-                    text=await self.text(None, "checkin-button", noformat=True),
-                    url=project_link
-                )
-            ]]
-
-            reply_text = await self.bot.apiclient.checkin(payloads)
-
-            await ctx.respond(
-                reply_text,
-                reply_markup=InlineKeyboardMarkup(button),
-                parse_mode=ParseMode.MARKDOWN,
-                delete_after=20,
+        button = [[
+            InlineKeyboardButton(
+                text=await self.text(None, "checkin-button", noformat=True),
+                url=project_link
             )
-        except Exception as e:
-            self.log.error(e)
+        ]]
+
+        reply_text = await self.bot.apiclient.checkin(payloads)
+
+        await ctx.respond(
+            reply_text,
+            reply_markup=InlineKeyboardMarkup(button),
+            parse_mode=ParseMode.MARKDOWN,
+            delete_after=20,
+        )
 
     async def _construct_user_api_payloads(self, user: User) -> dict:
         payloads = {}
@@ -250,7 +256,7 @@ class BeeconPlugin(plugin.Plugin):
         try:
             avatar = await self.get_group_avatar_link(user_id, user.photo.big_file_id)
         except Exception as e:
-            self.log.error(e)
+            self.log.warn("API payload construction error: %s, user (%s, %s)", e, user_id, nick_name)
             avatar = None
 
         payloads.update({
@@ -273,7 +279,7 @@ class BeeconPlugin(plugin.Plugin):
         top_number = 10
 
         try:
-            project_id = await self.bot.mysql.get_chat_project_id(group_id)
+            project_id = await self.mysql.get_chat_project_id(group_id)
             project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
             button = [[InlineKeyboardButton("View more", url=project_link)]]
 
@@ -290,7 +296,7 @@ class BeeconPlugin(plugin.Plugin):
             if invited_number and rewards and reward_name:
                 reply_text = f"Invited: **{invited_number}**, rewards: **{rewards} {reward_name}**"
             else:
-                self.log.warning("No inviting rewards")
+                self.log.warn("No inviting rewards")
 
             await ctx.respond(
                 text=reply_text,
@@ -347,7 +353,7 @@ class BeeconPlugin(plugin.Plugin):
             task_url = util.misc.generate_luckydraw_link(project_id, task_id)
 
             sql = "SELECT btn_desc, des, pics FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
-            sql_res = await self.bot.mysql.query_one(sql, (project_id, task_id, lang))
+            sql_res = await self.mysql.query_one(sql, (project_id, task_id, lang))
 
             if not sql_res:
                 warning_content = InputTextMessageContent("Not set")

@@ -99,7 +99,7 @@ class TGClient:
 
                 return avatar_link
         except Exception as e:
-            self.log.error(f"Get avatar link error: {str(e)}")
+            self.log.warn("Get chat %s avatar link error %s", chat_id, e)
 
         return None
 
@@ -113,7 +113,7 @@ class TGClient:
             else:
                 return False
         except Exception as e:
-            self.log.error(f"Chat member verify error: {str(e)}")
+            self.log.error("Checking user %s for chat %s member error: %s", user_id, group_id, e)
             return False
 
 

@@ -49,6 +49,7 @@ class BotNotificationConfig:
         WHERE project_id = %s
         """
         config = await mysql.query_one(query, (project_id, ))
+
         log.debug("Getting project config: %s", config)
 
         if config:

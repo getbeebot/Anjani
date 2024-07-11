@@ -56,11 +56,16 @@ class Greeting(plugin.Plugin):
     name: ClassVar[str] = "Greetings"
     helpable: ClassVar[bool] = True
 
+    mysql: util.db.MysqlPoolClient
+
     db: util.db.AsyncCollection
     chat_db: util.db.AsyncCollection
     SEND: MutableMapping[int, Callable[..., Coroutine[Any, Any, Optional[Message]]]]
 
     async def on_load(self) -> None:
+        self.mysql = util.db.MysqlPoolClient.init_from_env()
+        await self.mysql.connect()
+
         self.db = self.bot.db.get_collection("WELCOME")
         self.chat_db = self.bot.db.get_collection("CHATS")
 
@@ -76,6 +81,9 @@ class Greeting(plugin.Plugin):
             Types.VIDEO_NOTE.value: self.bot.client.send_video_note,
             Types.ANIMATION.value: self.bot.client.send_animation,
         }
+
+    async def on_stop(self) -> None:
+        await self.mysql.close()
 
 
     async def on_chat_action(self, message: Message) -> None:
@@ -162,7 +170,7 @@ class Greeting(plugin.Plugin):
                     if button:
                         button = build_button(button)
                     else:
-                        project_id = await self.bot.mysql.get_chat_project_id(chat.id)
+                        project_id = await self.mysql.get_chat_project_id(chat.id)
                         url = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
                         button = build_button([("🕹 Enter", url, False)])
