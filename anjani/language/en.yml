@@ -799,5 +799,5 @@ invitation-records: |
   **Invitation records**
   **Total**: {amount}
   {records}
-invitation-notify: "You have invited {invitee}, and you may now draw {draw} times."
+invitation-notify: "You have invited **{invitee}**, and you may now draw **{draw}** times."
 #endregion
