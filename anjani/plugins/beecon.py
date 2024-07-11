@@ -20,6 +20,7 @@ from pyrogram.types import (
     InlineQueryResultArticle,
     InlineQueryResultPhoto,
     InputTextMessageContent,
+    InlineQueryResultVideo,
 )
 from pyrogram.enums.parse_mode import ParseMode
 
@@ -388,13 +389,23 @@ class BeeconPlugin(plugin.Plugin):
                     reply_markup=keyboard
                 )
             else:
-                reply_res = InlineQueryResultPhoto(
-                    photo_url=pics,
-                    title=prompt_title,
-                    caption=desc,
-                    description=desc,
-                    reply_markup=keyboard
-                )
+                if pics.split('.')[-1] == "gif":
+                    reply_res = InlineQueryResultVideo(
+                        video_url=pics,
+                        thumb_url=pics,
+                        title=prompt_title,
+                        caption=desc,
+                        description=desc,
+                        reply_markup=keyboard
+                    )
+                else:
+                    reply_res = InlineQueryResultPhoto(
+                        photo_url=pics,
+                        title=prompt_title,
+                        caption=desc,
+                        description=desc,
+                        reply_markup=keyboard
+                    )
 
             self.log.debug("Reply res %s", reply_res)
 
