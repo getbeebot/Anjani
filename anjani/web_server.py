@@ -404,7 +404,9 @@ async def send_message_handler(request: BaseRequest) -> Response:
         elif notify_type == 3 and project_config.draw:  # lottory draw winner announce
             template = await get_template("lottery-end")
             content = build_lottery_end_msg(template, **data)
-            luckdraw_img_link = await get_template("luckydraw-img")
+
+            # luckdraw_img_link = await get_template("luckydraw-img")
+            luckdraw_img_link = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
 
             log.info(f"sending message {content}")
 
