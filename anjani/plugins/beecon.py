@@ -350,8 +350,7 @@ class BeeconPlugin(plugin.Plugin):
 
             self.log.debug("Inline query: project_id %s, task_id %s, lang %s", project_id, task_id, lang)
 
-            task_url = util.misc.generate_luckydraw_link(project_id, task_id)
-
+            task_url = util.misc.generate_luckydraw_link(project_id, task_id, self.bot.uid)
             sql = "SELECT btn_desc, des, pics FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
             sql_res = await self.mysql.query_one(sql, (project_id, task_id, lang))
 
