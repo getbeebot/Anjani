@@ -63,12 +63,13 @@ def generate_task_detail_link(project_id: int, task_id: int, bot_id: int):
     else:
         return TWA_LINK
 
-def generate_luckydraw_link(project_id: int, task_id: int):
+def generate_luckydraw_link(project_id: int, task_id: int, bot_id: int):
     if project_id:
         payloads = {
             "target": "lotteryDetail",
             "id": int(project_id),
             "subid": int(task_id),
+            "botid": int(bot_id)
         }
         args = encode_args(payloads)
         return f"{TWA_LINK}={args}"
