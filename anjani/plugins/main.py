@@ -231,7 +231,7 @@ class Main(plugin.Plugin):
         project_config = await self.get_project_config(project_id)
         # if there's no redis cache, query mysql db
         if not project_config:
-            project_config = await BotNotificationConfig.get_project_config(self.mysql, project_id)
+            project_config = await BotNotificationConfig.get_project_config(util.db.MysqlPoolClient.init_from_env(), project_id)
         # if there's no db records, create a new one
         if not project_config:
             project_config = BotNotificationConfig(project_id)

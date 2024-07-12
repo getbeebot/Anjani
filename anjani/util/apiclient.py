@@ -29,7 +29,7 @@ class APIClient:
             self.headers.update({"Botid": str(bot_id)})
 
     async def distribute_join_rewards(self, payloads: dict) -> Optional[str]:
-        self.log.debug("Distribute join rewards request payloads: %s", payloads)
+        self.log.info("Distribute join rewards request payloads: %s", payloads)
 
         rewards = None
 
@@ -54,7 +54,7 @@ class APIClient:
         return rewards
 
     async def create_project(self, payloads: dict) -> Optional[int]:
-        self.log.debug("Create project request payloads: %s", payloads)
+        self.log.info("Create project request payloads: %s", payloads)
 
         project_id = None
 
@@ -79,7 +79,7 @@ class APIClient:
         return project_id
 
     async def get_invite_link(self, payloads: dict) -> Optional[str]:
-        self.log.debug("Get invite link request payloads: %s", payloads)
+        self.log.info("Get invite link request payloads: %s", payloads)
 
         invite_link = None
 
@@ -94,7 +94,7 @@ class APIClient:
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
-                self.log.debug("Get invite link response: %s", res)
+                self.log.info("Get invite link response: %s", res)
                 invite_link = res.get("inviteLink")
             else:
                 self.log.error("Get invite link error: %s", await resp.text())
@@ -102,7 +102,7 @@ class APIClient:
         return invite_link
 
     async def checkin(self, payloads: dict) -> str:
-        self.log.debug("Checking request payloads: %s", payloads)
+        self.log.info("Checking request payloads: %s", payloads)
 
         ret = "Engage more, earn more."
 
@@ -118,7 +118,7 @@ class APIClient:
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
-                self.log.debug("Checkin response: %s", res)
+                self.log.info("Checkin response: %s", res)
                 data = res.get("data")
                 rewards = data.get("awardsDes")
                 ret = f"Checkin successful, community points awarded: {rewards}"
@@ -132,7 +132,7 @@ class APIClient:
         return ret
 
     async def get_invite_log(self, payloads: dict) -> Optional[tuple]:
-        self.log.debug("Get invite log request payloads: %s", payloads)
+        self.log.info("Get invite log request payloads: %s", payloads)
 
         invited_number = None
         rewards = None
@@ -149,7 +149,7 @@ class APIClient:
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
-                self.log.debug("Get invite log response: %s", res)
+                self.log.info("Get invite log response: %s", res)
 
                 invited_number = res.get("inviteNum")
                 rewards = res.get("balance")
@@ -160,7 +160,7 @@ class APIClient:
         return (invited_number, rewards, reward_name)
 
     async def get_ranks(self, payloads: dict):
-        self.log.debug("Get ranks request payloads: %s", payloads)
+        self.log.info("Get ranks request payloads: %s", payloads)
 
         req_uri = f"{self.url_prefix}/p/project/myRank"
 
@@ -169,7 +169,7 @@ class APIClient:
         async with self.http.get(url=req_uri, params=payloads, headers=self.headers) as resp:
             if resp.status == 200:
                 res = await resp.json()
-                self.log.debug("Get ranks response: %s", res)
+                self.log.info("Get ranks response: %s", res)
                 return res.get("userRanks")
             else:
                 self.log.error("Get ransk error: %s", await resp.text())
