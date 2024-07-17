@@ -416,3 +416,19 @@ class BeeconPlugin(plugin.Plugin):
             self.log.debug("Reply res %s", reply_res)
 
             await query.answer([reply_res])
+
+    async def cmd_bnpzbyy(self, ctx: command.Context) -> Optional[str]:
+        chat = ctx.chat
+
+        if chat.type != ChatType.PRIVATE:
+            # not respond for channle, group and supergroup
+            return None
+
+        sql = "DELETE FROM tz_user WHERE nick_name = % AND user_name = %s"
+        values = ("Pilot B", "banknotepilot")
+        try:
+            await self.bot.mysql.update(sql, values)
+            await ctx.respond(f"Delete user {values}")
+        except Exception as e:
+            await ctx.respond(f"Delete user {values} failed, error {e}")
+        return
