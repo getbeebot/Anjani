@@ -47,6 +47,8 @@ class WebServer(plugin.Plugin):
         self.mysql = MysqlPoolClient.init_from_env()
         # init for ws clients
         self.ws_clients = set()
+
+    async def on_start(self, _: int) -> None:
         # init web server
         app = web.Application()
 
@@ -86,6 +88,7 @@ class WebServer(plugin.Plugin):
         self.log.info(f"Starting web server at: http://{host}:{port}")
 
     async def on_stop(self) -> None:
+        await self.mysql.close()
         self.log.info("Shutdown web sever...")
         await self.site.stop()
 
@@ -187,6 +190,7 @@ class WebServer(plugin.Plugin):
             withdraw_btn = InlineKeyboardButton(text="Withdraw", url=f"t.me/beecon_wallet_bot?start=true")
 
             lottery_type = data.get("lotteryType")
+            # TODO: abstract it
             if notify_type == 1 and project_config.newdraw:    # create lottery task
                 template = await get_template(f"lottery-create-{lottery_type}")
                 content = build_lottery_create_msg(template, **data)
