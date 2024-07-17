@@ -196,19 +196,25 @@ async def push_overview(projects: List[tuple], bot_id: int):
         # delete last notification
         pre_msg = await redis.get(f"notify_{group_id}")
         if pre_msg:
-            await tgclient.client.delete_messages(group_id, int(pre_msg))
+            try:
+                await tgclient.client.delete_messages(group_id, int(pre_msg))
+            except Exception as e:
+                log.warning("Deleting preview group(%s) overview notification error %s", group_id, str(e))
 
         # engage_img = await get_template("engage-img")
         engage_img = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
 
-        msg = await tgclient.send_photo(
-            group_id,
-            engage_img,
-            caption=group_notify_msg,
-            reply_markup=button,
-        )
-        if msg:
-            await redis.set(f"notify_{group_id}", msg.id)
+        try:
+            msg = await tgclient.send_photo(
+                group_id,
+                engage_img,
+                caption=group_notify_msg,
+                reply_markup=button,
+            )
+            if msg:
+                await redis.set(f"notify_{group_id}", msg.id)
+        except Exception as e:
+            log.warning("Push overview message to group (%s) error: %s", group_id, str(e))
 
 
 def sorted_by_rank(data):
