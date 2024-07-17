@@ -12,10 +12,10 @@ from anjani.util import misc
 from anjani.language import get_template
 from anjani.util.db import MysqlPoolClient, AsyncRedisClient
 from anjani.util.project_config import BotNotificationConfig
-from anjani.web_server import get_project_intervals
 
 class CronJob(plugin.Plugin):
     name: ClassVar[str] = "CronJob"
+    helpable: ClassVar[bool] = False
 
     mysql: MysqlPoolClient
     redis: AsyncRedisClient
@@ -27,7 +27,7 @@ class CronJob(plugin.Plugin):
     async def on_start(self, _: int) -> None:
         scheduler = AsyncIOScheduler()
 
-        project_intervals = await get_project_intervals(self.bot.uid)
+        project_intervals = await self.get_project_intervals()
         for interval, projects in project_intervals.items():
             trigger = IntervalTrigger(seconds=interval)
             scheduler.add_job(self.push_overview, args=[projects, ], trigger=trigger)

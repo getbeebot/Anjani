@@ -22,10 +22,8 @@ from anjani.server.notification import (
     build_invitation_notify,
     build_invitation_records,
     build_lottery_create_msg,
-    build_lottery_end_msg,
     build_lottery_join_msg,
 )
-from anjani.language import get_template
 
 import boto3
 
@@ -35,10 +33,11 @@ class WebServer(plugin.Plugin):
 
     ws_clients: set
     site: web.TCPSite
+    mysql: MysqlPoolClient
 
     s3: any
-
-    mysql: MysqlPoolClient
+    enage_img: str
+    draw_img: str
 
     async def on_load(self) -> None:
         # init for aws s3
@@ -47,6 +46,8 @@ class WebServer(plugin.Plugin):
         self.mysql = MysqlPoolClient.init_from_env()
         # init for ws clients
         self.ws_clients = set()
+        self.enage_img = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
+        self.draw_img = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
 
     async def on_start(self, _: int) -> None:
         # init web server
@@ -81,7 +82,6 @@ class WebServer(plugin.Plugin):
         host = self.bot.config.WEB_HOST
         port = self.bot.config.WEB_PORT
         self.site = web.TCPSite(runner, host, port)
-
 
         await self.site.start()
 
@@ -180,145 +180,57 @@ class WebServer(plugin.Plugin):
                 self.log.warn("Chat type is channel, not sending notification. Channel: %s, content: %s", chat.title, payloads)
                 return web.json_response({"ok": False, "error": "I'm not push notification to channel"}, status=200)
 
-            content: str = ""
             notify_type = data.get("notifyType")
-            # engage_img_link = await get_template("engage-img")
-            engage_img_link = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
 
             lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
-
             withdraw_btn = InlineKeyboardButton(text="Withdraw", url=f"t.me/beecon_wallet_bot?start=true")
-
-            lottery_type = data.get("lotteryType")
-            # TODO: abstract it
-            if notify_type == 1 and project_config.newdraw:    # create lottery task
-                template = await get_template(f"lottery-create-{lottery_type}")
-                content = build_lottery_create_msg(template, **data)
-                self.log.info(f"sending message {content}")
-
-                await self.bot.client.send_photo(
-                    chat_id,
-                    engage_img_link,
-                    caption=content,
-                    reply_markup=button,
-                )
-
-                ret_data = ret_data.update({"ok": True})
-            elif notify_type == 2 and project_config.userjoin:  # user entered the draw
-                template = await get_template(f"lottery-join-{lottery_type}")
-                content = build_lottery_join_msg(template, **data)
-                self.log.info(f"sending message {content}")
-
-                await self.bot.client.send_photo(
-                    chat_id,
-                    engage_img_link,
-                    caption=content,
-                    reply_markup=button,
-                )
-
-                ret_data = ret_data.update({"ok": True})
-            elif notify_type == 3 and project_config.draw:  # lottory draw winner announce
-                template = await get_template("lottery-end")
-                content = build_lottery_end_msg(template, **data)
-
-                # luckdraw_img_link = await get_template("luckydraw-img")
-                luckdraw_img_link = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
-
-                self.log.info(f"sending message {content}")
-
-                await self.bot.client.send_photo(
-                    chat_id,
-                    luckdraw_img_link,
-                    caption=content,
-                    reply_markup=button
-                )
-                ret_data.update({"ok": True})
-            elif notify_type == 4:  # sending file to community admin
-                filename = data.get("lotteryFileName")
-                chat_id = data.get("owner")
-                base_link = os.getenv("WEBSITE")
-                download_link = f"{base_link}/downloads/{filename}"
-                content = f"Please download the winners data via {download_link}"
-
-                await self.bot.client.send_message(chat_id, content)
-
-                self.log.info(f"send {download_link} to {chat_id}")
-
-                ret_data.update({"ok": True})
+            ret_data = ret_data.update({"ok": True})
+            if notify_type == 1 and project_config.newdraw:
+                await self.newdraw_notify(chat_id, data, button)
+            elif notify_type == 2 and project_config.userjoin:
+                await self.user_join_notify(chat_id, data, button)
+            elif notify_type == 3 and project_config.draw:
+                await self.draw_notify(chat_id, data, button)
+            elif notify_type == 4:
+                await self.draw_list_notify(data)
             elif notify_type == 5 and project_config.newtask:
-                content = await get_template("task-creation")
-                await self.bot.client.send_photo(
-                    chat_id,
-                    engage_img_link,
-                    caption=content,
-                    reply_markup=button,
-                )
-                ret_data.update({"ok": True})
+                await self.newtask_notify(chat_id, button)
             elif notify_type == 6: # private congrats
-                template = await get_template("congrats-draw")
-                content = build_congrats_msg(template, **data)
-
-                keyboard = InlineKeyboardMarkup([
-                    [lucky_draw_btn],
-                    [withdraw_btn]
-                ])
-                await self.bot.client.send_photo(
-                    chat_id=chat_id,
-                    photo=os.getenv("UNION_DRAW_IMG"),
-                    caption=content,
-                    reply_markup=keyboard,
+                await self.congrats_notify(
+                    chat_id,
+                    data,
+                    InlineKeyboardMarkup([
+                        [lucky_draw_btn],
+                        [withdraw_btn],
+                    ])
                 )
-                ret_data.update({"ok": True})
-            elif notify_type == 7: # congrats records
-                template = await get_template("congrats-records")
-                content = build_congrats_records(template, **data)
-
-                keyboard = InlineKeyboardMarkup([
-                    [lucky_draw_btn],
-                    [withdraw_btn],
-                ])
-                await self.bot.client.send_message(
-                    chat_id=chat_id,
-                    content=content,
-                    reply_markup=keyboard,
+            elif notify_type == 7:
+                await self.congrat_records_notify(
+                    chat_id,
+                    data,
+                    InlineKeyboardMarkup([
+                        [lucky_draw_btn],
+                        [withdraw_btn],
+                    ])
                 )
-                ret_data.update({"ok": True})
-            elif notify_type == 8: # invitation records
-                template = await get_template("invitation-records")
-                content = build_invitation_records(template, **data)
-
-                keyboard = InlineKeyboardMarkup([
-                    [lucky_draw_btn],
-                ])
-                await self.bot.client.send_message(
-                    chat_id=chat_id,
-                    content=content,
-                    reply_markup=keyboard,
+            elif notify_type == 8:
+                await self.invite_records_notify(
+                    chat_id,
+                    data,
+                    InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
-                ret_data.update({"ok": True})
-            elif notify_type == 9: # invitation success notify
-                template = await get_template("invitation-notify")
-                content = build_invitation_notify(template, **data)
-
-                keyboard = InlineKeyboardMarkup([
-                    [lucky_draw_btn]
-                ])
-                await self.bot.client.send_message(
-                    chat_id=chat_id,
-                    content=content,
-                    reply_markup=keyboard
+            elif notify_type == 9:
+                await self.invite_success_notify(
+                    chat_id,
+                    data,
+                    InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
-                ret_data.update({"ok": True})
             else:
-                self.log.warn("Not push notification for request: %s", payloads)
+                self.log.warn("Not send mssage for request: %s", payloads)
                 ret_data.update({"ok": False, "error": "reject by setting"})
-
         except Exception as e:
             self.log.error(f"Sending occurs error: {str(e)}")
-            ret_data.update({
-                "ok": False,
-                "error": str(e),
-            })
+            ret_data.update({ "ok": False, "error": str(e) })
         return web.json_response(ret_data, status=200)
 
     async def get_invite_link_handler(self, request: BaseRequest) -> Response:
@@ -469,3 +381,96 @@ class WebServer(plugin.Plugin):
             self.log.warn("Get chat %s avatar link error %s", chat_id, e)
 
         return avatar_link
+
+    async def newdraw_notify(self, chat_id: int, args: dict, buttons=None):
+        # send newdraw create message to group, notify_type = 1
+        lottery_type = args.get("lotteryType")
+        template = await self.text(None, f"lottery-create-{lottery_type}")
+        msg = build_lottery_create_msg(template, **args)
+        if not buttons:
+            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            return None
+        await self.bot.client.send_photo(chat_id, self.enage_img, caption=msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def user_join_notify(self, chat_id: int, args: dict, buttons=None):
+        # send user join message to group, notify_type = 2
+        lottery_type = args.get("lotteryType")
+        template = await self.text(None, f"lottery-join-{lottery_type}", noformat=True)
+        msg = build_lottery_join_msg(template, **args)
+        if not buttons:
+            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            return None
+        await self.bot.client.send_photo(chat_id, self.engage_img, caption=msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def draw_notify(self, chat_id: int, args: dict, buttons=None):
+        # send message to group when draw open, notify_type = 3
+        luckdraw_img_link = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
+        msg = await self.text(None, "lottery-end", **args)
+        if not buttons:
+            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            return None
+        await self.bot.client.send_photo(chat_id, luckdraw_img_link, caption=msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def draw_list_notify(self, args: dict):
+        # send file to community admin, notify_type = 4
+        filename = args.get("lotteryFileName")
+        chat_id = args.get("owner")
+        base_link = os.getenv("WEBSITE")
+        download_link = f"{base_link}/downloads/{filename}"
+        content = f"Please download the winners data via {download_link}"
+        await self.bot.client.send_message(chat_id, content)
+        self.log.info("Sent message to %s with %s", chat_id, download_link)
+
+    async def newtask_notify(self, chat_id: int, buttons=None):
+        # send message to group while task created, notify_type = 5
+        msg = await self.text(None, "task-creation")
+        if not buttons:
+            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            return None
+        await self.bot.client.send_photo(chat_id=chat_id, photo=self.engage_img, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def congrats_notify(self, chat_id: int, args: dict, buttons=None):
+        # send rewards message to user, notify_type = 6
+        template = await self.text(None, "congrats-draw", noformat=True)
+        msg = build_congrats_msg(template, **args)
+        if not buttons:
+            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            return None
+        draw_img = os.getenv("UNION_DRAW_IMG")
+        await self.bot.client.send_photo(chat_id=chat_id, photo=draw_img, caption=msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def congrat_records_notify(self, chat_id: int, args: dict, buttons=None):
+        # send reward records to user, notify_type = 7
+        template = await self.text(None, "congrats-records", noformat=True)
+        msg = build_congrats_records(template, **args)
+        if not buttons:
+            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            return None
+        await self.bot.client.send_message(chat_id, msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def invite_records_notify(self, chat_id: int, args: dict, buttons=None):
+        # send invite records to user, notify_type = 8
+        template = await self.text(None, "invitation-records", noformat=True)
+        msg = build_invitation_records(template, **args)
+        if not buttons:
+            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            return None
+        await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def invite_success_notify(self, chat_id: int, args: dict, buttons=None):
+        # send message to user when others were invited, notify_type = 9
+        template = await self.text(None, "invitation-notify", noformat=True)
+        msg = build_invitation_notify(template, **args)
+
+        if not buttons:
+            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            return None
+        await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
