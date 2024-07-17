@@ -62,5 +62,9 @@ jobs:
           ssh -T beebot <<'EOL'
             pushd /home/ops/ops/anjani
             docker compose up -d --build --no-deps --pull always
+            popd
+            pushd /home/ops/ops/sakura
+            docker compose up -d --build --no-deps --pull always
+            popd
             docker image prune --force
           EOL
