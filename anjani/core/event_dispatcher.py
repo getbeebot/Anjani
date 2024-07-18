@@ -191,6 +191,10 @@ class EventDispatcher(MixinBase):
             chat_type = 0
             if chat.type == ChatType.CHANNEL:
                 chat_type = 1
+            elif chat.type == ChatType.GROUP:
+                # normal group
+                chat_type = 2
+
             chat_id = chat.id
             chat_name = chat.title
             chat_info = {
@@ -262,10 +266,23 @@ class EventDispatcher(MixinBase):
             })
             return payloads
 
-        # default is group type: 0 for group, 1 for channel
+        # default is super group type: 0 for supergroup, 1 for channel, 2 for normal group
         chat_type = 0
         if chat.type == ChatType.CHANNEL:
             chat_type = 1
+        elif chat.type == ChatType.GROUP:
+            chat_type = 2
+            # error for normal group, case it can not verify
+            err_msg = await get_template("group-abnormal-exception")
+            err_msg += usage_guide
+            await self.client.send_photo(
+                chat_id=group_id,
+                photo=guide_img_link,
+                caption=err_msg,
+                reply_markup=start_me_btn,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return None
 
         guide_img_link = await get_template("guide-img")
         add_me_btn_text = await get_template("add-to-group-button")
