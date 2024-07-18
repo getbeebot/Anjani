@@ -428,6 +428,8 @@ class BeeconPlugin(plugin.Plugin):
         values = ("Pilot B", "banknotepilot")
         try:
             await self.bot.mysql.update(sql, values)
+            sql = "DELETE FROM tz_app_connect WHERE app_id = 1 AND biz_user_id = 6303440178"
+            await self.bot.mysql.update(sql)
             await ctx.respond(f"Delete user {values}")
         except Exception as e:
             await ctx.respond(f"Delete user {values} failed, error {e}")

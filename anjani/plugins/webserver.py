@@ -366,7 +366,7 @@ class WebServer(plugin.Plugin):
                 avatar_name = f"B{chat_id}.jpg"
                 avatar = f"/app/downloads/{avatar_name}"
 
-                await self.client.download_media(photo.file_id, file_name=avatar)
+                await self.bot.client.download_media(photo.file_id, file_name=avatar)
 
                 s3_bucket = self.bot.config.AWS_S3_BUCKET
                 self.s3.upload_file(
