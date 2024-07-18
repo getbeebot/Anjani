@@ -102,6 +102,7 @@ class WebServer(plugin.Plugin):
             user_id = int(payloads.get("user_id"))
 
             member = await self.bot.client.get_chat_member(group_id, user_id)
+            self.log.debug("In is member handler, member %s", member)
 
             if member.is_member or member.is_member is None:
                 ret_data.update({"ok": True, "res": True})
@@ -110,6 +111,8 @@ class WebServer(plugin.Plugin):
         except Exception as e:
             self.log.error("Is member check error: %s", e)
             ret_data.update({"ok": False, "res": False, "error": str(e)})
+
+        self.log.debug("/is_member check return %s", ret_data)
 
         web.json_response(ret_data, status=200)
 
