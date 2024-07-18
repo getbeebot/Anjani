@@ -16,6 +16,7 @@
 
 import asyncio
 import logging
+import logging.handlers
 import os
 import sys
 from pathlib import Path
@@ -55,7 +56,14 @@ def _setup_log() -> None:
     log_color: bool = os.environ.get("LOG_COLOR") in {"enable", 1, "1", "true"}
 
     file_format = "[ %(asctime)s: %(levelname)-8s ] %(name)-15s - %(message)s"
-    logfile = logging.FileHandler("Anjani.log")
+    # logfile = logging.FileHandler("Anjani.log")
+    logfile = logging.handlers.TimedRotatingFileHandler(
+        filename="Anjani.log",
+        when='D',
+        interval=7,
+        backupCount=7,
+        utc=True
+    )
     formatter = logging.Formatter(file_format, datefmt="%H:%M:%S")
     logfile.setFormatter(formatter)
     logfile.setLevel(level)
