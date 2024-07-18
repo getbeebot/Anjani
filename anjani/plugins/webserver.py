@@ -102,7 +102,6 @@ class WebServer(plugin.Plugin):
             user_id = int(payloads.get("user_id"))
 
             member = await self.bot.client.get_chat_member(group_id, user_id)
-            self.log.debug("In is member handler, member %s", member)
 
             if member.is_member or member.is_member is None:
                 ret_data.update({"ok": True, "res": True})
@@ -114,7 +113,7 @@ class WebServer(plugin.Plugin):
 
         self.log.debug("/is_member check return %s", ret_data)
 
-        web.json_response(ret_data, status=200)
+        return web.json_response(ret_data, status=200)
 
     async def update_user_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
@@ -140,7 +139,7 @@ class WebServer(plugin.Plugin):
             self.log.error("update user error %s", e)
             ret_data.update({"ok": False, "error": str(e)})
 
-        web.json_response(ret_data, status=200)
+        return web.json_response(ret_data, status=200)
 
     async def send_msg_handler(self, request: BaseRequest) -> Response:
         ret_data = { "ok": False }
@@ -266,7 +265,7 @@ class WebServer(plugin.Plugin):
         except Exception as e:
             self.log.error("Get invite link error: %s", str(e))
             ret_data.update({"ok": False, "error": str(e)})
-        web.json_response(ret_data, status=200)
+        return web.json_response(ret_data, status=200)
 
     async def privilege_check_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
@@ -356,7 +355,7 @@ class WebServer(plugin.Plugin):
                 "ok": False,
                 "error": str(e)
             })
-        web.json_response(ret_data, status=200)
+        return web.json_response(ret_data, status=200)
 
     async def get_avatar(self, chat_id: int) -> Optional[str]:
         avatar_link = None
