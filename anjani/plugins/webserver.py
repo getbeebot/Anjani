@@ -430,7 +430,7 @@ class WebServer(plugin.Plugin):
         if not buttons:
             self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
             return None
-        await self.bot.client.send_photo(chat_id=chat_id, photo=self.engage_img, reply_markup=buttons)
+        await self.bot.client.send_photo(chat_id=chat_id, photo=self.engage_img, caption=msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def congrats_notify(self, chat_id: int, args: dict, buttons=None):
