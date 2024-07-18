@@ -465,24 +465,25 @@ class EventDispatcher(MixinBase):
                     ])
 
                     rewards = await self.apiclient.distribute_join_rewards(payloads)
-                    reply_text = await get_template("rewards-claimed")
                     if rewards:
-                        reply_text = reply_text.format(rewards=rewards, mention=from_user.mention)
-                        if chat.type == ChatType.CHANNEL:
-                            try:
+                        reply_text = await get_template("rewards-claimed")
+                        if rewards:
+                            reply_text = reply_text.format(rewards=rewards, mention=from_user.mention)
+                            if chat.type == ChatType.CHANNEL:
+                                try:
+                                    await self.client.send_message(
+                                        chat_id=from_user.id,
+                                        text=reply_text,
+                                        reply_markup=button
+                                    )
+                                except Exception as e:
+                                    self.log.warn("Unable to push notification %s to user %s, error: %s", reply_text, from_user, e)
+                            else:
                                 await self.client.send_message(
-                                    chat_id=from_user.id,
+                                    chat_id=chat.id,
                                     text=reply_text,
                                     reply_markup=button
                                 )
-                            except Exception as e:
-                                self.log.warn("Unable to push notification %s to user %s, error: %s", reply_text, from_user, e)
-                        else:
-                            await self.client.send_message(
-                                chat_id=chat.id,
-                                text=reply_text,
-                                reply_markup=button
-                            )
 
         EventCount.labels(event).inc()
         with EventLatencySecond.labels(event).time():
