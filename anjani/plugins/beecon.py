@@ -43,7 +43,6 @@ class BeeconPlugin(plugin.Plugin):
 
     async def on_load(self) -> None:
         self.mysql = util.db.MysqlPoolClient.init_from_env()
-        await self.mysql.connect()
 
     async def on_stop(self) -> None:
         await self.mysql.close()
