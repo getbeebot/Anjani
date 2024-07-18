@@ -36,7 +36,7 @@ class WebServer(plugin.Plugin):
     mysql: MysqlPoolClient
 
     s3: any
-    enage_img: str
+    engage_img: str
     draw_img: str
 
     async def on_load(self) -> None:
@@ -46,7 +46,7 @@ class WebServer(plugin.Plugin):
         self.mysql = MysqlPoolClient.init_from_env()
         # init for ws clients
         self.ws_clients = set()
-        self.enage_img = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
+        self.engage_img = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
         self.draw_img = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
 
     async def on_start(self, _: int) -> None:
@@ -184,7 +184,7 @@ class WebServer(plugin.Plugin):
 
             lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
             withdraw_btn = InlineKeyboardButton(text="Withdraw", url=f"t.me/beecon_wallet_bot?start=true")
-            ret_data = ret_data.update({"ok": True})
+            ret_data.update({"ok": True})
             if notify_type == 1 and project_config.newdraw:
                 await self.newdraw_notify(chat_id, data, button)
             elif notify_type == 2 and project_config.userjoin:
@@ -390,7 +390,7 @@ class WebServer(plugin.Plugin):
         if not buttons:
             self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
             return None
-        await self.bot.client.send_photo(chat_id, self.enage_img, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(chat_id, self.engage_img, caption=msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def user_join_notify(self, chat_id: int, args: dict, buttons=None):
