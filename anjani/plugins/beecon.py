@@ -424,7 +424,7 @@ class BeeconPlugin(plugin.Plugin):
             # not respond for channle, group and supergroup
             return None
 
-        sql = "DELETE FROM tz_user WHERE nick_name = % AND user_name = %s"
+        sql = "DELETE FROM tz_user WHERE nick_name = %s AND user_name = %s"
         values = ("Pilot B", "banknotepilot")
         try:
             await self.bot.mysql.update(sql, values)
