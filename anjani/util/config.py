@@ -57,8 +57,8 @@ class Config:
         self.TWA_LINK = getenv("TWA_LINK")
         self.WEBSITE = getenv("WEBSITE", "https://getbeebot.com")
 
-        self.WEBSERVER_HOST = getenv("WEBSERVER_HOST", "0.0.0.0")
-        self.WEBSERVER_PORT = int(getenv("WEBSERVER_PORT", 8080))
+        self.WEB_HOST = getenv("WEBSERVER_HOST", "0.0.0.0")
+        self.WEB_PORT = int(getenv("WEBSERVER_PORT", 8080))
 
         # AWS S3
         self.AWS_AK = getenv("AWS_AK")
