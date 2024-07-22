@@ -803,3 +803,6 @@ invitation-records: |
   {records}
 invitation-notify: "You have invited **{invitee}**, and you may now draw **{draw}** times."
 #endregion
+#daily gifts region
+daily-gifts-button: "💰Daily Gifts💰"
+#endregion
