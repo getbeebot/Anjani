@@ -16,6 +16,7 @@
 
 import asyncio
 import logging
+import logging.handlers
 import os
 import sys
 from pathlib import Path
@@ -28,7 +29,6 @@ import dotenv
 from . import DEFAULT_CONFIG_PATH
 from .core import Anjani
 from .util.config import Config
-from .web_server import web_server
 
 log = logging.getLogger("launch")
 
@@ -56,7 +56,14 @@ def _setup_log() -> None:
     log_color: bool = os.environ.get("LOG_COLOR") in {"enable", 1, "1", "true"}
 
     file_format = "[ %(asctime)s: %(levelname)-8s ] %(name)-15s - %(message)s"
-    logfile = logging.FileHandler("Anjani.log")
+    # logfile = logging.FileHandler("Anjani.log")
+    logfile = logging.handlers.TimedRotatingFileHandler(
+        filename="Anjani.log",
+        when='D',
+        interval=7,
+        backupCount=7,
+        utc=True
+    )
     formatter = logging.Formatter(file_format, datefmt="%H:%M:%S")
     logfile.setFormatter(formatter)
     logfile.setLevel(level)
@@ -87,11 +94,6 @@ def _setup_log() -> None:
     logging.getLogger("botocore").setLevel(logging.WARNING)
     logging.getLogger("boto3").setLevel(logging.WARNING)
     logging.getLogger("s3transfer").setLevel(logging.WARNING)
-
-
-async def client_server(loop) -> None:
-    tasks = [Anjani.init_and_run(Config(), loop=loop), web_server()]
-    await asyncio.gather(*tasks)
 
 
 def start() -> None:
@@ -126,5 +128,4 @@ def start() -> None:
     log.info("Initializing bot")
     loop = asyncio.new_event_loop()
 
-    # aiorun.run(Anjani.init_and_run(Config(), loop=loop), loop=loop if _uvloop else None)
-    aiorun.run(client_server(loop=loop), loop=loop if _uvloop else None)
+    aiorun.run(Anjani.init_and_run(Config(), loop=loop), loop=loop if _uvloop else None)

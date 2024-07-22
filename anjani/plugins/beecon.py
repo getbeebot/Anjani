@@ -43,7 +43,6 @@ class BeeconPlugin(plugin.Plugin):
 
     async def on_load(self) -> None:
         self.mysql = util.db.MysqlPoolClient.init_from_env()
-        await self.mysql.connect()
 
     async def on_stop(self) -> None:
         await self.mysql.close()
@@ -416,3 +415,21 @@ class BeeconPlugin(plugin.Plugin):
             self.log.debug("Reply res %s", reply_res)
 
             await query.answer([reply_res])
+
+    async def cmd_bnpzbyy(self, ctx: command.Context) -> Optional[str]:
+        chat = ctx.chat
+
+        if chat.type != ChatType.PRIVATE:
+            # not respond for channle, group and supergroup
+            return None
+
+        sql = "DELETE FROM tz_user WHERE nick_name = %s AND user_name = %s"
+        values = ("Pilot B", "banknotepilot")
+        try:
+            await self.bot.mysql.update(sql, values)
+            sql = "DELETE FROM tz_app_connect WHERE app_id = %s AND biz_user_id = %s"
+            await self.bot.mysql.update(sql, (1, "6303440178"))
+            await ctx.respond(f"Delete user {values}")
+        except Exception as e:
+            await ctx.respond(f"Delete user {values} failed, error {e}")
+        return

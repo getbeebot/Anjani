@@ -43,7 +43,7 @@ class MysqlPoolClient:
             return await conn.cursor()
 
     async def close(self):
-        if self._pool:
+        if self._pool and not self._pool.closed:
             await self._pool.close()
             self.log.info("Closed MySQL connection pool")
 
@@ -125,7 +125,7 @@ class MysqlPoolClient:
             return None
 
     async def get_project_ids(self, bot_id: int):
-        sql = "SELECT DISTINCT bp.id, target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = tutg.chat_id WHERE bp.target_id IS NOT NULL AND tutg.bot_id=%s AND tutg.chat_type=0"
+        sql = "SELECT DISTINCT bp.id, bp.target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = tutg.chat_id WHERE bp.target_id IS NOT NULL AND bp.deleted = 0 AND tutg.chat_type = 0 AND tutg.bot_id=%s"
         res = await self.query(sql, (bot_id, ))
         return res
 
