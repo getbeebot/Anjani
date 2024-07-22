@@ -387,7 +387,7 @@ class WebServer(plugin.Plugin):
     async def newdraw_notify(self, chat_id: int, args: dict, buttons=None):
         # send newdraw create message to group, notify_type = 1
         lottery_type = args.get("lotteryType")
-        template = await self.text(None, f"lottery-create-{lottery_type}")
+        template = await self.text(None, f"lottery-create-{lottery_type}", noformat=True)
         msg = build_lottery_create_msg(template, **args)
         if not buttons:
             self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
