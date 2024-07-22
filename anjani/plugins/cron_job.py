@@ -36,8 +36,11 @@ class CronJob(plugin.Plugin):
         self.log.info("Started auto notification cron job")
 
     async def on_stop(self) -> None:
-        await self.mysql.close()
-        await self.redis.close()
+        try:
+            await self.mysql.close()
+            await self.redis.close()
+        except Exception:
+            pass
         self.log.info("Shutdown auto notification cron job")
 
     async def get_project_intervals(self):
