@@ -43,9 +43,12 @@ class MysqlPoolClient:
             return await conn.cursor()
 
     async def close(self):
-        if self._pool and not self._pool.closed:
-            await self._pool.close()
-            self.log.info("Closed MySQL connection pool")
+        try:
+            if self._pool and not self._pool.closed:
+                await self._pool.close()
+                self.log.info("Closed MySQL connection pool")
+        except Exception:
+            pass
 
     async def query(self, sql: str, values = ()):
         try:
