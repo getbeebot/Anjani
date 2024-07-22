@@ -618,10 +618,14 @@ class Main(plugin.Plugin):
 
             faq_link = os.getenv("FAQ", "beecon.me")
             channel_link = os.getenv("CHANNEL", "beecon.me")
+            daily_gifts_link = os.getenv("DAILY_GIFTS", "https://t.me/daily_giveaways_ann")
 
             keyboard.extend([
                 [
                     InlineKeyboardButton(text=await self.text(chat.id, "add-to-group-button"), callback_data="help_addme")
+                ],
+                [
+                    InlineKeyboardButton(text=await self.text(None, "daily-gifts-button"), url=daily_gifts_link)
                 ],
                 [
                     InlineKeyboardButton(text = await self.text(chat.id, "faq-button"), url=faq_link),
