@@ -493,7 +493,7 @@ class WebServer(plugin.Plugin):
             lang = "en"
             pics = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
 
-            code = f"ld-{project_id}-{task_id}-{lang}"
+            code = f"@{self.bot.user.username} ld-{project_id}-{task_id}-{lang}"
 
             sql = "SELECT * FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
             res = await self.mysql.query_one(sql, (project_id, task_id, lang))
