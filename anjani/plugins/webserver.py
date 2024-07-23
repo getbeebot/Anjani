@@ -490,24 +490,34 @@ class WebServer(plugin.Plugin):
             btn_text = payloads.get("btn_text")
             des = payloads.get("des")
 
-            sql = "INSERT INTO luckydraw_share(project_id, task_id, lang, pics, btn_desc, des) VALUES(%s, %s, %s, %s, %s, %s)"
             lang = "en"
             pics = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
+
+            code = f"ld-{project_id}-{task_id}-{lang}"
+
+            sql = "SELECT * FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
+            res = await self.mysql.query_one(sql, (project_id, task_id, lang))
+            if res:
+                return web.json_response({"ok": True, "data": code})
+
+            sql = "INSERT INTO luckydraw_share(project_id, task_id, lang, pics, btn_desc, des) VALUES(%s, %s, %s, %s, %s, %s)"
             btn_desc = {
                 "text": btn_text,
             }
             values = (project_id, task_id, lang, pics, json.dumps(btn_desc), des)
-            res = await self.mysql.query_one(sql, values)
+
+            res = await self.mysql.update(sql, values)
             if res:
                 ret_data.update({
-                    "ok": True,
-                    "data": f"ld-{project_id}-{task_id}-{lang}"
+                    "ok": False,
+                    "error": f"project_id {project_id} or task_id {task_id} not valid"
                 })
             else:
                 ret_data.update({
-                    "ok": False,
-                    "error": f"project_id {project_id} or task_id {task_id} not valid."
-                })
+                "ok": True,
+                "data": code,
+            })
+
         except Exception as e:
             self.log.error("Saving inline query context error %s", e)
             ret_data.update({"error": e})
