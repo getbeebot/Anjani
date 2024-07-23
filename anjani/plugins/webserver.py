@@ -1,4 +1,5 @@
 import os
+import json
 import aiofiles.os as aio_os
 import base64
 from typing import ClassVar, Optional
@@ -61,8 +62,10 @@ class WebServer(plugin.Plugin):
 
         ws_router = web.get("/ws", self.project_creation_notify)
 
+        save_iq_text_router = web.post("/save_iq", self.save_iq_text_handler)
         routers = [
             is_member_router, update_user_router, send_msg_router, get_invite_link_router, privilege_check_router, ws_router,
+            save_iq_text_router
         ]
 
         cors = aiohttp_cors.setup(app, defaults={
@@ -476,3 +479,37 @@ class WebServer(plugin.Plugin):
             return None
         await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def save_iq_text_handler(self, request: BaseRequest) -> Response:
+        ret_data = {"ok": False}
+        try:
+            payloads = await request.json()
+
+            project_id = int(payloads.get("project_id"))
+            task_id = int(payloads.get("task_id"))
+            btn_text = payloads.get("btn_text")
+            des = payloads.get("des")
+
+            sql = "INSERT INTO luckydraw_share(project_id, task_id, lang, pics, btn_desc, des) VALUES(%s, %s, %s, %s, %s, %s)"
+            lang = "en"
+            pics = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
+            btn_desc = {
+                "text": btn_text,
+            }
+            values = (project_id, task_id, lang, pics, json.dumps(btn_desc), des)
+            res = await self.mysql.query_one(sql, values)
+            if res:
+                ret_data.update({
+                    "ok": True,
+                    "data": f"ld-{project_id}-{task_id}-{lang}"
+                })
+            else:
+                ret_data.update({
+                    "ok": False,
+                    "error": f"project_id {project_id} or task_id {task_id} not valid."
+                })
+        except Exception as e:
+            self.log.error("Saving inline query context error %s", e)
+            ret_data.update({"error": e})
+
+        return web.json_response(ret_data, status=200)
