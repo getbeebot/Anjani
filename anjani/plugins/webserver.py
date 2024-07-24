@@ -62,10 +62,10 @@ class WebServer(plugin.Plugin):
 
         ws_router = web.get("/ws", self.project_creation_notify)
 
-        save_iq_text_router = web.post("/save_iq", self.save_iq_text_handler)
+        # save_iq_text_router = web.post("/save_iq", self.save_iq_text_handler)
         routers = [
-            is_member_router, update_user_router, send_msg_router, get_invite_link_router, privilege_check_router, ws_router,
-            save_iq_text_router
+            is_member_router, update_user_router, send_msg_router, get_invite_link_router, privilege_check_router, ws_router
+            # save_iq_text_router
         ]
 
         cors = aiohttp_cors.setup(app, defaults={
@@ -76,7 +76,10 @@ class WebServer(plugin.Plugin):
             )
         })
         alert_router = app.router.add_route("POST", "/alert", self.send_alert_handler)
+        save_iq_rotuer = app.router.add_route("POST", "/save_iq", self.save_iq_text_handler)
+
         cors.add(alert_router)
+        cors.add(save_iq_rotuer)
 
         app.add_routes(routers)
 
