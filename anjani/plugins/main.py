@@ -518,9 +518,12 @@ class Main(plugin.Plugin):
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             # for start bot task
             try:
-                await self.mysql.save_start_record(chat.id, self.bot.uid)
+                mysql_client = util.db.MysqlPoolClient.init_from_env()
+                await mysql_client.save_start_record(chat.id, self.bot.uid)
             except Exception as e:
                 self.log.warn("Saving start bot records error: %s", e)
+            finally:
+                del mysql_client
 
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
