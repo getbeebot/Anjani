@@ -625,9 +625,9 @@ class Main(plugin.Plugin):
                     InlineKeyboardButton(text=await self.text(chat.id, "add-to-group-button"), callback_data="help_addme")
                 ],
                 # daily gifts
-                # [
-                #     InlineKeyboardButton(text=await self.text(None, "daily-gifts-button"), url=daily_gifts_link)
-                # ],
+                [
+                    InlineKeyboardButton(text=await self.text(None, "daily-gifts-button"), url=daily_gifts_link)
+                ],
                 [
                     InlineKeyboardButton(text = await self.text(chat.id, "faq-button"), url=faq_link),
                     InlineKeyboardButton(text=await self.text(chat.id, "channel-button"), url=channel_link),
