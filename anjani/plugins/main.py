@@ -618,7 +618,7 @@ class Main(plugin.Plugin):
 
             faq_link = os.getenv("FAQ", "beecon.me")
             channel_link = os.getenv("CHANNEL", "beecon.me")
-            daily_gifts_link = os.getenv("DAILY_GIFTS", "https://t.me/daily_giveaways_ann")
+            daily_gifts_link = os.getenv("DAILY_GIFTS", "https://t.me/daily_gifts_en")
             x_username = os.getenv("X_USERNAME", "beecon_bot")
             keyboard.extend([
                 [
