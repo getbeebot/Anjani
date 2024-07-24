@@ -394,10 +394,11 @@ class BeeconPlugin(plugin.Plugin):
                     reply_markup=keyboard
                 )
             else:
-                if pics.split('.')[-1] == "gif":
+                pic = pics.strip()
+                if pic.split('.')[-1] == "gif":
                     reply_res = InlineQueryResultVideo(
-                        video_url=pics,
-                        thumb_url=pics,
+                        video_url=pic,
+                        thumb_url=pic,
                         title=prompt_title,
                         caption=desc,
                         description=desc,
@@ -405,7 +406,7 @@ class BeeconPlugin(plugin.Plugin):
                     )
                 else:
                     reply_res = InlineQueryResultPhoto(
-                        photo_url=pics,
+                        photo_url=pic,
                         title=prompt_title,
                         caption=desc,
                         description=desc,

@@ -1,4 +1,5 @@
 import os
+import json
 import aiofiles.os as aio_os
 import base64
 from typing import ClassVar, Optional
@@ -61,8 +62,10 @@ class WebServer(plugin.Plugin):
 
         ws_router = web.get("/ws", self.project_creation_notify)
 
+        # save_iq_text_router = web.post("/save_iq", self.save_iq_text_handler)
         routers = [
-            is_member_router, update_user_router, send_msg_router, get_invite_link_router, privilege_check_router, ws_router,
+            is_member_router, update_user_router, send_msg_router, get_invite_link_router, privilege_check_router, ws_router
+            # save_iq_text_router
         ]
 
         cors = aiohttp_cors.setup(app, defaults={
@@ -73,7 +76,10 @@ class WebServer(plugin.Plugin):
             )
         })
         alert_router = app.router.add_route("POST", "/alert", self.send_alert_handler)
+        save_iq_rotuer = app.router.add_route("POST", "/save_iq", self.save_iq_text_handler)
+
         cors.add(alert_router)
+        cors.add(save_iq_rotuer)
 
         app.add_routes(routers)
 
@@ -408,12 +414,11 @@ class WebServer(plugin.Plugin):
 
     async def draw_notify(self, chat_id: int, args: dict, buttons=None):
         # send message to group when draw open, notify_type = 3
-        luckdraw_img_link = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
         msg = await self.text(None, "lottery-end", **args)
         if not buttons:
             self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
             return None
-        await self.bot.client.send_photo(chat_id, luckdraw_img_link, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(chat_id, self.draw_img, caption=msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def draw_list_notify(self, args: dict):
@@ -442,8 +447,7 @@ class WebServer(plugin.Plugin):
         if not buttons:
             self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
             return None
-        draw_img = os.getenv("UNION_DRAW_IMG")
-        await self.bot.client.send_photo(chat_id=chat_id, photo=draw_img, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(chat_id=chat_id, photo=self.draw_img, caption=msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def congrat_records_notify(self, chat_id: int, args: dict, buttons=None):
@@ -476,3 +480,47 @@ class WebServer(plugin.Plugin):
             return None
         await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def save_iq_text_handler(self, request: BaseRequest) -> Response:
+        ret_data = {"ok": False}
+        try:
+            payloads = await request.json()
+
+            project_id = int(payloads.get("project_id"))
+            task_id = int(payloads.get("task_id"))
+            btn_text = payloads.get("btn_text")
+            des = payloads.get("des")
+            pics = payloads.get("pic") or "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
+
+            lang = "en"
+
+            code = f"@{self.bot.user.username} ld-{project_id}-{task_id}-{lang}"
+
+            sql = "SELECT * FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
+            res = await self.mysql.query_one(sql, (project_id, task_id, lang))
+            if res:
+                return web.json_response({"ok": True, "data": code})
+
+            sql = "INSERT INTO luckydraw_share(project_id, task_id, lang, pics, btn_desc, des) VALUES(%s, %s, %s, %s, %s, %s)"
+            btn_desc = {
+                "text": btn_text,
+            }
+            values = (project_id, task_id, lang, pics, json.dumps(btn_desc), des)
+
+            res = await self.mysql.update(sql, values)
+            if res:
+                ret_data.update({
+                    "ok": False,
+                    "error": f"project_id {project_id} or task_id {task_id} not valid"
+                })
+            else:
+                ret_data.update({
+                "ok": True,
+                "data": code,
+            })
+
+        except Exception as e:
+            self.log.error("Saving inline query context error %s", e)
+            ret_data.update({"error": e})
+
+        return web.json_response(ret_data, status=200)
