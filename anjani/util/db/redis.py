@@ -42,12 +42,15 @@ class AsyncRedisClient:
             self.log.error("Not connected to Redis server!")
             return None
 
-    async def set(self, key, value):
+    async def set(self, key, value, ttl: int = None):
         if not self.connection:
             await self.connect()
 
         if self.connection:
-            await self.connection.set(key, value)
+            if not ttl:
+                await self.connection.set(key, value)
+            else:
+                await self.connection.set(key, value, ex=ttl)
         else:
             self.log.error("Not connected to Redis server!")
 
