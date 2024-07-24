@@ -411,12 +411,11 @@ class WebServer(plugin.Plugin):
 
     async def draw_notify(self, chat_id: int, args: dict, buttons=None):
         # send message to group when draw open, notify_type = 3
-        luckdraw_img_link = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
         msg = await self.text(None, "lottery-end", **args)
         if not buttons:
             self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
             return None
-        await self.bot.client.send_photo(chat_id, luckdraw_img_link, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(chat_id, self.draw_img, caption=msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def draw_list_notify(self, args: dict):
@@ -445,8 +444,7 @@ class WebServer(plugin.Plugin):
         if not buttons:
             self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
             return None
-        draw_img = os.getenv("UNION_DRAW_IMG")
-        await self.bot.client.send_photo(chat_id=chat_id, photo=draw_img, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(chat_id=chat_id, photo=self.draw_img, caption=msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def congrat_records_notify(self, chat_id: int, args: dict, buttons=None):
