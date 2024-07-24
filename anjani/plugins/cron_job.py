@@ -28,6 +28,10 @@ class CronJob(plugin.Plugin):
         scheduler = AsyncIOScheduler()
 
         project_intervals = await self.get_project_intervals()
+        if not project_intervals:
+            self.log.warn("No cron job cause no project")
+            return None
+
         for interval, projects in project_intervals.items():
             trigger = IntervalTrigger(seconds=interval)
             scheduler.add_job(self.push_overview, args=[projects, ], trigger=trigger)
