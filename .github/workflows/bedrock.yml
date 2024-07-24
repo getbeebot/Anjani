@@ -58,9 +58,16 @@ jobs:
     runs-on: p060
     steps:
       - name: Auto update on dev environment
+      # for testing
         run: |
-          ssh -T beecon <<'EOL'
-            pushd /home/ops/bedrock
+          ssh -T beebot <<'EOL'
+            pushd /home/ops/ops/bedrock
             docker compose up -d --build --no-deps --pull always
             docker image prune --force
-          EOL
+      # # for production
+      #   run: |
+      #     ssh -T beecon <<'EOL'
+      #       pushd /home/ops/bedrock
+      #       docker compose up -d --build --no-deps --pull always
+      #       docker image prune --force
+      #     EOL
