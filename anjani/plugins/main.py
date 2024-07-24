@@ -563,8 +563,12 @@ class Main(plugin.Plugin):
 
             if ctx.input and ctx.input != "true":
                 self.log.info("Start inputs %s", ctx.input)
+                try:
+                    args = util.misc.decode_args(ctx.input)
+                except Exception as e:
+                    self.log.warn("args not able to decode")
+                    args = None
 
-                args = util.misc.decode_args(ctx.input)
                 if isinstance(args, list):
                     claim_reply = await self.text(None, "claim-reply", noformat=True)
                     await ctx.respond(claim_reply)
