@@ -581,7 +581,6 @@ class Main(plugin.Plugin):
                         )
                         return None
 
-
                 rules_re = re.compile(r"rules_(.*)")
                 if rules_re.search(ctx.input):
                     plug: "Rules" = self.bot.plugins["Rules"]  # type: ignore
@@ -610,33 +609,43 @@ class Main(plugin.Plugin):
                     )
                     return
 
-
             keyboard = []
             project_buttons = await self.project_builder(chat.id)
             if project_buttons:
                 keyboard.extend(project_buttons)
 
-            faq_link = os.getenv("FAQ", "beecon.me")
-            channel_link = os.getenv("CHANNEL", "beecon.me")
-            daily_gifts_link = os.getenv("DAILY_GIFTS", "https://t.me/daily_giveaways_ann")
-            x_username = os.getenv("X_USERNAME", "beecon_bot")
-
-            keyboard.extend([
-                [
-                    InlineKeyboardButton(text=await self.text(chat.id, "add-to-group-button"), callback_data="help_addme")
-                ],
-                # [
-                #     InlineKeyboardButton(text=await self.text(None, "daily-gifts-button"), url=daily_gifts_link)
-                # ],
-                [
-                    InlineKeyboardButton(text = await self.text(chat.id, "faq-button"), url=faq_link),
-                    InlineKeyboardButton(text=await self.text(chat.id, "channel-button"), url=channel_link),
-                    InlineKeyboardButton(text="𝕏", url=f"https://x.com/{x_username}")
-                ],
-                [
-                    InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
-                ]
+            keyboard.append([
+                InlineKeyboardButton(text=await self.text(chat.id, "add-to-group-button"), callback_data="help_addme")
             ])
+
+            daily_gifts_link = os.getenv("DAILY_GIFTS")
+
+            if daily_gifts_link:
+                keyboard.append([
+                    InlineKeyboardButton(text=await self.text(None, "daily-gifts-button"), url=daily_gifts_link)
+                ])
+
+            social_btns = []
+            faq_link = os.getenv("FAQ")
+            if faq_link:
+                social_btns.append(InlineKeyboardButton(text=await self.text(chat.id, "faq-button"), url=faq_link))
+
+            channel_link = os.getenv("CHANNEL")
+            if channel_link:
+                social_btns.append(InlineKeyboardButton(text=await self.text(chat.id, "channel-button"), url=channel_link))
+
+            x_username = os.getenv("X_USERNAME")
+            if x_username:
+                social_btns.append(InlineKeyboardButton(text="𝕏", url=f"https://x.com/{x_username}"))
+
+            if social_btns:
+                keyboard.append(social_btns)
+
+            white_list_bot = [7152140916, 6802454608, 6872924441]
+            if self.bot.uid in white_list_bot:
+                keyboard.append([
+                    InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
+                ])
 
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot.user.username),
