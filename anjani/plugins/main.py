@@ -633,10 +633,13 @@ class Main(plugin.Plugin):
                     InlineKeyboardButton(text=await self.text(chat.id, "channel-button"), url=channel_link),
                     InlineKeyboardButton(text="𝕏", url=f"https://x.com/{x_username}")
                 ],
-                [
-                    InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
-                ]
             ])
+
+            white_list_bot = [7152140916, 6802454608, 6872924441]
+            if self.bot.uid in white_list_bot:
+                keyboard.extend([
+                    [InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")]
+                ])
 
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot.user.username),
