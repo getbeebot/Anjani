@@ -806,3 +806,25 @@ invitation-notify: "You have invited **{invitee}**, and you may now draw **{draw
 #daily gifts region
 daily-gifts-button: "💰Daily Gifts💰"
 #endregion
+
+#luckydraw region
+draw-guide: |
+  Beecon offers three types of prize draws: **Timed Draw**, **Full-Participant Draw**, and **Instant Win**.
+
+  **Timed Draw: Draws based on time**
+  Set a draw time, and once the time is reached, the draw will automatically occur, selecting winners from all participants.
+  Winning rate = Total number of prizes / Total number of participants.
+  The draw time can be freely set. (Recommendation: no more than 1 month)
+
+  **Full-Participant Draw: Draws based on participant count**
+  Set a maximum number of participants, and once the number is reached, the draw will automatically occur. Subsequent users entering the draw will not be able to participate.
+  To avoid a situation where the draw does not happen due to insufficient participants, you need to set a deadline.
+  After the deadline, even if the target number of participants is not reached, the draw will still occur.
+  Winning rate = Total number of prizes / Set number of participants.
+
+  **Instant Win: Draws immediately upon participation**
+  Each user clicks the participate button and immediately gets a result.
+  You need to set a `participant limit` and a `deadline.` When the participant limit is reached, all prizes will be drawn, and the draw will end. When the deadline is reached, regardless of whether the participant limit is reached, the draw will end based on the number of prizes drawn.
+  If the draw ends and the number of participants has not reached the limit, it indicates there will be a balance in the prize pool.
+  Please contact us as soon as possible to retrieve the remaining tokens.
+#endregion

@@ -334,7 +334,7 @@ class Main(plugin.Plugin):
                 parse_mode=ParseMode.MARKDOWN,
             )
         elif match.startswith("project"):
-            project = re.compile(r"project_([0-9]+|overview|back)").match(match)
+            project = re.compile(r"project_([0-9]+|overview)").match(match)
             if not project:
                 raise ValueError("Unable to find project")
 
@@ -342,33 +342,10 @@ class Main(plugin.Plugin):
             if match_p == "overview":
                 user_id = query.from_user.id
                 project_btns = await self.project_builder(user_id)
-                project_btns.append(
-                    [
-                        InlineKeyboardButton(text=await self.text(None, "back-button"), callback_data="help_project_back")
-                    ]
-                )
-                keyboard = InlineKeyboardMarkup(project_btns)
-                try:
-                    await query.edit_message_text(text="Please choose one of community to setup", reply_markup=keyboard)
-                except MessageNotModified:
-                    pass
-            elif match_p == "back":
-                user_id = query.from_user.id
-                project_btns = await self.project_builder(user_id)
-                faq_link = os.getenv("FAQ", "beecon.me")
-                channel_link = os.getenv("CHANNEL", "beecon.me")
-                project_btns.extend([
-                    [
-                        InlineKeyboardButton(text=await self.text(None, "add-to-group-button"), callback_data="help_addme")
-                    ],
-                    [
-                        InlineKeyboardButton(text=await self.text(None, "faq-button"), url=faq_link),
-                        InlineKeyboardButton(text=await self.text(None, "channel-button"), url=channel_link)
-                    ],
-                    [
-                        InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
-                    ]
-                ])
+                start_btns = await self.build_start_button()
+                if start_btns:
+                    project_btns.extend(start_btns)
+
                 keyboard = InlineKeyboardMarkup(project_btns)
                 try:
                     await query.edit_message_text(
@@ -491,20 +468,53 @@ class Main(plugin.Plugin):
             try:
                 await query.edit_message_text(
                     text,
-                    reply_markup=InlineKeyboardMarkup(
+                    reply_markup=InlineKeyboardMarkup([
                         [
-                            [
-                                InlineKeyboardButton(
-                                    await self.text(chat.id, "back-button"),
-                                    callback_data="help_back",
-                                )
-                            ]
+                            InlineKeyboardButton(
+                                text=await self.text(None, "back-button"),
+                                callback_data="help_back",
+                            )
                         ]
-                    ),
+                    ]),
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except MessageNotModified:
                 pass
+
+    async def build_start_button(self) -> List[List[InlineKeyboardButton]]:
+        btns = []
+        btns.append([
+            InlineKeyboardButton(text=await self.text(None, "add-to-group-button"), callback_data="help_addme")
+        ])
+
+        daily_gifts_link = os.getenv("DAILY_GIFTS")
+        if daily_gifts_link:
+            btns.append([
+                InlineKeyboardButton(text=await self.text(None, "daily-gifts-button"), url=daily_gifts_link)
+            ])
+
+        social_btns = []
+        faq_link = os.getenv("FAQ")
+        if faq_link:
+            social_btns.append(InlineKeyboardButton(text=await self.text(None, "faq-button"), url=faq_link))
+
+        channel_link = os.getenv("CHANNEL")
+        if channel_link:
+            social_btns.append(InlineKeyboardButton(text=await self.text(None, "channel-button"), url=channel_link))
+
+        x_username = os.getenv("X_USERNAME")
+        if x_username:
+            social_btns.append(InlineKeyboardButton(text="𝕏", url=f"https://x.com/{x_username}"))
+
+        if social_btns:
+            btns.append(social_btns)
+
+        white_list_bot = [7152140916, 6802454608, 6872924441]
+        if self.bot.uid in white_list_bot:
+            btns.append([
+                InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
+            ])
+        return btns
 
     async def cmd_start(self, ctx: command.Context) -> Optional[str]:
         """Bot start command"""
@@ -518,9 +528,12 @@ class Main(plugin.Plugin):
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             # for start bot task
             try:
-                await self.mysql.save_start_record(chat.id, self.bot.uid)
+                mysql_client = util.db.MysqlPoolClient.init_from_env()
+                await mysql_client.save_start_record(chat.id, self.bot.uid)
             except Exception as e:
                 self.log.warn("Saving start bot records error: %s", e)
+            finally:
+                del mysql_client
 
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
@@ -542,6 +555,11 @@ class Main(plugin.Plugin):
                         self.switch_lang(chat.id, "en"),
                         ctx.respond(await self.text(chat.id, "language-set-succes", LANG_FLAG["en"])),
                     )
+
+            if ctx.input and ctx.input == "drawguide":
+                self.log.info("Input: %s", ctx.input)
+                await ctx.respond(text=await self.text(None, "draw-guide"))
+                return None
 
             if ctx.input and ctx.input != "true":
                 self.log.info("Start inputs %s", ctx.input)
@@ -614,38 +632,9 @@ class Main(plugin.Plugin):
             if project_buttons:
                 keyboard.extend(project_buttons)
 
-            keyboard.append([
-                InlineKeyboardButton(text=await self.text(chat.id, "add-to-group-button"), callback_data="help_addme")
-            ])
-
-            daily_gifts_link = os.getenv("DAILY_GIFTS")
-
-            if daily_gifts_link:
-                keyboard.append([
-                    InlineKeyboardButton(text=await self.text(None, "daily-gifts-button"), url=daily_gifts_link)
-                ])
-
-            social_btns = []
-            faq_link = os.getenv("FAQ")
-            if faq_link:
-                social_btns.append(InlineKeyboardButton(text=await self.text(chat.id, "faq-button"), url=faq_link))
-
-            channel_link = os.getenv("CHANNEL")
-            if channel_link:
-                social_btns.append(InlineKeyboardButton(text=await self.text(chat.id, "channel-button"), url=channel_link))
-
-            x_username = os.getenv("X_USERNAME")
-            if x_username:
-                social_btns.append(InlineKeyboardButton(text="𝕏", url=f"https://x.com/{x_username}"))
-
-            if social_btns:
-                keyboard.append(social_btns)
-
-            white_list_bot = [7152140916, 6802454608, 6872924441]
-            if self.bot.uid in white_list_bot:
-                keyboard.append([
-                    InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
-                ])
+            start_btns = await self.build_start_button()
+            if start_btns:
+                keyboard.extend(start_btns)
 
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot.user.username),
