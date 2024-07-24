@@ -490,9 +490,9 @@ class WebServer(plugin.Plugin):
             task_id = int(payloads.get("task_id"))
             btn_text = payloads.get("btn_text")
             des = payloads.get("des")
+            pics = payloads.get("pic") or "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
 
             lang = "en"
-            pics = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
 
             code = f"@{self.bot.user.username} ld-{project_id}-{task_id}-{lang}"
 
