@@ -250,10 +250,16 @@ class BeeconPlugin(plugin.Plugin):
             delete_after=20,
         )
 
-    async def update_user_avatar(self, user_id: int, file_id: str) -> None:
+    async def update_user_avatar(self, chat_id: int, file_id: str) -> None:
         mysql_client = util.db.MysqlPoolClient.init_from_env()
         try:
-            avatar = await self.get_user_avatar_link(user_id, file_id)
+            avatar = await self.get_user_avatar_link(chat_id, file_id)
+            if not avatar:
+                return None
+            user_id = await mysql_client.get_user_id(chat_id)
+            if not user_id:
+                self.log.warn("Not found user by telegram chat id (tz_app_connect.biz_user_id)")
+                return None
             await mysql_client.update_user_avatar(user_id, avatar)
         except Exception:
             pass

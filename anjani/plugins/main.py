@@ -520,7 +520,7 @@ class Main(plugin.Plugin):
         """Bot start command"""
         chat = ctx.chat
 
-        guide_img_link = os.getenv("GUIDE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png")
+        guide_img_link = os.getenv("GUIDE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide2.png")
         engage_img_link = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
 
         if chat.type == ChatType.PRIVATE:  # only send in PM's
