@@ -185,7 +185,7 @@ class WebServer(plugin.Plugin):
 
             button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
 
-            project_id = await self.bot.mysql.get_chat_project_id(chat_id)
+            project_id = await self.bot.mysql.get_chat_project_id(chat_id, self.bot.uid)
             project_config = await BotNotificationConfig.get_project_config(self.mysql, project_id)
             if not project_config:
                 project_config = BotNotificationConfig(project_id)
