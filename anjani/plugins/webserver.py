@@ -129,7 +129,7 @@ class WebServer(plugin.Plugin):
 
             user = await self.bot.client.get_users(user_id)
             username = user.username if user.username else None
-            avatar_link = await self.get_avatar(user_id)
+            # avatar_link = await self.get_avatar(user_id)
             firstname = user.first_name or ""
             lastname = user.last_name
             fullname = firstname + " " + lastname if lastname else firstname
@@ -138,8 +138,12 @@ class WebServer(plugin.Plugin):
                 "tg_user_id": user_id,
                 "username": username if username else "",
                 "nickname": fullname,
-                "avatar": avatar_link,
+                "avatar": None,
             }
+            try:
+                self.bot.loop.create_taks(self.update_user_avatar(user_id))
+            except Exception as e:
+                self.log.warn("update user avatar error: %s", e)
             ret_data.update({"ok": True, "data": user_info})
         except Exception as e:
             self.log.error("update user error %s", e)
@@ -362,6 +366,18 @@ class WebServer(plugin.Plugin):
                 "error": str(e)
             })
         return web.json_response(ret_data, status=200)
+
+    async def update_user_avatar(self, chat_id: int) -> None:
+        avatar = await self.get_avatar(chat_id)
+        if not avatar:
+            return None
+        # 1. query user id based on chat_id
+        user_id = await self.mysql.get_user_id(chat_id)
+        if not user_id:
+            self.log.warn("update user avatar can not find user_id by telegram chat id %s", chat_id)
+            return None
+        # 2. update db data for user
+        await self.mysql.update_user_avatar(user_id, avatar)
 
     async def get_avatar(self, chat_id: int) -> Optional[str]:
         avatar_link = None
