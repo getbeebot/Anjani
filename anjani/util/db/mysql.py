@@ -162,3 +162,13 @@ class MysqlPoolClient:
         if not res:
             sql = "INSERT INTO tg_user_start_bot (chat_id, bot_id) VALUES (%s, %s)"
             await self.update(sql, values)
+
+    async def get_user_id(self, chat_id: int):
+        sql = "SELECT user_id FROM tz_app_connect WHERE biz_user_id = %s AND app_id = 1"
+        res = await self.query_one(sql, (chat_id, ))
+        return res[0] if res else None
+
+    async def update_user_avatar(self, user_id: str, avatar: str):
+        sql = "UPDATE tz_user SET pic = %s WHERE user_id = %s"
+        values = (avatar, user_id)
+        await self.update(sql, values)

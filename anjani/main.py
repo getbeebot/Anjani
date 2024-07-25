@@ -59,9 +59,9 @@ def _setup_log() -> None:
     # logfile = logging.FileHandler("Anjani.log")
     logfile = logging.handlers.TimedRotatingFileHandler(
         filename="Anjani.log",
-        when='D',
-        interval=7,
-        backupCount=7,
+        when='midnight',
+        interval=1,
+        backupCount=30,
         utc=True
     )
     formatter = logging.Formatter(file_format, datefmt="%H:%M:%S")
