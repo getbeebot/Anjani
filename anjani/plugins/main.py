@@ -640,12 +640,6 @@ class Main(plugin.Plugin):
             if start_btns:
                 keyboard.extend(start_btns)
 
-            white_list_bot = [7152140916, 6802454608, 6872924441]
-            if self.bot.uid in white_list_bot:
-                keyboard.extend([
-                    [InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")]
-                ])
-
             await ctx.respond(
                 await self.text(chat.id, "start-pm", self.bot.user.username),
                 photo=guide_img_link,
