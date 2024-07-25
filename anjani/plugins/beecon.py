@@ -109,9 +109,9 @@ class BeeconPlugin(plugin.Plugin):
                 "targetId": chat_id,
                 "targetType": 0,
             })
-
-            project_id = await self.mysql.get_chat_project_id(chat_id)
-            project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+            bot_id = self.bot.uid
+            project_id = await self.mysql.get_chat_project_id(chat_id, bot_id)
+            project_link = util.misc.generate_project_detail_link(project_id, bot_id)
 
             button = InlineKeyboardMarkup([[
                 InlineKeyboardButton(
@@ -128,9 +128,9 @@ class BeeconPlugin(plugin.Plugin):
                 parse_mode=ParseMode.MARKDOWN,
             )
             # auto delete check in message
-            loop = asyncio.get_running_loop()
-            loop.create_task(self._delete_msg(chat_id, message.id, 60))
-            # self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
+            self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
+            if message.from_user.photo and message.from_user.photo.big_file_id:
+                self.bot.loop.create_task(self.update_user_avatar(message.from_user.id, message.from_user.photo.big_file_id))
         except Exception as e:
                 self.log.error("Keyword checkin error: %s", e)
 
@@ -175,9 +175,9 @@ class BeeconPlugin(plugin.Plugin):
         except Exception:
             return None
 
-    async def get_group_avatar_link(self, group_id: int, file_id: int) -> str:
+    async def get_user_avatar_link(self, group_id: int, file_id: int) -> str:
         try:
-            filename = f"G{group_id}.jpg"
+            filename = f"C{group_id}.jpg"
             filepath = join("downloads", filename)
 
             await self.bot.client.download_media(file_id, file_name=f"../downloads/{filename}")
@@ -224,8 +224,9 @@ class BeeconPlugin(plugin.Plugin):
 
         payloads = json.loads(json.dumps(payloads))
 
-        project_id = await self.mysql.get_chat_project_id(group_id)
-        project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+        bot_id = self.bot.uid
+        project_id = await self.mysql.get_chat_project_id(group_id, bot_id)
+        project_link = util.misc.generate_project_detail_link(project_id, bot_id)
 
         button = [[
             InlineKeyboardButton(
@@ -236,12 +237,34 @@ class BeeconPlugin(plugin.Plugin):
 
         reply_text = await self.bot.apiclient.checkin(payloads)
 
+        if from_user.photo and from_user.photo.big_file_id:
+            try:
+                self.bot.loop.create_task(self.update_user_avatar(from_user.id, from_user.photo.big_file_id))
+            except Exception:
+                pass
+
         await ctx.respond(
             reply_text,
             reply_markup=InlineKeyboardMarkup(button),
             parse_mode=ParseMode.MARKDOWN,
             delete_after=20,
         )
+
+    async def update_user_avatar(self, chat_id: int, file_id: str) -> None:
+        mysql_client = util.db.MysqlPoolClient.init_from_env()
+        try:
+            avatar = await self.get_user_avatar_link(chat_id, file_id)
+            if not avatar:
+                return None
+            user_id = await mysql_client.get_user_id(chat_id)
+            if not user_id:
+                self.log.warn("Not found user by telegram chat id (tz_app_connect.biz_user_id)")
+                return None
+            await mysql_client.update_user_avatar(user_id, avatar)
+        except Exception:
+            pass
+        finally:
+            del mysql_client
 
     async def _construct_user_api_payloads(self, user: User) -> dict:
         payloads = {}
@@ -252,18 +275,12 @@ class BeeconPlugin(plugin.Plugin):
         last_name = user.last_name
         nick_name = first_name + ' ' + last_name if last_name else first_name
 
-        try:
-            avatar = await self.get_group_avatar_link(user_id, user.photo.big_file_id)
-        except Exception as e:
-            self.log.warn("API payload construction error: %s, user (%s, %s)", e, user_id, nick_name)
-            avatar = None
-
         payloads.update({
             "firstName": first_name,
             "lastName": last_name,
             "nickName": nick_name,
             "userName": user_name,
-            "pic": avatar,
+            "pic": None,
             "tgUserId": user_id,
             "botId": self.bot.uid,
         })
@@ -278,8 +295,9 @@ class BeeconPlugin(plugin.Plugin):
         top_number = 10
 
         try:
-            project_id = await self.mysql.get_chat_project_id(group_id)
-            project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+            bot_id = self.bot.uid
+            project_id = await self.mysql.get_chat_project_id(group_id, bot_id)
+            project_link = util.misc.generate_project_detail_link(project_id, bot_id)
             button = [[InlineKeyboardButton("View more", url=project_link)]]
 
             payloads = {
