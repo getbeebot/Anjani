@@ -115,18 +115,10 @@ class MysqlPoolClient:
             values = (username, nickname, avatar, user_id)
             await self.update(sql, values)
 
-    async def get_chat_project_id(self, chat_id: int) -> int:
-        sql = "SELECT id FROM bot_project WHERE target_id=%s"
-        row = await self.query_one(sql, (chat_id, ))
-        try:
-            if row:
-                (project_id, ) =  row
-                return project_id
-            else:
-                return None
-        except Exception as e:
-            self.log.warn("Get chat %s project id error: %s", chat_id, e)
-            return None
+    async def get_chat_project_id(self, chat_id: int, bot_id: int) -> int:
+        sql = "SELECT bp.id FROM bot_project AS bp JOIN bot_tenant AS bt ON bp.tenant_id = bt.id WHERE bp.target_id = %s AND bp.deleted = 0 AND bt.bot_id = %s"
+        res = await self.query_one(sql, (chat_id, bot_id))
+        return res[0] if res else None
 
     async def get_project_ids(self, bot_id: int):
         sql = "SELECT DISTINCT bp.id, bp.target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = tutg.chat_id WHERE bp.target_id IS NOT NULL AND bp.deleted = 0 AND tutg.chat_type = 0 AND tutg.bot_id=%s"

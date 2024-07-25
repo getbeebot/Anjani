@@ -458,7 +458,7 @@ class EventDispatcher(MixinBase):
                 from_user = updated.from_user
                 invite_link = updated.invite_link
 
-                project_id = await self.mysql.get_chat_project_id(chat.id)
+                project_id = await self.mysql.get_chat_project_id(chat.id, self.uid)
                 if not project_id:
                     self.log.error("Can not get project id for chat (%s, %s)", chat.title, chat.id)
 

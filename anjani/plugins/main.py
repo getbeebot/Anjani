@@ -520,10 +520,8 @@ class Main(plugin.Plugin):
         """Bot start command"""
         chat = ctx.chat
 
-        guide_img_link = await self.text(None, "guide-img")
-        # engage_img_link = await self.text(None, "engage-img")
+        guide_img_link = os.getenv("GUIDE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png")
         engage_img_link = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
-        self.log.debug("In main plugin, enage image link: %s", engage_img_link)
 
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             # for start bot task
@@ -585,7 +583,7 @@ class Main(plugin.Plugin):
                     awards = await self.bot.apiclient.distribute_join_rewards(payloads)
                     if awards:
                         reward_btn_text = await self.text(None, "rewards-msg-button", noformat=True)
-                        project_id = await self.mysql.get_chat_project_id(group_id )
+                        project_id = await self.mysql.get_chat_project_id(group_id, bot_id)
                         project_url= util.misc.generate_project_detail_link(project_id, bot_id)
 
                         project_btn = InlineKeyboardMarkup([[
@@ -649,7 +647,8 @@ class Main(plugin.Plugin):
             return None
 
         # group start message
-        is_exist = await self.mysql.get_chat_project_id(chat.id)
+        bot_id = self.bot.uid
+        is_exist = await self.mysql.get_chat_project_id(chat.id, bot_id)
         # if not is_exist:
         #     pass
 
@@ -658,7 +657,7 @@ class Main(plugin.Plugin):
         while counter < 5 and not project_id:
             await asyncio.sleep(1)
             counter += 1
-            project_id = await self.mysql.get_chat_project_id(chat.id)
+            project_id = await self.mysql.get_chat_project_id(chat.id, bot_id)
 
         # no project for group, error exception
         if not project_id:
