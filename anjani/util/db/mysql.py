@@ -81,6 +81,7 @@ class MysqlPoolClient:
                 await cursor.execute(sql)
         except Exception as e:
             self.log.error("MySQL query %s, error: %s", sql, e)
+            return str(e)
 
     async def update_chat_info(self, data):
         chat_type = int(data.get("chat_type"))
