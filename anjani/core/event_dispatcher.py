@@ -249,22 +249,57 @@ class EventDispatcher(MixinBase):
             last_name = user.last_name
             nick_name = first_name + ' ' + last_name if last_name else first_name
 
-            avatar = None
-            try:
-                avatar = await get_avatar_link(user_id, user.photo.big_file_id)
-            except Exception as e:
-                self.log.warning("User %s (%s) does not have avatar: %s", first_name, user_id, e)
-
             payloads.update({
                 "firstName": first_name,
                 "lastName": last_name,
                 "nickName": nick_name,
                 "userName": user_name,
-                "pic": avatar,
+                "pic": None,
                 "tgUserId": user_id,
                 "botId": self.uid
             })
             return payloads
+
+        async def update_admin_avatar(chat_id: int, file_id: str) -> None:
+            mysql_client = util.db.MysqlPoolClient.init_from_env()
+            try:
+                avatar = await get_avatar_link(chat_id, file_id)
+                if not avatar:
+                    return None
+                user_id = await mysql_client.get_user_id(chat_id)
+                if not user_id:
+                    self.log.warn("Update admin avatar error: can not found user_id by chat_id %s", chat_id)
+                await mysql_client.update_user_avatar(user_id, avatar)
+                self.log.info("Updated user %s avatar to %s", user_id, avatar)
+            except Exception:
+                pass
+            finally:
+                del mysql_client
+
+        async def update_project_info(tenant_id: int, project_id: int, chat: Chat) -> None:
+            mysql_client = util.db.MysqlPoolClient.init_from_env()
+            try:
+                avatar = None
+                if chat.photo and chat.photo.big_file_id:
+                    avatar = await get_avatar_link(chat.id, chat.photo.big_file_id)
+                slogan = await get_chat_description(chat.id)
+                await mysql_client.update_project_info(tenant_id, project_id, avatar, slogan)
+                self.log.info("Updated project %s logo_url to %s, slogan to %s", project_id, avatar, slogan)
+            except Exception:
+                pass
+            finally:
+                del mysql_client
+
+        guide_img_link = os.getenv("GUIDE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png")
+        add_me_btn_text = await get_template("add-to-group-button")
+        usage_guide = await get_template("usage-guide")
+        usage_guide = usage_guide.format(add_me_btn_text)
+
+        start_me_btn = InlineKeyboardMarkup([[
+            InlineKeyboardButton("Start me", url=f"t.me/{self.user.username}?start")
+        ]])
+
+        group_id = chat.id
 
         # default is super group type: 0 for supergroup, 1 for channel, 2 for normal group
         chat_type = 0
@@ -283,17 +318,6 @@ class EventDispatcher(MixinBase):
                 parse_mode=ParseMode.MARKDOWN,
             )
             return None
-
-        guide_img_link = await get_template("guide-img")
-        add_me_btn_text = await get_template("add-to-group-button")
-        usage_guide = await get_template("usage-guide")
-        usage_guide = usage_guide.format(add_me_btn_text)
-
-        start_me_btn = InlineKeyboardMarkup([[
-            InlineKeyboardButton("Start me", url=f"t.me/{self.user.username}?start")
-        ]])
-
-        group_id = chat.id
 
         if not str(group_id).startswith("-100"):
             err_msg = await get_template("group-abnormal-exception")
@@ -324,11 +348,6 @@ class EventDispatcher(MixinBase):
         payloads = await construct_payloads(admin)
 
         share_link = await self.get_chat_link(chat)
-        slogan = await get_chat_description(chat.id)
-        logo_url = None
-        if chat.photo:
-            file_id = chat.photo.big_file_id
-            logo_url = await get_avatar_link(chat.id, file_id)
 
         payloads.update({
             "name": chat.title,
@@ -337,15 +356,15 @@ class EventDispatcher(MixinBase):
             "status": 1,
             "targetId": group_id,
             "targetType": chat_type,
-            "slogan": slogan,
-            "logoUrl": logo_url,
+            "slogan": None,
+            "logoUrl": None,
         })
 
         payloads = json.loads(json.dumps(payloads))
 
-        project_id = await self.apiclient.create_project(payloads)
+        api_res = await self.apiclient.create_project(payloads)
 
-        if not project_id:
+        if not api_res:
             err_msg = await get_template("group-init-failed")
             err_msg += usage_guide
             await self.client.send_photo(
@@ -362,6 +381,9 @@ class EventDispatcher(MixinBase):
                 reply_markup=start_me_btn,
                 parse_mode=ParseMode.MARKDOWN,
             )
+            return None
+
+        (project_id, tenant_id) = api_res
         url = util.misc.generate_project_detail_link(project_id, self.uid)
         msg_text = await get_template("create-project")
         msg_text = msg_text.format(group_name=chat.title)
@@ -371,6 +393,15 @@ class EventDispatcher(MixinBase):
         await self.client.send_message(admin.id, msg_text, reply_markup=button)
 
         if project_id:
+            try:
+                # Update project info seperately
+                loop = asyncio.get_running_loop()
+                if admin.photo and admin.photo.big_file_id:
+                    loop.create_task(update_admin_avatar(admin.id, admin.photo.big_file_id))
+                loop.create_task(update_project_info(tenant_id, project_id, chat))
+            except Exception as e:
+                self.log.warn("Update project init info error %s", e)
+
             notify_msg = json.dumps({
                 "project_id": project_id,
                 "owner_tg_id": admin.id,
@@ -386,7 +417,7 @@ class EventDispatcher(MixinBase):
                     pass
 
             project_config = util.project_config.BotNotificationConfig(project_id)
-            await util.project_config.BotNotificationConfig.update_or_create_project_config(self.mysql, project_config)
+            await util.project_config.BotNotificationConfig.update_or_create_project_config(util.db.MysqlPoolClient.init_from_env(), project_config)
 
     async def dispatch_event(
         self: "Anjani",
@@ -427,7 +458,7 @@ class EventDispatcher(MixinBase):
                 from_user = updated.from_user
                 invite_link = updated.invite_link
 
-                project_id = await self.mysql.get_chat_project_id(chat.id)
+                project_id = await self.mysql.get_chat_project_id(chat.id, self.uid)
                 if not project_id:
                     self.log.error("Can not get project id for chat (%s, %s)", chat.title, chat.id)
 

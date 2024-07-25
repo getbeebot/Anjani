@@ -115,18 +115,10 @@ class MysqlPoolClient:
             values = (username, nickname, avatar, user_id)
             await self.update(sql, values)
 
-    async def get_chat_project_id(self, chat_id: int) -> int:
-        sql = "SELECT id FROM bot_project WHERE target_id=%s"
-        row = await self.query_one(sql, (chat_id, ))
-        try:
-            if row:
-                (project_id, ) =  row
-                return project_id
-            else:
-                return None
-        except Exception as e:
-            self.log.warn("Get chat %s project id error: %s", chat_id, e)
-            return None
+    async def get_chat_project_id(self, chat_id: int, bot_id: int) -> int:
+        sql = "SELECT bp.id FROM bot_project AS bp JOIN bot_tenant AS bt ON bp.tenant_id = bt.id WHERE bp.target_id = %s AND bp.deleted = 0 AND bt.bot_id = %s"
+        res = await self.query_one(sql, (chat_id, bot_id))
+        return res[0] if res else None
 
     async def get_project_ids(self, bot_id: int):
         sql = "SELECT DISTINCT bp.id, bp.target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = tutg.chat_id WHERE bp.target_id IS NOT NULL AND bp.deleted = 0 AND tutg.chat_type = 0 AND tutg.bot_id=%s"
@@ -162,3 +154,18 @@ class MysqlPoolClient:
         if not res:
             sql = "INSERT INTO tg_user_start_bot (chat_id, bot_id) VALUES (%s, %s)"
             await self.update(sql, values)
+
+    async def get_user_id(self, chat_id: int):
+        sql = "SELECT user_id FROM tz_app_connect WHERE biz_user_id = %s AND app_id = 1"
+        res = await self.query_one(sql, (chat_id, ))
+        return res[0] if res else None
+
+    async def update_user_avatar(self, user_id: str, avatar: str):
+        sql = "UPDATE tz_user SET pic = %s WHERE user_id = %s"
+        values = (avatar, user_id)
+        await self.update(sql, values)
+
+    async def update_project_info(self, tenant_id: int, project_id: int, avatar: str, slogan: str):
+        sql = "UPDATE bot_project SET slogan = %s, logo_url = %s WHERE id = %s AND tenant_id = %s"
+        values = (slogan, avatar, project_id, tenant_id)
+        await self.update(sql, values)

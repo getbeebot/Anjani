@@ -45,11 +45,11 @@ class APIClient:
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
-                self.log.debug("Distribute join rewards response: %s", res)
+                self.log.info("Distribute join rewards response: %s", res)
                 data = res.get("data")
                 rewards = data.get("awardsDes") if data else None
             else:
-               self.log.error("Distribute join rewards error: %s", await resp.text())
+                self.log.error("Distribute join rewards error: %s", await resp.text())
 
         return rewards
 
@@ -57,6 +57,7 @@ class APIClient:
         self.log.info("Create project request payloads: %s", payloads)
 
         project_id = None
+        tenant_id = None
 
         req_uri = f"{self.url_prefix}/p/task/bot-project/init"
 
@@ -70,13 +71,15 @@ class APIClient:
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
-                self.log.debug("Create project response: %s", res)
+                self.log.info("Create project response: %s", res)
                 data = res.get("data")
-                project_id = int(data.get("id")) if data else None
+                if data:
+                    project_id = int(data.get("id"))
+                    tenant_id = int(data.get("tenantId") or 4)
             else:
                 self.log.error("Create project error: %s", await resp.text())
 
-        return project_id
+        return (project_id, tenant_id)
 
     async def get_invite_link(self, payloads: dict) -> Optional[str]:
         self.log.info("Get invite link request payloads: %s", payloads)
