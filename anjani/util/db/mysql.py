@@ -172,3 +172,8 @@ class MysqlPoolClient:
         sql = "UPDATE tz_user SET pic = %s WHERE user_id = %s"
         values = (avatar, user_id)
         await self.update(sql, values)
+
+    async def update_project_info(self, tenant_id: int, project_id: int, avatar: str, slogan: str):
+        sql = "UPDATE bot_project SET slogan = %s, logo_url = %s WHERE id = %s AND tenant_id = %s"
+        values = (slogan, avatar, project_id, tenant_id)
+        await self.update(sql, values)
