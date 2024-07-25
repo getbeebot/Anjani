@@ -128,9 +128,9 @@ class BeeconPlugin(plugin.Plugin):
                 parse_mode=ParseMode.MARKDOWN,
             )
             # auto delete check in message
-            # loop = asyncio.get_running_loop()
-            # self.bot.loop.create_task(self._delete_msg(chat_id, message.id, 60))
-            self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._delete_msg(chat_id, message.id, 60))
+            # self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
         except Exception as e:
                 self.log.error("Keyword checkin error: %s", e)
 

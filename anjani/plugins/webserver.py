@@ -4,6 +4,8 @@ import aiofiles.os as aio_os
 import base64
 from typing import ClassVar, Optional
 
+import asyncio
+
 from datetime import datetime, timezone
 
 import aiohttp_cors
@@ -141,7 +143,8 @@ class WebServer(plugin.Plugin):
                 "avatar": None,
             }
             try:
-                self.bot.loop.create_taks(self.update_user_avatar(user_id))
+                loop = asyncio.get_running_loop()
+                loop.create_task(self.update_user_avatar(user_id))
             except Exception as e:
                 self.log.warn("update user avatar error: %s", e)
             ret_data.update({"ok": True, "data": user_info})
