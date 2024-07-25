@@ -678,7 +678,7 @@ lottery-join-1: |
   🎉  Condition: Draw after {condition} participants
   🎁  Prize Details: {prize}
 lottery-end: |
-  🎁 The draw for the {community_name} community event has been held! Check now to see if your're a lucky winner!
+  🎁 The draw for the {communityName} community event has been held! Check now to see if your're a lucky winner!
 task-creation: |
   🚀 There's a new reward created in our community, check it now.
 #endregion
