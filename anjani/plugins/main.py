@@ -495,7 +495,7 @@ class Main(plugin.Plugin):
             airdrop_link = os.getenv("AIRDROP_HUB")
             if airdrop_link:
                 gift_btns.append(
-                    InlineKeyboardButton(text="Airdrop HUB",url=airdrop_link)
+                    InlineKeyboardButton(text="🪂 Airdrop Hub",url=airdrop_link)
                 )
                 pass
             btns.append(gift_btns)
