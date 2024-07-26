@@ -463,4 +463,4 @@ class BeeconPlugin(plugin.Plugin):
             return "Command /who only for whitelist user."
 
         user: User = await self.bot.client.get_users(user_id)
-        await ctx.respond(f"Id: `{user_id}` account: {user.mention()} \nuser info: {user}")
+        await ctx.respond(f"ID: `{user_id}`\nContact: {user.mention()} \nDetail: {user}")
