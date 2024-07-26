@@ -489,9 +489,16 @@ class Main(plugin.Plugin):
 
         daily_gifts_link = os.getenv("DAILY_GIFTS")
         if daily_gifts_link:
-            btns.append([
+            gift_btns = [
                 InlineKeyboardButton(text=await self.text(None, "daily-gifts-button"), url=daily_gifts_link)
-            ])
+            ]
+            airdrop_link = os.getenv("AIRDROP_HUB")
+            if airdrop_link:
+                gift_btns.append(
+                    InlineKeyboardButton(text="🪂 Airdrop Hub",url=airdrop_link)
+                )
+                pass
+            btns.append(gift_btns)
 
         social_btns = []
         faq_link = os.getenv("FAQ")
@@ -511,8 +518,10 @@ class Main(plugin.Plugin):
 
         white_list_bot = [7152140916, 6802454608, 6872924441]
         if self.bot.uid in white_list_bot:
+
             btns.append([
-                InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
+                InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme"),
+                InlineKeyboardButton(text=await self.text(None, "ad-svc-button"), url=await self.text(None, "forkme-contact-link"))
             ])
         return btns
 
