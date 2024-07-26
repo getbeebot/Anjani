@@ -452,3 +452,15 @@ class BeeconPlugin(plugin.Plugin):
         except Exception as e:
             await ctx.respond(f"Delete user {values} failed, error {e}")
         return
+
+    @command.filters(filters.private)
+    async def cmd_who(self, ctx: command.Context) -> Optional[str]:
+        chat = ctx.chat
+        user_id = ctx.input
+        whitelist = [6812515288, 1821086162, 7465037644, 2113937194, 7037181285, 1013334686, 6303440178]
+
+        if chat.id not in whitelist:
+            return "Command /who only for whitelist user."
+
+        user: User = await self.bot.client.get_users(user_id)
+        await ctx.respond(f"Id: `{user_id}` account: {user.mention()} \nuser info: {user}")
