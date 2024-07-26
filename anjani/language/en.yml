@@ -1,6 +1,6 @@
 #region Main
 start-pm: |
-  To assist in automatically identifying the completion status of community tasks, please add @{} to your managed **public group** and designate it as an administrator.
+  To assist in automatically identifying the completion status of community tasks, please add @{} to your managed **public group/channel** and designate it as an administrator.
 group-notify-no-participants: |
   🌟 There are **{tasks} tasks** in our community. Let's get involved! 👇
 group-start-pm: |
@@ -727,7 +727,7 @@ group-or-channel: "Group or channel?"
 #endregion
 
 #region forkme
-forkme-button: "Fork me"
+forkme-button: "Ads Service / Fork me"
 forkme-contact-button: "Contact US"
 forkme-contact-link: "t.me/arbalists"
 forkme-description: |
