@@ -727,7 +727,8 @@ group-or-channel: "Group or channel?"
 #endregion
 
 #region forkme
-forkme-button: "Growth / Ads Service"
+ad-svc-button: "Ads Service"
+forkme-button: "Customization"
 forkme-contact-button: "Contact US"
 forkme-contact-link: "t.me/arbalists"
 forkme-description: |

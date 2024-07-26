@@ -518,8 +518,10 @@ class Main(plugin.Plugin):
 
         white_list_bot = [7152140916, 6802454608, 6872924441]
         if self.bot.uid in white_list_bot:
+
             btns.append([
-                InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme")
+                InlineKeyboardButton(text=await self.text(None, "forkme-button"), callback_data="help_forkme"),
+                InlineKeyboardButton(text=await self.text(None, "ad-svc-button"), url=await self.text(None, "forkme-contact-link"))
             ])
         return btns
 
