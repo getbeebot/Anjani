@@ -145,19 +145,22 @@ class Main(plugin.Plugin):
                 return
 
             data = await self.bot.client.invoke(GetState())
-            await self.db.update_one(
-                {"_id": sha256(self.bot.config.BOT_TOKEN.encode()).hexdigest()},
-                {
-                    "$set": {
-                        "session": Binary(await file.read_bytes()),
-                        "date": data.date,
-                        "pts": data.pts,
-                        "qts": data.qts,
-                        "seq": data.seq,
-                    }
-                },
-                upsert=True,
-            )
+            try:
+                await self.db.update_one(
+                    {"_id": sha256(self.bot.config.BOT_TOKEN.encode()).hexdigest()},
+                    {
+                        "$set": {
+                            "session": Binary(await file.read_bytes()),
+                            "date": data.date,
+                            "pts": data.pts,
+                            "qts": data.qts,
+                            "seq": data.seq,
+                        }
+                    },
+                    upsert=True,
+                )
+            except Exception as e:
+                self.log.warn("Saving session to db error %s", e)
 
             status_msg = await self.send_to_log("Shutdowning system...")
             self.bot.log.info("Preparing to shutdown...")
