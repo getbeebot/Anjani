@@ -12,6 +12,9 @@ services:
     env_file:
       - config.env
     restart: unless-stopped
+    volumes:
+      - ./session:/app/session
+      - ./messages:/app/messages
 
 # # Uncomment the following lines to use a local MongoDB database
 #     depends_on:

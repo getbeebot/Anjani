@@ -20,12 +20,37 @@ import msgpack
 import base58
 import os
 
+from aiopath import AsyncPath
+
 from pyrogram.filters import AndFilter, Filter, InvertFilter, OrFilter
 
 from anjani.util.types import CustomFilter
 
 if TYPE_CHECKING:
     from anjani.core import Anjani
+
+async def copy_file(src: AsyncPath, dest: AsyncPath):
+    async with src.open(mode="rb") as s, dest.open(mode="wb") as d:
+        while True:
+            data = await s.read(4096)
+            if not data:
+                break
+            await d.write(data)
+
+async def session_backup():
+    session_dir = AsyncPath("session")
+    if not await session_dir.exists():
+        await session_dir.mkdir()
+    src = AsyncPath("anjani/anjani.session")
+    dest = AsyncPath("session/anjani.session")
+    await copy_file(src, dest)
+
+async def session_restore():
+    src = AsyncPath("session/anjani.session")
+    dest = AsyncPath("anjani/anjani.session")
+    if not await src.exists():
+        return
+    await copy_file(src, dest)
 
 TWA_LINK = os.getenv("TWA_LINK")
 
