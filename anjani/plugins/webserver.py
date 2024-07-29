@@ -512,19 +512,23 @@ class WebServer(plugin.Plugin):
             pics = payloads.get("pic") or "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
 
             lang = "en"
+            btn_desc = json.dumps({
+                "text": btn_text,
+            })
 
             code = f"@{self.bot.user.username} ld-{project_id}-{task_id}-{lang}"
 
             sql = "SELECT * FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
             res = await self.mysql.query_one(sql, (project_id, task_id, lang))
             if res:
+                sql = "UPDATE luckydraw_share SET pics=%s, btn_desc=%s, des=%s WHERE project_id=%s AND task_id=%s AND lang=%s"
+                values = (pics, btn_desc, des, project_id, task_id, lang)
+                await self.mysql.update(sql, values)
                 return web.json_response({"ok": True, "data": code})
 
             sql = "INSERT INTO luckydraw_share(project_id, task_id, lang, pics, btn_desc, des) VALUES(%s, %s, %s, %s, %s, %s)"
-            btn_desc = {
-                "text": btn_text,
-            }
-            values = (project_id, task_id, lang, pics, json.dumps(btn_desc), des)
+
+            values = (project_id, task_id, lang, pics, btn_desc, des)
 
             res = await self.mysql.update(sql, values)
             if res:
