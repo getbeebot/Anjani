@@ -356,6 +356,24 @@ class WebServer(plugin.Plugin):
                 "Authorization": auth,
                 "Content-Type": "application/json",
             }
+
+            if self.bot.uid == 6802454608:
+                async def save_alert_record(name: str, description: str):
+                    mysql_client = MysqlPoolClient.init_from_env()
+                    await mysql_client.connect()
+                    sql = "INSERT INTO alert_record(name, des) VALUES(%s, %s)"
+                    values = (name, description)
+                    await mysql_client.update(sql, values)
+                    del mysql_client
+                try:
+                    labels = payloads[0].get("labels")
+                    name = labels.get("alertname")
+                    des = labels.get("annotations").get("description") or ""
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(save_alert_record(name, des))
+                except Exception as e:
+                    self.log.error("saving alert record %s error %s", payloads)
+
             async with self.bot.http.post(url, json=payloads, headers=headers) as resp:
                 self.log.info(f"Alert response: %s", resp)
                 if resp.status == 200:
