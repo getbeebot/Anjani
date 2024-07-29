@@ -461,8 +461,25 @@ class EventDispatcher(MixinBase):
 
         # storing group info when bot joined
         if event == "chat_member_update":
-            updated = args[0]
+            updated: ChatMemberUpdated = args[0]
             chat = updated.chat
+
+            chat_type = 0
+            if chat.type == ChatType.CHANNEL:
+                chat_type = 1
+            elif chat.type == ChatType.GROUP:
+                chat_type = 2
+
+            try:
+                new_member = updated.new_chat_member
+                tg_user_id = new_member.user.id
+                joined_date = new_member.joined_date
+                mysql_client = util.db.MysqlPoolClient.init_from_env()
+                await mysql_client.save_new_member(chat.id, chat_type, tg_user_id, joined_date)
+            except Exception as e:
+                self.log.error("saving member join record %s error %s", updated, e)
+            finally:
+                del mysql_client
 
             # only for bot join group
             if updated.new_chat_member and updated.new_chat_member.user.id == self.uid:
