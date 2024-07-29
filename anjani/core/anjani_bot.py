@@ -21,6 +21,7 @@ from typing import Optional
 import aiohttp
 import pyrogram
 
+from anjani.util import misc
 from anjani.util.config import Config
 from anjani.util.apiclient import APIClient
 from anjani.util.db import MysqlPoolClient
@@ -70,6 +71,9 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
             asyncio.set_event_loop(loop)
 
         try:
+            # restore session for anjani to avoid peer id loss
+            await misc.session_restore()
+
             anjani = cls(config)
             await anjani.run()
             return anjani
@@ -85,6 +89,9 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
             if self.client.is_connected:
                 await self.client.stop()
 
+        # backup session
+        self.log.info("Backing up session")
+        await misc.session_backup()
 
         await self.mysql.close()
         await self.redis.close()
