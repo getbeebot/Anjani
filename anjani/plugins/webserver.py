@@ -366,13 +366,13 @@ class WebServer(plugin.Plugin):
                     await mysql_client.update(sql, values)
                     del mysql_client
                 try:
-                    labels = payloads[0].get("labels")
-                    name = labels.get("alertname")
-                    des = labels.get("annotations").get("description") or ""
+                    msg = payloads[0]
+                    name = msg.get("labels").get("alertname")
+                    des = msg.get("annotations").get("description") or ""
                     loop = asyncio.get_running_loop()
                     loop.create_task(save_alert_record(name, des))
                 except Exception as e:
-                    self.log.error("saving alert record %s error %s", payloads)
+                    self.log.error("saving alert record %s error %s", payloads, e)
 
             async with self.bot.http.post(url, json=payloads, headers=headers) as resp:
                 self.log.info(f"Alert response: %s", resp)
