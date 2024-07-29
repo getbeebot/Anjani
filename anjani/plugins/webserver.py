@@ -119,7 +119,7 @@ class WebServer(plugin.Plugin):
             self.log.error("Is member check error: %s", e)
             ret_data.update({"ok": False, "res": False, "error": str(e)})
 
-        self.log.debug("/is_member check return %s", ret_data)
+        self.log.info("/is_member check return %s", ret_data)
 
         return web.json_response(ret_data, status=200)
 
