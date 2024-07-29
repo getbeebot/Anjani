@@ -1,5 +1,5 @@
+from decimal import Decimal
 from datetime import datetime, timezone, timedelta
-
 
 def build_lottery_create_msg(template: str, **args) -> str:
     community_name = args.get("communityName", "")
@@ -68,14 +68,14 @@ def build_congrats_records(template: str, **args) -> str:
         return "There's no records for you yet."
 
     count = len(draw_records)
-    amount = sum([float(item.get("prizeAmount")) for item in draw_records])
+    amount = sum([Decimal(item.get("prizeAmount")) for item in draw_records])
 
     if count > 20:
         records = draw_records[0:20]
     else:
         records = draw_records
 
-    amount_records = [float(item.get("prizeAmount")) for item in records]
+    amount_records = [Decimal(item.get("prizeAmount")) for item in records]
     unit_records = [item.get("symbolAlias") or "USDT" for item in records]
     time_records = [format_msg_timestamp(int(item.get("rewardTime"))) for item in records]
     records_arr = [f'**Record {i+1}**\n> Prize: {v[0]} {v[1]}\n> Date: {v[2]}' for i, v in enumerate(zip(amount_records, unit_records, time_records))]

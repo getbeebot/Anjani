@@ -22,6 +22,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, MutableMapping, MutableSequence, Optional, Tuple
 
+import aiofiles
 import aiofiles.os as aio_os
 import json
 
@@ -443,6 +444,20 @@ class EventDispatcher(MixinBase):
                 chat = event_data.chat
                 chat.title = event_data.new_chat_title
                 await self.save_chat_info(chat)
+
+        async def save_msg(filename: str, content: str):
+            target_file = f"messages/{filename}.txt"
+            async with aiofiles.open(target_file, mode="a+") as f:
+                await f.write(content)
+                await f.write("\n")
+
+        try:
+            if args[0] and args[0].chat:
+                await save_msg(f"C{args[0].chat.id}", str(args[0]))
+            else:
+                await save_msg(event, str(args))
+        except Exception as e:
+            await save_msg(event, str(args))
 
         # storing group info when bot joined
         if event == "chat_member_update":
