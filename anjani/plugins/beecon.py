@@ -87,8 +87,6 @@ class BeeconPlugin(plugin.Plugin):
 
         checkin_word = await self.bot.redis.get(f"checkin_{chat.id}")
 
-        self.log.info("Debug checking: %s", checkin_word)
-
         if not checkin_word:
             return None
 
@@ -264,6 +262,7 @@ class BeeconPlugin(plugin.Plugin):
         except Exception:
             pass
         finally:
+            await mysql_client.close()
             del mysql_client
 
     async def _construct_user_api_payloads(self, user: User) -> dict:

@@ -9,17 +9,7 @@ log = logging.getLogger("BotNotificationConfig")
 
 @dataclass
 class BotNotificationConfig:
-    def __init__(
-        self,
-        project_id,
-        overview=1,
-        ovduration=14400,
-        newdraw=1,
-        userjoin=1,
-        draw=1,
-        verify=0,
-        newtask=1
-    ):
+    def __init__(self, project_id, overview=1, ovduration=14400, newdraw=1, userjoin=1, draw=1, verify=0, newtask=1):
         self.project_id = project_id
         self.overview = overview
         self.ovduration = ovduration
@@ -35,26 +25,16 @@ class BotNotificationConfig:
         return cls(**data)
 
     @staticmethod
-    async def get_project_config(mysql: MysqlPoolClient, project_id: int):
-        query = """
-        SELECT
-          enable_overview,
-          overview_frequency,
-          enable_new_draw_notify,
-          enable_user_join_notify,
-          enable_draw_annonce,
-          enable_rewards_verify,
-          enable_new_task
-        FROM bot_notification_config
-        WHERE project_id = %s
-        """
-        config = await mysql.query_one(query, (project_id, ))
-
-        log.debug("Getting project config: %s", config)
-
+    async def get_project_config(project_id: int):
+        mysql_client = MysqlPoolClient.init_from_env()
+        query = "SELECT enable_overview, overview_frequency, enable_new_draw_notify, enable_user_join_notify, enable_draw_annonce, enable_rewards_verify, enable_new_task FROM bot_notification_config WHERE project_id = %s"
+        project_config = BotNotificationConfig(project_id)
         try:
+            config = await mysql_client.query_one(query, (project_id, ))
+            log.debug("Getting project config: %s", config)
+
             if config:
-                return BotNotificationConfig(
+                project_config = BotNotificationConfig(
                     project_id=project_id,
                     overview=config[0],
                     ovduration=config[1],
@@ -67,61 +47,24 @@ class BotNotificationConfig:
         except Exception as e:
             log.warn("Get project %s config error: %s", project_id, e)
             return BotNotificationConfig(project_id)
+        finally:
+            await mysql_client.close()
+            del mysql_client
+            return project_config
 
-    @staticmethod
-    async def update_or_create_project_config(mysql: MysqlPoolClient, config: "BotNotificationConfig"):
+    async def update_or_create(self):
+        mysql_client = MysqlPoolClient.init_from_env()
         query = "SELECT * FROM bot_notification_config WHERE project_id = %s"
-        res = await mysql.query_one(query, (config.project_id, ))
+        res = await mysql_client.query_one(query, (self.project_id, ))
 
         if res:
-            update_query = """
-            UPDATE bot_notification_config
-            SET
-                enable_overview=%s,
-                overview_frequency=%s,
-                enable_new_draw_notify=%s,
-                enable_user_join_notify=%s,
-                enable_draw_annonce=%s,
-                enable_rewards_verify=%s,
-                enable_new_task=%s
-            WHERE project_id=%s
-            """
-            await mysql.update(
-                update_query,
-                (
-                    config.overview,
-                    config.ovduration,
-                    config.newdraw,
-                    config.userjoin,
-                    config.draw,
-                    config.verify,
-                    config.newtask,
-                    config.project_id
-                )
-            )
+            update_query = "UPDATE bot_notification_config SET enable_overview=%s, overview_frequency=%s, enable_new_draw_notify=%s, enable_user_join_notify=%s, enable_draw_annonce=%s, enable_rewards_verify=%s, enable_new_task=%s WHERE project_id=%s"
+            values = (self.overview, self.ovduration, self.newdraw, self.userjoin, self.draw, self.verify, self.newtask, self.project_id)
+            await mysql_client.update(update_query, values)
         else:
-            insert_query = """
-            INSERT INTO bot_notification_config(
-                project_id,
-                enable_overview,
-                overview_frequency,
-                enable_new_draw_notify,
-                enable_user_join_notify,
-                enable_draw_annonce,
-                enable_rewards_verify,
-                enable_new_task
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            await mysql.update(
-                insert_query,
-                (
-                    config.project_id,
-                    config.overview,
-                    config.ovduration,
-                    config.newdraw,
-                    config.userjoin,
-                    config.draw,
-                    config.verify,
-                    config.newtask
-                )
-            )
+            insert_query = "INSERT INTO bot_notification_config(project_id, enable_overview, overview_frequency, enable_new_draw_notify, enable_user_join_notify, enable_draw_annonce, enable_rewards_verify, enable_new_task) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+            values = (self.project_id, self.overview, self.ovduration, self.newdraw, self.userjoin, self.draw, self.verify, self.newtask)
+            await mysql_client.update(insert_query, values)
+
+        await mysql_client.close()
+        del mysql_client
