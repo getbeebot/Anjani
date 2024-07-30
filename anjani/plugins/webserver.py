@@ -59,14 +59,13 @@ class WebServer(plugin.Plugin):
         is_member_router = web.post("/is_member", self.is_member_handler)
         update_user_router = web.get("/update_user", self.update_user_handler)
         send_msg_router = web.post("/sendmsg", self.send_msg_handler)
-        get_invite_link_router = web.post("/get_invite_link", self.get_invite_link_handler)
         privilege_check_router = web.post("/check_bot_privilege", self.privilege_check_handler)
 
         ws_router = web.get("/ws", self.project_creation_notify)
 
         # save_iq_text_router = web.post("/save_iq", self.save_iq_text_handler)
         routers = [
-            is_member_router, update_user_router, send_msg_router, get_invite_link_router, privilege_check_router, ws_router
+            is_member_router, update_user_router, send_msg_router, privilege_check_router, ws_router
             # save_iq_text_router
         ]
 
@@ -77,9 +76,11 @@ class WebServer(plugin.Plugin):
                 allow_headers="*"
             )
         })
+        get_invite_link_router = app.router.add_route("POST", "/get_invite_link", self.get_invite_link_handler)
         alert_router = app.router.add_route("POST", "/alert", self.send_alert_handler)
         save_iq_rotuer = app.router.add_route("POST", "/save_iq", self.save_iq_text_handler)
 
+        cors.add(get_invite_link_router)
         cors.add(alert_router)
         cors.add(save_iq_rotuer)
 
@@ -256,9 +257,14 @@ class WebServer(plugin.Plugin):
 
             group_id = int(payloads.get("groupId"))
             user_id = int(payloads.get("userId"))
+            task_id = payloads.get("taskId")
 
-            user = await self.bot.client.get_users(user_id)
-            user_nick = user.first_name
+            user_nick = None
+            if task_id:
+                user_nick = str(task_id)
+            else:
+                user = await self.bot.client.get_users(user_id)
+                user_nick = user.first_name
 
             expire = datetime.fromtimestamp(2032995600, timezone.utc)
             link = await self.bot.client.create_chat_invite_link(
