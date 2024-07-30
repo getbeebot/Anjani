@@ -59,14 +59,13 @@ class WebServer(plugin.Plugin):
         is_member_router = web.post("/is_member", self.is_member_handler)
         update_user_router = web.get("/update_user", self.update_user_handler)
         send_msg_router = web.post("/sendmsg", self.send_msg_handler)
-        get_invite_link_router = web.post("/get_invite_link", self.get_invite_link_handler)
         privilege_check_router = web.post("/check_bot_privilege", self.privilege_check_handler)
 
         ws_router = web.get("/ws", self.project_creation_notify)
 
         # save_iq_text_router = web.post("/save_iq", self.save_iq_text_handler)
         routers = [
-            is_member_router, update_user_router, send_msg_router, get_invite_link_router, privilege_check_router, ws_router
+            is_member_router, update_user_router, send_msg_router, privilege_check_router, ws_router
             # save_iq_text_router
         ]
 
@@ -77,9 +76,11 @@ class WebServer(plugin.Plugin):
                 allow_headers="*"
             )
         })
+        get_invite_link_router = app.router.add_route("POST", "/get_invite_link", self.get_invite_link_handler)
         alert_router = app.router.add_route("POST", "/alert", self.send_alert_handler)
         save_iq_rotuer = app.router.add_route("POST", "/save_iq", self.save_iq_text_handler)
 
+        cors.add(get_invite_link_router)
         cors.add(alert_router)
         cors.add(save_iq_rotuer)
 
@@ -97,7 +98,7 @@ class WebServer(plugin.Plugin):
 
     async def on_stop(self) -> None:
         await self.mysql.close()
-        self.log.info("Shutdown web sever...")
+        self.log.info("Shutdown websever...")
         await self.site.stop()
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
@@ -119,7 +120,7 @@ class WebServer(plugin.Plugin):
             self.log.error("Is member check error: %s", e)
             ret_data.update({"ok": False, "res": False, "error": str(e)})
 
-        self.log.debug("/is_member check return %s", ret_data)
+        self.log.info("/is_member check return %s", ret_data)
 
         return web.json_response(ret_data, status=200)
 
@@ -186,9 +187,7 @@ class WebServer(plugin.Plugin):
             button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
 
             project_id = await self.bot.mysql.get_chat_project_id(chat_id, self.bot.uid)
-            project_config = await BotNotificationConfig.get_project_config(self.mysql, project_id)
-            if not project_config:
-                project_config = BotNotificationConfig(project_id)
+            project_config = await BotNotificationConfig.get_project_config(project_id)
 
             chat = await self.bot.client.get_chat(chat_id)
             if chat.type == ChatType.CHANNEL:
@@ -256,9 +255,14 @@ class WebServer(plugin.Plugin):
 
             group_id = int(payloads.get("groupId"))
             user_id = int(payloads.get("userId"))
+            task_id = payloads.get("taskId")
 
-            user = await self.bot.client.get_users(user_id)
-            user_nick = user.first_name
+            user_nick = None
+            if task_id:
+                user_nick = str(task_id)
+            else:
+                user = await self.bot.client.get_users(user_id)
+                user_nick = user.first_name
 
             expire = datetime.fromtimestamp(2032995600, timezone.utc)
             link = await self.bot.client.create_chat_invite_link(
@@ -272,6 +276,7 @@ class WebServer(plugin.Plugin):
             res = {
                 "group_id": group_id,
                 "user_id": user_id,
+                "task_id": task_id,
                 "invite_link": invite_link,
             }
             ret_data.update({"ok": True, "data": res})
@@ -356,6 +361,25 @@ class WebServer(plugin.Plugin):
                 "Authorization": auth,
                 "Content-Type": "application/json",
             }
+
+            if self.bot.uid == 6802454608:
+                async def save_alert_record(name: str, description: str):
+                    mysql_client = MysqlPoolClient.init_from_env()
+                    await mysql_client.connect()
+                    sql = "INSERT INTO alert_record(name, des) VALUES(%s, %s)"
+                    values = (name, description)
+                    await mysql_client.update(sql, values)
+                    await mysql_client.close()
+                    del mysql_client
+                try:
+                    msg = payloads[0]
+                    name = msg.get("labels").get("alertname")
+                    des = msg.get("annotations").get("description") or ""
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(save_alert_record(name, des))
+                except Exception as e:
+                    self.log.error("saving alert record %s error %s", payloads, e)
+
             async with self.bot.http.post(url, json=payloads, headers=headers) as resp:
                 self.log.info(f"Alert response: %s", resp)
                 if resp.status == 200:
@@ -512,19 +536,23 @@ class WebServer(plugin.Plugin):
             pics = payloads.get("pic") or "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
 
             lang = "en"
+            btn_desc = json.dumps({
+                "text": btn_text,
+            })
 
             code = f"@{self.bot.user.username} ld-{project_id}-{task_id}-{lang}"
 
             sql = "SELECT * FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
             res = await self.mysql.query_one(sql, (project_id, task_id, lang))
             if res:
+                sql = "UPDATE luckydraw_share SET pics=%s, btn_desc=%s, des=%s WHERE project_id=%s AND task_id=%s AND lang=%s"
+                values = (pics, btn_desc, des, project_id, task_id, lang)
+                await self.mysql.update(sql, values)
                 return web.json_response({"ok": True, "data": code})
 
             sql = "INSERT INTO luckydraw_share(project_id, task_id, lang, pics, btn_desc, des) VALUES(%s, %s, %s, %s, %s, %s)"
-            btn_desc = {
-                "text": btn_text,
-            }
-            values = (project_id, task_id, lang, pics, json.dumps(btn_desc), des)
+
+            values = (project_id, task_id, lang, pics, btn_desc, des)
 
             res = await self.mysql.update(sql, values)
             if res:

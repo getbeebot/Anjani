@@ -145,19 +145,22 @@ class Main(plugin.Plugin):
                 return
 
             data = await self.bot.client.invoke(GetState())
-            await self.db.update_one(
-                {"_id": sha256(self.bot.config.BOT_TOKEN.encode()).hexdigest()},
-                {
-                    "$set": {
-                        "session": Binary(await file.read_bytes()),
-                        "date": data.date,
-                        "pts": data.pts,
-                        "qts": data.qts,
-                        "seq": data.seq,
-                    }
-                },
-                upsert=True,
-            )
+            try:
+                await self.db.update_one(
+                    {"_id": sha256(self.bot.config.BOT_TOKEN.encode()).hexdigest()},
+                    {
+                        "$set": {
+                            "session": Binary(await file.read_bytes()),
+                            "date": data.date,
+                            "pts": data.pts,
+                            "qts": data.qts,
+                            "seq": data.seq,
+                        }
+                    },
+                    upsert=True,
+                )
+            except Exception as e:
+                self.log.warn("Saving session to db error %s", e)
 
             status_msg = await self.send_to_log("Shutdowning system...")
             self.bot.log.info("Preparing to shutdown...")
@@ -231,10 +234,7 @@ class Main(plugin.Plugin):
         project_config = await self.get_project_config(project_id)
         # if there's no redis cache, query mysql db
         if not project_config:
-            project_config = await BotNotificationConfig.get_project_config(util.db.MysqlPoolClient.init_from_env(), project_id)
-        # if there's no db records, create a new one
-        if not project_config:
-            project_config = BotNotificationConfig(project_id)
+            project_config = await BotNotificationConfig.get_project_config(project_id)
 
         buttons: List[InlineKeyboardButton] = []
         for k, v in project_config.__dict__.items():
@@ -384,7 +384,7 @@ class Main(plugin.Plugin):
                     # sync project config to db every time go to project breif page
                     project_config = await self.get_project_config(project_id)
                     if project_config:
-                        await BotNotificationConfig.update_or_create_project_config(self.mysql, project_config)
+                        await project_config.update_or_create()
                     await query.edit_message_text(
                         text=text,
                         reply_markup=keyboard,
@@ -540,6 +540,7 @@ class Main(plugin.Plugin):
             except Exception as e:
                 self.log.warn("Saving start bot records error: %s", e)
             finally:
+                await mysql_client.close()
                 del mysql_client
 
             if ctx.input and ctx.input == "help":

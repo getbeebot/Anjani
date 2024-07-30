@@ -275,6 +275,7 @@ class EventDispatcher(MixinBase):
             except Exception:
                 pass
             finally:
+                await mysql_client.close()
                 del mysql_client
 
         async def update_project_info(tenant_id: int, project_id: int, chat: Chat) -> None:
@@ -289,6 +290,7 @@ class EventDispatcher(MixinBase):
             except Exception:
                 pass
             finally:
+                await mysql_client.close()
                 del mysql_client
 
         guide_img_link = os.getenv("GUIDE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png")
@@ -418,7 +420,7 @@ class EventDispatcher(MixinBase):
                     pass
 
             project_config = util.project_config.BotNotificationConfig(project_id)
-            await util.project_config.BotNotificationConfig.update_or_create_project_config(util.db.MysqlPoolClient.init_from_env(), project_config)
+            await project_config.update_or_create()
 
     async def dispatch_event(
         self: "Anjani",
@@ -461,8 +463,26 @@ class EventDispatcher(MixinBase):
 
         # storing group info when bot joined
         if event == "chat_member_update":
-            updated = args[0]
+            updated: ChatMemberUpdated = args[0]
             chat = updated.chat
+
+            chat_type = 0
+            if chat.type == ChatType.CHANNEL:
+                chat_type = 1
+            elif chat.type == ChatType.GROUP:
+                chat_type = 2
+
+            try:
+                new_member = updated.new_chat_member
+                tg_user_id = new_member.user.id
+                joined_date = new_member.joined_date
+                mysql_client = util.db.MysqlPoolClient.init_from_env()
+                await mysql_client.save_new_member(chat.id, chat_type, tg_user_id, self.uid, joined_date)
+            except Exception as e:
+                self.log.error("saving member join record %s error %s", updated, e)
+            finally:
+                await mysql_client.close()
+                del mysql_client
 
             # only for bot join group
             if updated.new_chat_member and updated.new_chat_member.user.id == self.uid:
@@ -477,10 +497,7 @@ class EventDispatcher(MixinBase):
                 if not project_id:
                     self.log.error("Can not get project id for chat (%s, %s)", chat.title, chat.id)
 
-                config = await util.project_config.BotNotificationConfig.get_project_config(util.db.MysqlPoolClient.init_from_env(), project_id)
-
-                if not config:
-                    config = util.project_config.BotNotificationConfig(project_id)
+                config = await util.project_config.BotNotificationConfig.get_project_config(project_id)
 
                 self.log.debug("Chat %s(%s) project config: %s", chat.title, chat.id, config)
 

@@ -48,8 +48,7 @@ class CronJob(plugin.Plugin):
         self.log.info("Shutdown auto notification cron job")
 
     async def get_project_intervals(self):
-        mysql = MysqlPoolClient.init_from_env()
-        rows = await mysql.get_project_ids(self.bot.uid)
+        rows = await self.mysql.get_project_ids(self.bot.uid)
 
         if not rows:
             self.log.warn("Threre's not project to push notification")
@@ -59,10 +58,7 @@ class CronJob(plugin.Plugin):
 
         for row in rows:
             (project_id, group_id) = row
-            project_config = await BotNotificationConfig.get_project_config(mysql, project_id)
-
-            if not project_config:
-                project_config = BotNotificationConfig(project_id)
+            project_config = await BotNotificationConfig.get_project_config(project_id)
 
             # Skip the disabled overview project
             if not project_config.overview:
@@ -80,9 +76,7 @@ class CronJob(plugin.Plugin):
         for project in projects:
             (project_id, group_id) = project
 
-            project_config = await BotNotificationConfig.get_project_config(self.mysql, project_id)
-            if not project_config:
-                project_config = BotNotificationConfig(project_id)
+            project_config = await BotNotificationConfig.get_project_config(project_id)
 
             # Skip the disabled overview project
             if not project_config.overview:
