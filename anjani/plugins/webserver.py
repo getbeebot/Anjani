@@ -278,6 +278,7 @@ class WebServer(plugin.Plugin):
             res = {
                 "group_id": group_id,
                 "user_id": user_id,
+                "task_id": task_id,
                 "invite_link": invite_link,
             }
             ret_data.update({"ok": True, "data": res})
