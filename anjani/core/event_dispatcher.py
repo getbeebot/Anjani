@@ -420,7 +420,7 @@ class EventDispatcher(MixinBase):
                     pass
 
             project_config = util.project_config.BotNotificationConfig(project_id)
-            await util.project_config.BotNotificationConfig.update_or_create_project_config(util.db.MysqlPoolClient.init_from_env(), project_config)
+            await project_config.update_or_create()
 
     async def dispatch_event(
         self: "Anjani",
@@ -497,10 +497,7 @@ class EventDispatcher(MixinBase):
                 if not project_id:
                     self.log.error("Can not get project id for chat (%s, %s)", chat.title, chat.id)
 
-                config = await util.project_config.BotNotificationConfig.get_project_config(util.db.MysqlPoolClient.init_from_env(), project_id)
-
-                if not config:
-                    config = util.project_config.BotNotificationConfig(project_id)
+                config = await util.project_config.BotNotificationConfig.get_project_config(project_id)
 
                 self.log.debug("Chat %s(%s) project config: %s", chat.title, chat.id, config)
 
