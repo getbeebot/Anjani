@@ -475,7 +475,7 @@ class EventDispatcher(MixinBase):
                 tg_user_id = new_member.user.id
                 joined_date = new_member.joined_date
                 mysql_client = util.db.MysqlPoolClient.init_from_env()
-                await mysql_client.save_new_member(chat.id, chat_type, tg_user_id, joined_date)
+                await mysql_client.save_new_member(chat.id, chat_type, tg_user_id, self.uid, joined_date)
             except Exception as e:
                 self.log.error("saving member join record %s error %s", updated, e)
             finally:

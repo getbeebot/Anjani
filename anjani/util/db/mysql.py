@@ -170,11 +170,17 @@ class MysqlPoolClient:
         values = (slogan, avatar, project_id, tenant_id)
         await self.update(sql, values)
 
-    async def save_new_member(self, chat_id: int, chat_type: int, tg_user_id: int, joined_date):
-        sql = "SELECT id FROM chat_user_join_record WHERE chat_id = %s AND chat_type = %s AND tg_user_id = %s"
-        res = await self.query_one(sql, (chat_id, chat_type, tg_user_id))
+    async def save_new_member(self, chat_id: int, chat_type: int, tg_user_id: int, bot_id: int, joined_date):
+        sql = "SELECT id FROM chat_user_join_record WHERE chat_id = %s AND chat_type = %s AND tg_user_id = %s AND bot_id = %s"
+        res = await self.query_one(sql, (chat_id, chat_type, tg_user_id, bot_id))
         if not res:
-            sql = "INSERT INTO chat_user_join_record(chat_id, chat_type, tg_user_id, joined_time) VALUES(%s, %s, %s, %s)"
-            await self.update(sql, (chat_id, chat_type, tg_user_id, joined_date))
+            sql = "INSERT INTO chat_user_join_record(chat_id, chat_type, tg_user_id, bot_id, joined_time) VALUES(%s, %s, %s, %s, %s)"
+            values = (chat_id, chat_type, tg_user_id, bot_id, joined_date)
+            await self.update(sql, values)
 
         return None
+
+    async def get_chats(self, bot_id: int):
+        sql = "SELECT chat_id, chat_type FROM tz_user_tg_group WHERE bot_id = %s AND chat_type <> 2"
+        res = await self.query(sql, (bot_id, ))
+        return res
