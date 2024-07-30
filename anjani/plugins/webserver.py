@@ -97,7 +97,7 @@ class WebServer(plugin.Plugin):
 
     async def on_stop(self) -> None:
         await self.mysql.close()
-        self.log.info("Shutdown web sever...")
+        self.log.info("Shutdown websever...")
         await self.site.stop()
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
@@ -364,6 +364,7 @@ class WebServer(plugin.Plugin):
                     sql = "INSERT INTO alert_record(name, des) VALUES(%s, %s)"
                     values = (name, description)
                     await mysql_client.update(sql, values)
+                    await mysql_client.close()
                     del mysql_client
                 try:
                     msg = payloads[0]

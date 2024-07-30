@@ -1,8 +1,9 @@
-import os
-
 import asyncio
 
 from typing import ClassVar
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 from anjani import plugin, util
 
@@ -16,12 +17,19 @@ class UserStats(plugin.Plugin):
         self.mysql = util.db.MysqlPoolClient.init_from_env()
 
     async def on_start(self, _: int) -> None:
-        scraping_p = os.getenv("IS_SCRAPING", False)
-        if not scraping_p:
-            return
+        scheduler = AsyncIOScheduler()
+        trigger = IntervalTrigger(hours=7)
+        scheduler.add_job(self.run_update, trigger=trigger)
+        scheduler.start()
+        self.log.info("Starting update chat member join records")
 
+    async def on_stop(self) -> None:
+        await self.mysql.close()
+
+    async def run_update(self) -> None:
         chats = await self.mysql.get_chats(self.bot.uid)
         if not chats:
+            self.log.warn("No chats need to update")
             return None
 
         loop = asyncio.get_running_loop()
@@ -38,4 +46,6 @@ class UserStats(plugin.Plugin):
         except Exception as e:
             self.log.warn("Update chat member join record for %s failed: %s", chat_id, e)
         finally:
+            await mysql_client.update_chat_status(self.bot.uid, chat_id, chat_type)
+            await mysql_client.close()
             del mysql_client

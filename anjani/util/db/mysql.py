@@ -1,8 +1,14 @@
 import logging
 import aiomysql
+import asyncio
 
 from os import getenv
 from typing import Optional
+
+from enum import Enum
+class QueryType(Enum):
+    FETCHONE = "fetchone"
+    FETCHALL = "fetchall"
 
 class MysqlPoolClient:
     def __init__(self, host: str, port: int, username: str, password: str, database: str):
@@ -29,59 +35,49 @@ class MysqlPoolClient:
                 host=self.host, port=self.port,
                 user=self.username, password=self.password,
                 db=self.database, autocommit=True,
+                maxsize=10, loop=asyncio.get_running_loop()
             )
-        self.log.info("Connected to MySQL database")
+            self.log.info("Connected to MySQL database")
 
-    async def get_cursor(self) -> aiomysql.Cursor:
+    async def execute(self, sql, values, method: QueryType = None):
         if not self._pool:
             await self.connect()
 
         if not self._pool:
-            self.log.error("MySQL connection is not available")
+            raise Exception("Can not connect to MySQL DB")
 
-        async with self._pool.acquire() as conn:
-            return await conn.cursor()
+        res = None
+        try:
+            async with self._pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    if values:
+                        await cur.execute(sql, values)
+                    else:
+                        await cur.execute(sql)
+
+                    if method:
+                        query_func = getattr(cur, method.value)
+                        res = await query_func()
+        except Exception as e:
+            self.log.error("MySQL execute query %s with values %s failed, error: %s", sql, values, e)
+        return res
 
     async def close(self):
-        try:
-            if self._pool and not self._pool.closed:
-                await self._pool.close()
-                self.log.info("Closed MySQL connection pool")
-        except Exception:
-            pass
+        if self._pool and not self._pool.closed:
+            self._pool.close()
+            await self._pool.wait_closed()
+            self.log.info("Closed MySQL connection pool")
 
     async def query(self, sql: str, values = ()):
-        try:
-            cursor = await self.get_cursor()
-            if values:
-                await cursor.execute(sql, values)
-            else:
-                await cursor.execute(sql)
-            return await cursor.fetchall()
-        except Exception as e:
-            self.log.error("MySQL query %s error: %s", sql, e)
+        return await self.execute(sql, values, method=QueryType.FETCHALL)
 
     async def query_one(self, sql, values=()):
-        try:
-            cursor = await self.get_cursor()
-            if values:
-                await cursor.execute(sql, values)
-            else:
-                await cursor.execute(sql)
-            return await cursor.fetchone()
-        except Exception as e:
-            self.log.error("MySQL query %s, error: %s", sql, e)
+        return await self.execute(sql, values, method=QueryType.FETCHONE)
 
     async def update(self, sql, values=()):
-        try:
-            cursor = await self.get_cursor()
-            if values:
-                await cursor.execute(sql, values)
-            else:
-                await cursor.execute(sql)
-        except Exception as e:
-            self.log.error("MySQL query %s, error: %s", sql, e)
-            return str(e)
+        res = await self.execute(sql, values)
+        if not res:
+            return "Error"
 
     async def update_chat_info(self, data):
         chat_type = int(data.get("chat_type"))
@@ -181,6 +177,10 @@ class MysqlPoolClient:
         return None
 
     async def get_chats(self, bot_id: int):
-        sql = "SELECT chat_id, chat_type FROM tz_user_tg_group WHERE bot_id = %s AND chat_type <> 2"
+        sql = "SELECT chat_id, chat_type FROM tz_user_tg_group WHERE bot_id = %s AND chat_type <> 2 AND updated = 0"
         res = await self.query(sql, (bot_id, ))
         return res
+
+    async def update_chat_status(self, bot_id: int, chat_id: int, chat_type: int):
+        sql = "UPDATE tz_user_tg_group SET updated = 1 WHERE bot_id = %s AND chat_id = %s AND chat_type = %s"
+        await self.update(sql, (bot_id, chat_id, chat_type))

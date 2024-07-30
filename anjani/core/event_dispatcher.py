@@ -275,6 +275,7 @@ class EventDispatcher(MixinBase):
             except Exception:
                 pass
             finally:
+                await mysql_client.close()
                 del mysql_client
 
         async def update_project_info(tenant_id: int, project_id: int, chat: Chat) -> None:
@@ -289,6 +290,7 @@ class EventDispatcher(MixinBase):
             except Exception:
                 pass
             finally:
+                await mysql_client.close()
                 del mysql_client
 
         guide_img_link = os.getenv("GUIDE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png")
@@ -479,6 +481,7 @@ class EventDispatcher(MixinBase):
             except Exception as e:
                 self.log.error("saving member join record %s error %s", updated, e)
             finally:
+                await mysql_client.close()
                 del mysql_client
 
             # only for bot join group

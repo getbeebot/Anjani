@@ -543,6 +543,7 @@ class Main(plugin.Plugin):
             except Exception as e:
                 self.log.warn("Saving start bot records error: %s", e)
             finally:
+                await mysql_client.close()
                 del mysql_client
 
             if ctx.input and ctx.input == "help":

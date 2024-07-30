@@ -264,6 +264,7 @@ class BeeconPlugin(plugin.Plugin):
         except Exception:
             pass
         finally:
+            await mysql_client.close()
             del mysql_client
 
     async def _construct_user_api_payloads(self, user: User) -> dict:
