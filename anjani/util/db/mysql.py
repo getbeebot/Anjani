@@ -37,7 +37,6 @@ class MysqlPoolClient:
                 db=self.database, autocommit=True,
                 maxsize=10, loop=asyncio.get_running_loop()
             )
-            self.log.info("Connected to MySQL database")
 
     async def execute(self, sql, values, method: QueryType = None):
         if not self._pool:
@@ -50,6 +49,7 @@ class MysqlPoolClient:
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cur:
+                    self.log.debug("Executing mysql query %s with values %s", sql, values)
                     if values:
                         await cur.execute(sql, values)
                     else:
@@ -66,7 +66,6 @@ class MysqlPoolClient:
         if self._pool and not self._pool.closed:
             self._pool.close()
             await self._pool.wait_closed()
-            self.log.info("Closed MySQL connection pool")
 
     async def query(self, sql: str, values = ()):
         return await self.execute(sql, values, method=QueryType.FETCHALL)

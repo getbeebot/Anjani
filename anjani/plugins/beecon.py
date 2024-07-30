@@ -87,8 +87,6 @@ class BeeconPlugin(plugin.Plugin):
 
         checkin_word = await self.bot.redis.get(f"checkin_{chat.id}")
 
-        self.log.info("Debug checking: %s", checkin_word)
-
         if not checkin_word:
             return None
 
