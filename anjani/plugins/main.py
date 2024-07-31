@@ -483,9 +483,6 @@ class Main(plugin.Plugin):
 
     async def build_start_button(self) -> List[List[InlineKeyboardButton]]:
         btns = []
-        btns.append([
-            InlineKeyboardButton(text=await self.text(None, "add-to-group-button"), callback_data="help_addme")
-        ])
 
         daily_gifts_link = os.getenv("DAILY_GIFTS")
         if daily_gifts_link:
@@ -647,9 +644,8 @@ class Main(plugin.Plugin):
             start_btns = await self.build_start_button()
             if start_btns:
                 keyboard.extend(start_btns)
-
             await ctx.respond(
-                await self.text(chat.id, "start-pm", self.bot.user.username),
+                await self.text(chat.id, "start-pm"),
                 photo=guide_img_link,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode=ParseMode.MARKDOWN,

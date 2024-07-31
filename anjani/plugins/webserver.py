@@ -197,7 +197,6 @@ class WebServer(plugin.Plugin):
             notify_type = data.get("notifyType")
 
             lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
-            withdraw_btn = InlineKeyboardButton(text="Withdraw", url=f"t.me/beecon_wallet_bot?start=true")
             ret_data.update({"ok": True})
             if notify_type == 1 and project_config.newdraw:
                 await self.newdraw_notify(chat_id, data, button)
@@ -215,7 +214,6 @@ class WebServer(plugin.Plugin):
                     data,
                     InlineKeyboardMarkup([
                         [lucky_draw_btn],
-                        [withdraw_btn],
                     ])
                 )
             elif notify_type == 7:
@@ -224,7 +222,6 @@ class WebServer(plugin.Plugin):
                     data,
                     InlineKeyboardMarkup([
                         [lucky_draw_btn],
-                        [withdraw_btn],
                     ])
                 )
             elif notify_type == 8:

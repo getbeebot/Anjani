@@ -1,6 +1,7 @@
 #region Main
 start-pm: |
-  To assist in automatically identifying the completion status of community tasks, please add @{} to your managed **public group/channel** and designate it as an administrator.
+  Welcome to Bedrock!
+  Bedrock is the first multi-asset liquid stacking protocol, supported by top investors including OKX Ventures and the co-founder of Babylon. As a pioneer in liquid stacking, Bedrock brings high returns and institutional-grade security to the community through uniBTC built on Babylon, uniETH built on Eigenlayer, and uniIOTX built on IoTeX.
 group-notify-no-participants: |
   🌟 There are **{tasks} tasks** in our community. Let's get involved! 👇
 group-start-pm: |
