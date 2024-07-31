@@ -687,9 +687,15 @@ class Main(plugin.Plugin):
         project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
 
         buttons = [[InlineKeyboardButton(text=await self.text(chat.id, "create-project-button"),url=project_link)]]
-
-        tasks = await self.mysql.get_project_tasks(project_id)
-        participants = await self.mysql.get_project_participants(project_id)
+        try:
+            mysql_client = util.db.MysqlPoolClient.init_from_env()
+            tasks = await mysql_client.get_project_tasks(project_id)
+            participants = await mysql_client.get_project_participants(project_id)
+        except Exception:
+            pass
+        finally:
+            await mysql_client.close()
+            del mysql_client
 
         self.log.debug("In start command, project %s has %s tasks and %s participants", project_id, tasks, participants)
 
