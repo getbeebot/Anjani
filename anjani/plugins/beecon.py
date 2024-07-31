@@ -464,7 +464,7 @@ class BeeconPlugin(plugin.Plugin):
         user: User = await self.bot.client.get_users(user_id)
         await ctx.respond(f"ID: `{user_id}`\nContact: {user.mention()} \nDetail: {user}")
 
-    @command.filter(filters.private)
+    @command.filters(filters.private)
     async def cmd_invitelink(self, ctx: command.Context) -> Optional[str]:
         chat = ctx.chat
         chat_id = ctx.input
