@@ -463,3 +463,15 @@ class BeeconPlugin(plugin.Plugin):
 
         user: User = await self.bot.client.get_users(user_id)
         await ctx.respond(f"ID: `{user_id}`\nContact: {user.mention()} \nDetail: {user}")
+
+    @command.filters(filters.private)
+    async def cmd_invitelink(self, ctx: command.Context) -> Optional[str]:
+        chat = ctx.chat
+        chat_id = ctx.input
+        whitelist = [6812515288, 1821086162, 7465037644, 2113937194, 7037181285, 1013334686, 6303440178]
+
+        if chat.id not in whitelist:
+            return "Command /who only for whitelist user."
+
+        invite_link = await self.bot.client.create_chat_invite_link(int(chat_id), str(chat_id))
+        await ctx.respond(str(invite_link))

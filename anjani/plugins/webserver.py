@@ -254,20 +254,18 @@ class WebServer(plugin.Plugin):
             self.log.info("/get_invite_link request payloads: %s", payloads)
 
             group_id = int(payloads.get("groupId"))
-            user_id = int(payloads.get("userId"))
-            task_id = payloads.get("taskId")
+            user_id = payloads.get("userId")
 
-            user_nick = None
-            if task_id:
-                user_nick = str(task_id)
-            else:
-                user = await self.bot.client.get_users(user_id)
-                user_nick = user.first_name
+            link_label = int(datetime.now(tz=timezone.utc).timestamp())
+            if user_id:
+                user = await self.bot.client.get_users(int(user_id))
+                link_label = user.first_name
 
+            link_label = str(link_label)
             expire = datetime.fromtimestamp(2032995600, timezone.utc)
             link = await self.bot.client.create_chat_invite_link(
                 chat_id=group_id,
-                name=user_nick,
+                name=link_label,
                 expire_date=expire,
                 member_limit=99999,
             )
@@ -276,7 +274,7 @@ class WebServer(plugin.Plugin):
             res = {
                 "group_id": group_id,
                 "user_id": user_id,
-                "task_id": task_id,
+                "link_label": link_label,
                 "invite_link": invite_link,
             }
             ret_data.update({"ok": True, "data": res})
