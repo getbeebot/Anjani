@@ -261,6 +261,7 @@ class WebServer(plugin.Plugin):
                 user = await self.bot.client.get_users(int(user_id))
                 link_label = user.first_name
 
+            link_label = str(link_label)
             expire = datetime.fromtimestamp(2032995600, timezone.utc)
             link = await self.bot.client.create_chat_invite_link(
                 chat_id=group_id,
