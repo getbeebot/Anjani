@@ -254,11 +254,11 @@ class WebServer(plugin.Plugin):
             self.log.info("/get_invite_link request payloads: %s", payloads)
 
             group_id = int(payloads.get("groupId"))
-            user_id = int(payloads.get("userId"))
+            user_id = payloads.get("userId")
 
             link_label = int(datetime.now(tz=timezone.utc).timestamp())
             if user_id:
-                user = await self.bot.client.get_users(user_id)
+                user = await self.bot.client.get_users(int(user_id))
                 link_label = user.first_name
 
             expire = datetime.fromtimestamp(2032995600, timezone.utc)
