@@ -27,6 +27,11 @@ class CronJob(plugin.Plugin):
     async def on_start(self, _: int) -> None:
         scheduler = AsyncIOScheduler()
 
+        # backup anjani session every 30 minutes
+        self.log.info("Add session backup job")
+        session_bk_trigger = IntervalTrigger(seconds=1800)
+        scheduler.add_job(misc.session_backup, trigger=session_bk_trigger)
+
         project_intervals = await self.get_project_intervals()
         if not project_intervals:
             self.log.warn("No cron job cause no project")
