@@ -486,7 +486,7 @@ class BeeconPlugin(plugin.Plugin):
         if not project_name:
             return "Please use /project <project-name> to get project id"
 
-        sql = "SELECT id, name, tenant_id FROM bot_project WHERE name LIKE %s"
+        sql = "SELECT id, name, tenant_id FROM bot_project WHERE deleted = 0 AND name LIKE %s"
         values = (f"%{project_name}%", )
         res = await self.mysql.query(sql, values)
         if not res:
@@ -507,15 +507,14 @@ class BeeconPlugin(plugin.Plugin):
         if not args:
             return "No args for /addadmin"
 
-        admin_username = args.split(" ")[0]
-        sql = "SELECT id FROM tz_user WHERE deleted = 0 AND user_name = %s"
+        project_id = args.split(" ")[0]
+        admin_username = args.split(" ")[1]
+        sql = "SELECT user_id FROM tz_user WHERE user_name = %s"
         try:
             (admin_uid, ) = await self.mysql.query_one(sql, (admin_username, ))
         except:
             await ctx.respond(f"User {admin_username} not registered, please contact him to register first.")
             return
-
-        project_id = args.split(" ")[1]
 
         user_id = await self.mysql.get_user_id(chat.id)
 
