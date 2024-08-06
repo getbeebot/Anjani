@@ -530,7 +530,7 @@ class BeeconPlugin(plugin.Plugin):
         await ctx.respond("Ok")
 
     def is_whitelist(self, chat_id) -> Optional[bool]:
-        whitelist = [6812515288, 1821086162, 7465037644, 2113937194, 7037181285, 1013334686, 6303440178]
+        whitelist = [6812515288, 1821086162, 7465037644, 2113937194, 7037181285, 1013334686, 6303440178, 7054195491]
         if chat_id in whitelist:
             return True
 
