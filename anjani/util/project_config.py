@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from .db import MysqlPoolClient
 
-log = logging.getLogger("BotNotificationConfig")
+log = logging.getLogger("bot.notify.config")
 
 @dataclass
 class BotNotificationConfig:

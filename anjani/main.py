@@ -55,7 +55,7 @@ def _setup_log() -> None:
     # Color log config
     log_color: bool = os.environ.get("LOG_COLOR") in {"enable", 1, "1", "true"}
 
-    file_format = "[ %(asctime)s: %(levelname)-8s ] %(name)-15s - %(message)s"
+    file_format = "[ %(asctime)s: %(levelname)-8s ] %(name)-21s - %(message)s"
     logfile = logging.FileHandler("Anjani.log")
     # logfile = logging.handlers.TimedRotatingFileHandler(
     #     filename="Anjani.log",
@@ -64,18 +64,18 @@ def _setup_log() -> None:
     #     backupCount=30,
     #     utc=True
     # )
-    formatter = logging.Formatter(file_format, datefmt="%H:%M:%S")
+    formatter = logging.Formatter(file_format, datefmt="%Y-%m-%d %H:%M:%S %Z")
     logfile.setFormatter(formatter)
     logfile.setLevel(level)
 
     if log_color:
         formatter = colorlog.ColoredFormatter(
             "  %(log_color)s %(asctime)s %(levelname)-8s%(reset)s  |  "
-            "%(name)-15s  |  %(log_color)s%(message)s%(reset)s"
+            "%(name)-21s  |  %(log_color)s%(message)s%(reset)s"
         )
     else:
         formatter = logging.Formatter(
-            "%(asctime)s  %(levelname)-8s  |  %(name)-15s  |  %(message)s"
+            "%(asctime)s  %(levelname)-8s  |  %(name)-21s  |  %(message)s"
         )
     stream = logging.StreamHandler()
     stream.setLevel(level)

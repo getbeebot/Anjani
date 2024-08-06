@@ -212,7 +212,15 @@ class Main(plugin.Plugin):
 
     async def project_builder(self, chat_id: int, is_link: bool = False) -> List[List[InlineKeyboardButton]]:
         projects: List[List[InlineKeyboardButton]] = []
-        user_projects = await self.mysql.get_user_projects(chat_id, self.bot.uid)
+        # user_projects = await self.mysql.get_user_projects(chat_id, self.bot.uid)
+        user_id = await self.mysql.get_user_id(chat_id)
+        if not user_id:
+            return
+        payloads = {
+            "botId": self.bot.uid,
+            "user_id": user_id,
+        }
+        user_projects = await self.bot.apiclient.get_user_projects(payloads)
 
         if not user_projects:
             return
