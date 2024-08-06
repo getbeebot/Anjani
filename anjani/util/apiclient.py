@@ -189,4 +189,4 @@ class APIClient:
                 self.log.info("Add admin response: %s", res)
                 return res.get("data")
             else:
-                self.log.error("Add admin response", await resp.text())
+                self.log.error("Add admin response: %s", await resp.text())
