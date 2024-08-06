@@ -189,4 +189,25 @@ class APIClient:
                 self.log.info("Add admin response: %s", res)
                 return res.get("data")
             else:
-                self.log.error("Add admin response: %s", await resp.text())
+                self.log.error("Add admin error: %s", await resp.text())
+
+    async def get_user_projects(self, payloads: dict):
+        self.log.info("Get user projects request payloads: %s", payloads)
+
+        user_id = payloads.get("user_id")
+
+        req_uri = f"{self.url_prefix}/p/task/bot-project/getProjectsManaged?userId={user_id}"
+
+        self.update_headers(payloads)
+
+        async with self.http.get(url=req_uri, headers=self.headers) as resp:
+            if resp.status == 200:
+                res = await resp.json()
+                self.log.info("Get user projects response: %s", res)
+                data = res.get("data")
+                projects = None
+                if isinstance(data, list):
+                    projects = [(i.get("id"), i.get("name")) for i in data]
+                return projects
+            else:
+                self.log.error("Get user projects error: %s", await resp.text())
