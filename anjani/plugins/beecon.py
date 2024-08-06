@@ -509,6 +509,7 @@ class BeeconPlugin(plugin.Plugin):
 
         project_id = args.split(" ")[0]
         admin_username = args.split(" ")[1]
+        self.log.info("Add new admin %s for project %s", admin_username, project_id)
         sql = "SELECT user_id FROM tz_user WHERE user_name = %s"
         try:
             (admin_uid, ) = await self.mysql.query_one(sql, (admin_username, ))
@@ -524,6 +525,8 @@ class BeeconPlugin(plugin.Plugin):
             "userId": admin_uid,
             "operator": user_id,
         }
+
+        self.log.debug("Java API add new admin payloads: %s", payloads)
 
         await self.bot.api_client.add_admin(payloads)
         await ctx.respond("Ok")
