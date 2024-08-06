@@ -487,10 +487,10 @@ class BeeconPlugin(plugin.Plugin):
             return "Please use /project <project-name> to get project id"
 
         sql = "SELECT id, name FROM bot_project WHERE name LIKE %s"
-        values = (f"%project_name%", )
+        values = (f"%{project_name}%", )
         res = await self.mysql.query(sql, values)
         if not res:
-            return f"There's no project name similar with {project_name}"
+            return f"There's no project name similar with **{project_name}**"
 
         projects = [f'Project ID: `{r[0]}` Project name: {r[1]}' for r in res]
         reply_text = "\n".join(projects)
