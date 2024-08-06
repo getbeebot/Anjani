@@ -486,13 +486,13 @@ class BeeconPlugin(plugin.Plugin):
         if not project_name:
             return "Please use /project <project-name> to get project id"
 
-        sql = "SELECT id, name FROM bot_project WHERE name LIKE %s"
+        sql = "SELECT id, name, tenant_id FROM bot_project WHERE name LIKE %s"
         values = (f"%{project_name}%", )
         res = await self.mysql.query(sql, values)
         if not res:
             return f"There's no project name similar with **{project_name}**"
 
-        projects = [f'Project ID: `{r[0]}` Project name: {r[1]}' for r in res]
+        projects = [f'Project ID: `{r[0]}`\tpoject name: {r[1]}\tproject tenant id: {r[2]}' for r in res]
         reply_text = "\n".join(projects)
 
         await ctx.respond(reply_text)
@@ -508,7 +508,7 @@ class BeeconPlugin(plugin.Plugin):
             return "No args for /addadmin"
 
         admin_username = args.split(" ")[0]
-        sql = "SELECT id FROM tz_user WHERE user_name = %s"
+        sql = "SELECT id FROM tz_user WHERE deleted = 0 AND user_name = %s"
         try:
             (admin_uid, ) = await self.mysql.query_one(sql, (admin_username, ))
         except:
