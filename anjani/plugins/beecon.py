@@ -526,9 +526,7 @@ class BeeconPlugin(plugin.Plugin):
             "operator": user_id,
         }
 
-        self.log.debug("Java API add new admin payloads: %s", payloads)
-
-        await self.bot.api_client.add_admin(payloads)
+        await self.bot.apiclient.add_admin(payloads)
         await ctx.respond("Ok")
 
     def is_whitelist(self, chat_id) -> Optional[bool]:
