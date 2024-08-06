@@ -1,6 +1,10 @@
 import os
+import asyncio
 
 from typing import ClassVar, List, Dict
+from aiopath import AsyncPath
+
+from datetime import datetime
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -30,7 +34,7 @@ class CronJob(plugin.Plugin):
         # backup anjani session every 30 minutes
         self.log.info("Add session backup job")
         session_bk_trigger = IntervalTrigger(seconds=1800)
-        scheduler.add_job(misc.session_backup, trigger=session_bk_trigger)
+        scheduler.add_job(self.backup_session, trigger=session_bk_trigger)
 
         project_intervals = await self.get_project_intervals()
         if not project_intervals:
@@ -127,3 +131,16 @@ class CronJob(plugin.Plugin):
                     await self.redis.set(f"notify_{group_id}", msg.id)
             except Exception as e:
                 self.log.error("Push overview (project_id: %s, chat_id: %s)notification error %s", project_id, group_id, e)
+
+    async def backup_session(self):
+        async with asyncio.Lock():
+            self.log.info("Backing up session file...")
+            session_dir = AsyncPath("session")
+            if not await session_dir.exists():
+                await session_dir.mkdir()
+            src = AsyncPath("anjani/anjani.session")
+            now_str = datetime.now().strftime("%Y%m%d%H%M%S%f")
+            dest = AsyncPath(f"session/anjani.{now_str}.session")
+            await misc.copy_file(src, dest)
+            await asyncio.sleep(10)
+            self.log.info("Backing up session file done.")

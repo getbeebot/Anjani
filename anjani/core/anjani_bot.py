@@ -72,7 +72,7 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
 
         try:
             # restore session for anjani to avoid peer id loss
-            # await misc.session_restore()
+            await misc.session_restore()
 
             anjani = cls(config)
             await anjani.run()
@@ -89,9 +89,9 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
             if self.client.is_connected:
                 await self.client.stop()
 
-        # backup session
-        self.log.info("Backing up session")
-        await misc.session_backup()
+        # # backup session
+        # self.log.info("Backing up session")
+        # await misc.session_backup()
 
         await self.mysql.close()
         await self.redis.close()
