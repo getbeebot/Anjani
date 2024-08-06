@@ -210,6 +210,8 @@ class Greeting(plugin.Plugin):
                         )
                     except MessageEmpty:
                         self.log.warning("Welcome message empty on %s.", message.chat.id)
+                    except Exception as e:
+                        self.log.error("Welcome message send error: %s", e)
 
                     if msg:
                         previous = await self.previous_welcome(chat.id, msg.id, is_bulk_welcome)

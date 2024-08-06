@@ -468,10 +468,70 @@ class BeeconPlugin(plugin.Plugin):
     async def cmd_invitelink(self, ctx: command.Context) -> Optional[str]:
         chat = ctx.chat
         chat_id = ctx.input
-        whitelist = [6812515288, 1821086162, 7465037644, 2113937194, 7037181285, 1013334686, 6303440178]
 
-        if chat.id not in whitelist:
+        if not self.is_whitelist(chat.id):
             return "Command /who only for whitelist user."
 
         invite_link = await self.bot.client.create_chat_invite_link(int(chat_id), str(chat_id))
         await ctx.respond(str(invite_link))
+
+    @command.filters(filters.private)
+    async def cmd_projects(self, ctx: command.Context) -> Optional[str]:
+        chat = ctx.chat
+        project_name = ctx.input
+
+        if not self.is_whitelist(chat.id):
+            return "Command /projects only for whitelist user."
+
+        if not project_name:
+            return "Please use /project <project-name> to get project id"
+
+        sql = "SELECT id, name FROM bot_project WHERE name LIKE %s"
+        values = (f"%project_name%", )
+        res = await self.mysql.query(sql, values)
+        if not res:
+            return f"There's no project name similar with {project_name}"
+
+        projects = [f'Project ID: `{r[0]}` Project name: {r[1]}' for r in res]
+        reply_text = "\n".join(projects)
+
+        await ctx.respond(reply_text)
+
+    @command.filters(filters.private)
+    async def cmd_addadmin(self, ctx: command.Context) -> Optional[str]:
+        chat = ctx.chat
+        args = ctx.input
+
+        if not self.is_whitelist(chat.id):
+            return "Command /addadmin only for whitelist user."
+        if not args:
+            return "No args for /addadmin"
+
+        admin_username = args.split(" ")[0]
+        sql = "SELECT id FROM tz_user WHERE user_name = %s"
+        try:
+            (admin_uid, ) = await self.mysql.query_one(sql, (admin_username, ))
+        except:
+            await ctx.respond(f"User {admin_username} not registered, please contact him to register first.")
+            return
+
+        project_id = args.split(" ")[1]
+
+        user_id = await self.mysql.get_user_id(chat.id)
+
+        payloads = {
+            "botId": self.bot.uid,
+            "projectId": project_id,
+            "userId": admin_uid,
+            "operator": user_id,
+        }
+
+        await self.bot.api_client.add_admin(payloads)
+        await ctx.respond("Ok")
+
+    def is_whitelist(self, chat_id) -> Optional[bool]:
+        whitelist = [6812515288, 1821086162, 7465037644, 2113937194, 7037181285, 1013334686, 6303440178]
+        if chat_id in whitelist:
+            return True
+
+        return False

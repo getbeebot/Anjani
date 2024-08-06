@@ -176,3 +176,17 @@ class APIClient:
                 return res.get("userRanks")
             else:
                 self.log.error("Get ransk error: %s", await resp.text())
+
+    async def add_admin(self, payloads: dict):
+        self.log.info("Add admin request payloads: %s", payloads)
+
+        req_uri = f"{self.url_prefix}/p/task/bot-project/addAdmin"
+
+        self.update_headers(payloads)
+        async with self.http.post(url=req_uri, json=payloads, headers=self.headers) as resp:
+            if resp.status == 200:
+                res = await resp.json()
+                self.log.info("Add admin response: %s", res)
+                return res.get("data")
+            else:
+                self.log.error("Add admin response", await resp.text())
