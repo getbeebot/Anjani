@@ -42,6 +42,7 @@ from pyrogram.types import Chat, Message, User
 from pyrogram.types.messages_and_media.message import Str
 
 from anjani import command, filters, plugin, util
+from anjani.util.project_config import BotNotificationConfig
 from anjani.util.tg import (
     Button,
     Types,
@@ -57,6 +58,7 @@ class Greeting(plugin.Plugin):
     helpable: ClassVar[bool] = True
 
     mysql: util.db.MysqlPoolClient
+    redis: util.db.AsyncRedisClient
 
     db: util.db.AsyncCollection
     chat_db: util.db.AsyncCollection
@@ -64,7 +66,9 @@ class Greeting(plugin.Plugin):
 
     async def on_load(self) -> None:
         self.mysql = util.db.MysqlPoolClient.init_from_env()
+        self.redis = util.db.AsyncRedisClient.init_from_env()
         await self.mysql.connect()
+        await self.redis.connect()
 
         self.db = self.bot.db.get_collection("WELCOME")
         self.chat_db = self.bot.db.get_collection("CHATS")
@@ -84,13 +88,12 @@ class Greeting(plugin.Plugin):
 
     async def on_stop(self) -> None:
         await self.mysql.close()
+        await self.redis.close()
 
 
     async def on_chat_action(self, message: Message) -> None:
         chat = message.chat
         reply_to = message.id
-        if message.left_chat_member and message.left_chat_member.id == self.bot.uid:
-            return
 
         # Clean service both for left member and new member if active
         if await self.clean_service(chat.id):
@@ -108,38 +111,34 @@ class Greeting(plugin.Plugin):
         if message.new_chat_members:
             return await self._member_join(message, reply_to, thread_id)
 
-        # if message.left_chat_member:
-        #     return await self._member_leave(message, reply_to, thread_id)
+        if message.left_chat_member:
+            if message.left_chat_member.id == self.bot.uid:
+                self.log.warn("Bot left chat message: %s", message)
+                return
+            return await self._member_leave(message, reply_to, thread_id)
+
+    async def get_project_config(self, project_id: int):
+        if not project_id:
+            return None
+
+        query_key = f"project_config_{project_id}"
+        json_data = await self.redis.get(query_key)
+        if json_data:
+            return BotNotificationConfig.from_json(json_data.decode("utf-8"))
+        else:
+            return await BotNotificationConfig.get_project_config(project_id)
 
     async def _member_leave(
         self, message: Message, reply_to: int, thread_id: Optional[int]
     ) -> None:
-        chat = message.chat
-        if not await self.is_goodbye(chat.id):
-            return
-
-        left_member = message.left_chat_member
-        text = await self.left_message(chat.id)
-        if not text:
-            text = await self.text(chat.id, "default-goodbye", noformat=True)
-
-        formatted_text = await self._build_text(text, left_member, chat, self.bot.client)
         try:
-            msg = await self.bot.client.send_message(
-                chat.id,
-                formatted_text,
-                reply_to_message_id=reply_to if not thread_id else None,  # type: ignore
-                message_thread_id=thread_id,  # type: ignore
-            )
-        except ChatWriteForbidden:
-            return
+            project_id = await self.mysql.get_chat_project_id(message.chat.id, self.bot.uid)
+            project_config = await self.get_project_config(project_id)
 
-        previous = await self.previous_goodbye(chat.id, msg.id)
-        if previous:
-            try:
-                await self.bot.client.delete_messages(chat.id, previous)
-            except MessageDeleteForbidden:
-                pass
+            if project_config and project_config.nojoinmsg:
+                await message.delete()
+        except Exception as e:
+            self.log.warn("Can not delete member leave message(%s), error: %s", message, e)
 
     async def _member_join(self, message: Message, reply_to: int, thread_id: Optional[int]) -> None:
         chat = message.chat
@@ -178,13 +177,19 @@ class Greeting(plugin.Plugin):
                     msg = None
                     try:
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
+                            try:
+                                project_config = await self.get_project_config(project_id)
+                                if project_config and project_config.nojoinmsg:
+                                    await message.delete()
+                            except Exception as e:
+                                self.log.warn("Can not delete new member join message(%s), error: %s", message, e)
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
                                 # await self.text(None, "engage-img"),
                                 os.getenv("ENGAGE_IMG","https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"),
                                 caption=formatted_text,
                                 message_thread_id=thread_id,
-                                reply_to_message_id=reply_to,
+                                # reply_to_message_id=reply_to,
                                 reply_markup=button,
                             )
                         elif msg_type in {Types.STICKER, Types.ANIMATION}:

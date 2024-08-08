@@ -89,9 +89,9 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
             if self.client.is_connected:
                 await self.client.stop()
 
-        # backup session
-        self.log.info("Backing up session")
-        await misc.session_backup()
+        # # backup session
+        # self.log.info("Backing up session")
+        # await misc.session_backup()
 
         await self.mysql.close()
         await self.redis.close()

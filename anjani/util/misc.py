@@ -37,6 +37,14 @@ async def copy_file(src: AsyncPath, dest: AsyncPath):
                 break
             await d.write(data)
 
+async def session_backup_latest():
+    session_dir = AsyncPath("session")
+    if not await session_dir.exists():
+        await session_dir.mkdir()
+    src = AsyncPath("anjani/anjani.session")
+    dest = AsyncPath("session/anjani.latest.session")
+    await copy_file(src, dest)
+
 async def session_backup():
     session_dir = AsyncPath("session")
     if not await session_dir.exists():
@@ -46,7 +54,7 @@ async def session_backup():
     await copy_file(src, dest)
 
 async def session_restore():
-    src = AsyncPath("session/anjani.session")
+    src = AsyncPath("session/anjani.latest.session")
     dest = AsyncPath("anjani/anjani.session")
     if not await src.exists():
         return

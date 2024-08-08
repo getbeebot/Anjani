@@ -769,6 +769,8 @@ userjoin-0-button: "Luckydraw Entry"
 draw-0-button: "Luckydraw Result"
 verify-0-button: "Human Verify"
 newtask-0-button: "New Task"
+nourl-0-button: "No URL"
+nojoinmsg-0-button: "No Join/Left msg"
 # enable
 overview-1-button: "✔️ Schedule Notice"
 newdraw-1-button: "✔️ New Luckydraw"
@@ -776,6 +778,8 @@ userjoin-1-button: "✔️ Luckydraw Entry"
 draw-1-button: "✔️ Luckydraw Result"
 verify-1-button: "✔️ Human Verify"
 newtask-1-button: "✔️ New Task"
+nourl-1-button: "✔️ No URL"
+nojoinmsg-1-button: "✔️ No Join/Left msg"
 #endregion
 
 #region giveaway
