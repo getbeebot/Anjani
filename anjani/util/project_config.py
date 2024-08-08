@@ -22,7 +22,7 @@ class BotNotificationConfig:
         self.nojoinmsg = nojoinmsg
 
     def __repr__(self) -> str:
-        kvstr = ",".join([f"{k}={v}" for k, v in self.__dict__.items()])
+        kvstr = ", ".join([f"{k}={v}" for k, v in self.__dict__.items()])
         return f"ProjectConfig({kvstr})"
 
     @classmethod
