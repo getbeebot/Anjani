@@ -125,6 +125,8 @@ class Greeting(plugin.Plugin):
         json_data = await self.redis.get(query_key)
         if json_data:
             return BotNotificationConfig.from_json(json_data.decode("utf-8"))
+        else:
+            return await BotNotificationConfig.get_project_config(project_id)
 
     async def _member_leave(
         self, message: Message, reply_to: int, thread_id: Optional[int]
