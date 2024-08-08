@@ -1,8 +1,9 @@
 import re
 from typing import ClassVar
 
+from pyrogram import filters
 from pyrogram.types import Message
-from anjani import plugin, util
+from anjani import plugin, util, listener
 
 class BeeconUtil(plugin.Plugin):
     name: ClassVar[str] = "Beecon utils"
@@ -16,6 +17,7 @@ class BeeconUtil(plugin.Plugin):
     async def on_stop(self) -> None:
         await self.mysql.close()
 
+    @listener.filters(filters.group)
     async def on_message(self, message: Message) -> None:
         project_id = await self.mysql.get_chat_project_id(message.chat.id, self.bot.uid)
 
