@@ -251,7 +251,7 @@ class Main(plugin.Plugin):
         buttons: List[InlineKeyboardButton] = []
         for k, v in project_config.__dict__.items():
             # ignore project_id, ovduration attribute
-            if k == "project_id" or k == "ovduration" or k == "verify":
+            if k == "project_id" or k == "ovduration" or k == "verify" or k == "nourl":
                 continue
 
             btn_text = await self.text(None, f"{k}-{v}-button")

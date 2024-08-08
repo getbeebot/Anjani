@@ -9,7 +9,7 @@ log = logging.getLogger("bot.notify.config")
 
 @dataclass
 class BotNotificationConfig:
-    def __init__(self, project_id, overview=1, ovduration=14400, newdraw=1, userjoin=1, draw=1, verify=0, newtask=1, nourl=0, nojoinmsg=0):
+    def __init__(self, project_id, overview=1, ovduration=14400, newdraw=1, userjoin=1, draw=1, verify=0, newtask=1, nourl=0, nojoinmsg=1):
         self.project_id = project_id
         self.overview = overview
         self.ovduration = ovduration
