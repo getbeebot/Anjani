@@ -205,8 +205,9 @@ class WebServer(plugin.Plugin):
                 await self.user_join_notify(chat_id, data, button)
             elif notify_type == 3 and project_config.draw:
                 await self.draw_notify(chat_id, data, button)
-            elif notify_type == 4:
-                await self.draw_list_notify(data)
+            elif notify_type == 4 or notify_type == 10 or notify_type == 11 or notify_type == 12:
+                chat_id = data.get("owner")
+                await self.draw_list_notify(chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]]))
             elif notify_type == 5 and project_config.newtask:
                 await self.newtask_notify(chat_id, button)
             elif notify_type == 6: # private congrats
@@ -462,14 +463,27 @@ class WebServer(plugin.Plugin):
         await self.bot.client.send_photo(chat_id, self.draw_img, caption=msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
-    async def draw_list_notify(self, args: dict):
+    def _generate_file_link(self, filename: str) -> str:
+        base_link = os.getenv("WEBSITE", "https://beecon.me")
+        return f"{base_link}/downloads/{filename}"
+
+    async def draw_list_notify(self, chat_id: int, args: dict, buttons=None):
         # send file to community admin, notify_type = 4
         filename = args.get("lotteryFileName")
-        chat_id = args.get("owner")
-        base_link = os.getenv("WEBSITE")
-        download_link = f"{base_link}/downloads/{filename}"
-        content = f"Please download the winners data via {download_link}"
-        await self.bot.client.send_message(chat_id, content)
+        download_link = self._generate_file_link(filename)
+        reply_type = args.get("notifyType")
+        reply_text = f"Please download the winners data via {download_link}\nThe participiant data is exporting, this procedure would take approximately one hour, you'll get notified when its done."
+        if reply_type == 10: # non-token participants list
+            reply_text = f"Here is the participants of the draw, please download via {download_link}"
+        elif reply_type == 11: # instant draw reach deadline
+            reply_text = f"The draw has been claimed.\nHere is the participants data, please download via {download_link}"
+        elif reply_type == 12: # instant draw ends
+            reply_text = f"The draw is end.\nHere is the participants data, please download it via {download_link}"
+
+        if buttons:
+            await self.bot.client.send_message(chat_id, reply_text, buttons)
+        else:
+            await self.bot.client.send_message(chat_id, reply_text)
         self.log.info("Sent message to %s with %s", chat_id, download_link)
 
     async def newtask_notify(self, chat_id: int, buttons=None):
