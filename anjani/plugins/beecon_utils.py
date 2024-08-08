@@ -25,9 +25,11 @@ class BeeconUtil(plugin.Plugin):
             return None
 
         project_config = await util.project_config.BotNotificationConfig.get_project_config(project_id)
+
+        self.log.debug("Project config: %s", project_config)
         if not project_config.nourl:
             return
 
         url_pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
-        if project_config.nojoinmsg and url_pattern.findall(message.text):
+        if project_config.nourl and url_pattern.findall(message.text):
             await message.delete()
