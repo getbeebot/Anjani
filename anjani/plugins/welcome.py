@@ -135,6 +135,7 @@ class Greeting(plugin.Plugin):
             project_id = await self.mysql.get_chat_project_id(message.chat.id, self.bot.uid)
             project_config = await self.get_project_config(project_id)
 
+            self.log.debug("Project config: %s", project_config)
             if project_config and project_config.nojoinmsg:
                 await message.delete()
         except Exception as e:
@@ -179,6 +180,7 @@ class Greeting(plugin.Plugin):
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
                             try:
                                 project_config = await self.get_project_config(project_id)
+                                self.log.debug("Project config: %s", project_config)
                                 if project_config and project_config.nojoinmsg:
                                     await message.delete()
                             except Exception as e:

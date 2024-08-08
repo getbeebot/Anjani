@@ -21,6 +21,10 @@ class BotNotificationConfig:
         self.nourl = nourl
         self.nojoinmsg = nojoinmsg
 
+    def __repr__(self) -> str:
+        kvstr = ",".join([f"{k}={v}" for k, v in self.__dict__.items()])
+        return f"ProjectConfig({kvstr})"
+
     @classmethod
     def from_json(cls, json_data):
         data = json.loads(json_data)
