@@ -88,6 +88,7 @@ class Greeting(plugin.Plugin):
 
     async def on_stop(self) -> None:
         await self.mysql.close()
+        await self.redis.close()
 
 
     async def on_chat_action(self, message: Message) -> None:
@@ -132,7 +133,7 @@ class Greeting(plugin.Plugin):
             project_id = await self.mysql.get_chat_project_id(message.chat.id, self.bot.uid)
             project_config = await self.get_project_config(project_id)
 
-            if not project_config or not project_config.nojoinmsg:
+            if project_config and project_config.nojoinmsg:
                 await message.delete()
         except Exception as e:
             self.log.warn("Can not delete member leave message(%s), error: %s", message, e)
@@ -176,7 +177,7 @@ class Greeting(plugin.Plugin):
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
                             try:
                                 project_config = await self.get_project_config(project_id)
-                                if not project_config or not project_config.nojoinmsg:
+                                if project_config and project_config.nojoinmsg:
                                     await message.delete()
                             except Exception as e:
                                 self.log.warn("Can not delete new member join message(%s), error: %s", message, e)

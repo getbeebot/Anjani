@@ -9,7 +9,7 @@ log = logging.getLogger("bot.notify.config")
 
 @dataclass
 class BotNotificationConfig:
-    def __init__(self, project_id, overview=1, ovduration=14400, newdraw=1, userjoin=1, draw=1, verify=0, newtask=1, nourl=1, nojoinmsg=1):
+    def __init__(self, project_id, overview=1, ovduration=14400, newdraw=1, userjoin=1, draw=1, verify=0, newtask=1, nourl=0, nojoinmsg=0):
         self.project_id = project_id
         self.overview = overview
         self.ovduration = ovduration
@@ -63,7 +63,7 @@ class BotNotificationConfig:
 
         if res:
             update_query = "UPDATE bot_notification_config SET enable_overview=%s, overview_frequency=%s, enable_new_draw_notify=%s, enable_user_join_notify=%s, enable_draw_annonce=%s, enable_rewards_verify=%s, enable_new_task=%s, enable_delete_url=%s, enable_delete_member_notify=%s WHERE project_id=%s"
-            values = (self.overview, self.ovduration, self.newdraw, self.userjoin, self.draw, self.verify, self.newtask, self.project_id)
+            values = (self.overview, self.ovduration, self.newdraw, self.userjoin, self.draw, self.verify, self.newtask, self.nourl, self.nojoinmsg, self.project_id)
             await mysql_client.update(update_query, values)
         else:
             insert_query = "INSERT INTO bot_notification_config(project_id, enable_overview, overview_frequency, enable_new_draw_notify, enable_user_join_notify, enable_draw_annonce, enable_rewards_verify, enable_new_task, enable_delete_url, enable_delete_member_notify) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
