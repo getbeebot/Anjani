@@ -481,7 +481,7 @@ class WebServer(plugin.Plugin):
             reply_text = f"The draw is end.\nHere is the participants data, please download it via {download_link}"
 
         if buttons:
-            await self.bot.client.send_message(chat_id, reply_text, buttons)
+            await self.bot.client.send_message(chat_id, reply_text, reply_markup=buttons)
         else:
             await self.bot.client.send_message(chat_id, reply_text)
         self.log.info("Sent message to %s with %s", chat_id, download_link)
