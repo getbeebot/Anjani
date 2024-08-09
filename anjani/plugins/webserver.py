@@ -30,6 +30,8 @@ from anjani.server.notification import (
 
 import boto3
 
+from prometheus_client import CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
+
 class WebServer(plugin.Plugin):
     name: ClassVar[str] = "WebServer"
     helpable: ClassVar[bool] = False
@@ -37,6 +39,8 @@ class WebServer(plugin.Plugin):
     ws_clients: set
     site: web.TCPSite
     mysql: MysqlPoolClient
+
+    registry: CollectorRegistry
 
     s3: any
     engage_img: str
@@ -47,6 +51,8 @@ class WebServer(plugin.Plugin):
         self.s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=self.bot.config.AWS_AK, aws_secret_access_key=self.bot.config.AWS_SK)
         # init for mysql
         self.mysql = MysqlPoolClient.init_from_env()
+        # init for prometheus client
+        self.registry = CollectorRegistry()
         # init for ws clients
         self.ws_clients = set()
         self.engage_img = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
@@ -60,12 +66,13 @@ class WebServer(plugin.Plugin):
         update_user_router = web.get("/update_user", self.update_user_handler)
         send_msg_router = web.post("/sendmsg", self.send_msg_handler)
         privilege_check_router = web.post("/check_bot_privilege", self.privilege_check_handler)
+        metrics_router = web.get("/metrics", self.metrics_handler)
 
         ws_router = web.get("/ws", self.project_creation_notify)
 
         # save_iq_text_router = web.post("/save_iq", self.save_iq_text_handler)
         routers = [
-            is_member_router, update_user_router, send_msg_router, privilege_check_router, ws_router
+            is_member_router, update_user_router, send_msg_router, privilege_check_router, ws_router, metrics_router,
             # save_iq_text_router
         ]
 
@@ -100,6 +107,9 @@ class WebServer(plugin.Plugin):
         await self.mysql.close()
         self.log.info("Shutdown websever...")
         await self.site.stop()
+
+    async def metrics_handler(self, request: BaseRequest) -> Response:
+        return web.Response(body=generate_latest(self.registry), content_type=CONTENT_TYPE_LATEST)
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
@@ -190,11 +200,10 @@ class WebServer(plugin.Plugin):
             project_config = await BotNotificationConfig.get_project_config(project_id)
 
             chat = await self.bot.client.get_chat(chat_id)
-            if chat.type == ChatType.CHANNEL:
+            notify_type = data.get("notifyType")
+            if chat.type == ChatType.CHANNEL and notify_type in [1, 2, 3, 5]:
                 self.log.warn("Chat type is channel, not sending notification. Channel: %s, content: %s", chat.title, payloads)
                 return web.json_response({"ok": False, "error": "I'm not push notification to channel"}, status=200)
-
-            notify_type = data.get("notifyType")
 
             lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
             withdraw_btn = InlineKeyboardButton(text="Withdraw", url=f"t.me/beecon_wallet_bot?start=true")
