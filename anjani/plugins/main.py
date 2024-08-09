@@ -141,7 +141,7 @@ class Main(plugin.Plugin):
     async def on_stop(self) -> None:
         async with asyncio.Lock():
             self.log.info("Backing up session file")
-            await util.misc.session_backup()
+            await util.misc.session_backup_latest()
             await asyncio.sleep(5)
 
             file = AsyncPath("anjani/anjani.session")
