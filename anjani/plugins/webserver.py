@@ -133,10 +133,13 @@ class WebServer(plugin.Plugin):
             if alert_type == "event":
                 trace_id = payloads.get("trace_id")
                 event_name = payloads.get("name")
+                loop = asyncio.get_running_loop()
                 if trace_id:
                     self.event_counter.labels(event_name, trace_id).inc()
+                    loop.create_task(self.auto_solve_alert(event_name, trace_id))
                 else:
                     self.event_counter.labels(event_name).inc()
+                    loop.create_task(self.auto_solve_alert(event_name))
             elif alert_type == "api":
                 self.api_rtt_gauge.labels(method=payloads.get("method"), path=payloads.get("path")).set(payloads.get("latency"))
         except Exception as e:
@@ -146,6 +149,13 @@ class WebServer(plugin.Plugin):
                 "error": str(e)
             })
         return web.json_response(ret_data, status=200)
+
+    async def auto_solve_alert(self, name: str, trace_id=None) -> None:
+        await asyncio.sleep(30)
+        if trace_id:
+            self.event_counter.labels(name, trace_id).reset()
+        else:
+            self.event_counter.labels(name).reset()
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
