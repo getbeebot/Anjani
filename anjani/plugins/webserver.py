@@ -1,17 +1,17 @@
 import os
 import json
-import aiofiles.os as aio_os
-import base64
 from typing import ClassVar, Optional
-
-import asyncio
-
 from datetime import datetime, timezone
 
+import aiofiles.os as aio_os
+
+import asyncio
 import aiohttp_cors
 from aiohttp import web
 from aiohttp import WSMsgType
 from aiohttp.web import BaseRequest, Response
+
+import boto3
 
 from pyrogram.enums import ChatType
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -28,9 +28,8 @@ from anjani.server.notification import (
     build_lottery_join_msg,
 )
 
-import boto3
-
-from prometheus_client import CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import generate_latest
+from prometheus_client import CollectorRegistry, Counter, Gauge
 
 class WebServer(plugin.Plugin):
     name: ClassVar[str] = "WebServer"
@@ -40,7 +39,10 @@ class WebServer(plugin.Plugin):
     site: web.TCPSite
     mysql: MysqlPoolClient
 
+    # for metrics
     registry: CollectorRegistry
+    event_counter: Counter
+    api_rtt_gauge: Gauge
 
     s3: any
     engage_img: str
@@ -59,6 +61,7 @@ class WebServer(plugin.Plugin):
         self.draw_img = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
 
     async def on_start(self, _: int) -> None:
+        self.metrics_setup()
         # init web server
         app = web.Application()
 
@@ -84,7 +87,7 @@ class WebServer(plugin.Plugin):
             )
         })
         get_invite_link_router = app.router.add_route("POST", "/get_invite_link", self.get_invite_link_handler)
-        alert_router = app.router.add_route("POST", "/alert", self.send_alert_handler)
+        alert_router = app.router.add_route("POST", "/alert", self.alert_stat_handler)
         save_iq_rotuer = app.router.add_route("POST", "/save_iq", self.save_iq_text_handler)
 
         cors.add(get_invite_link_router)
@@ -109,7 +112,36 @@ class WebServer(plugin.Plugin):
         await self.site.stop()
 
     async def metrics_handler(self, request: BaseRequest) -> Response:
-        return web.Response(body=generate_latest(self.registry), content_type=CONTENT_TYPE_LATEST)
+        content_type = "text/plain; version=0.0.4"
+        return web.Response(body=generate_latest(self.registry), content_type=content_type)
+
+    def metrics_setup(self) -> None:
+        self.event_counter = Counter("beecon_event_counter", "Number of error events", labelnames=["name", "trace_id"])
+        self.api_rtt_gauge = Gauge("api_rtt", "API request Round Trip Time", labelnames=["path", "method", "trace_id"])
+        self.registry.register(self.event_counter)
+        self.registry.register(self.api_rtt_gauge)
+
+    async def alert_stat_handler(self, request: BaseRequest) -> Response:
+        ret_data = {"ok": True}
+        try:
+            payloads = await request.json()
+            alert_type = payloads.get("type")
+            if alert_type == "event":
+                trace_id = payloads.get("trace_id")
+                event_name = payloads.get("name")
+                if trace_id:
+                    self.event_counter.labels(event_name, trace_id).inc()
+                else:
+                    self.event_counter.labels(event_name).inc()
+            elif alert_type == "api":
+                self.api_rtt_gauge.labels(method=payloads.get("method"), path=payloads.get("path")).set(payloads.get("latency"))
+        except Exception as e:
+            self.log.error(f"push alert error: {e}")
+            ret_data.update({
+                "ok": False,
+                "error": str(e)
+            })
+        return web.json_response(ret_data, status=200)
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
@@ -353,54 +385,6 @@ class WebServer(plugin.Plugin):
                     break
         except Exception as e:
             self.log.error(f"Websocket connection closed, {e}")
-
-    async def send_alert_handler(self, request: BaseRequest) -> Response:
-        ret_data = {"ok": False}
-        try:
-            url = os.getenv("ALERT_API")
-            user = os.getenv("ALERT_USER")
-            password = os.getenv("ALERT_PASS")
-
-            payloads = await request.json()
-
-            auth_token = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode("utf-8")
-            auth = f"Basic {auth_token}"
-            headers = {
-                "Authorization": auth,
-                "Content-Type": "application/json",
-            }
-
-            # if self.bot.uid == 6802454608:
-            #     async def save_alert_record(name: str, description: str):
-            #         mysql_client = MysqlPoolClient.init_from_env()
-            #         await mysql_client.connect()
-            #         sql = "INSERT INTO alert_record(name, des) VALUES(%s, %s)"
-            #         values = (name, description)
-            #         await mysql_client.update(sql, values)
-            #         await mysql_client.close()
-            #         del mysql_client
-            #     try:
-            #         msg = payloads[0]
-            #         name = msg.get("labels").get("alertname")
-            #         des = msg.get("annotations").get("description") or ""
-            #         loop = asyncio.get_running_loop()
-            #         loop.create_task(save_alert_record(name, des))
-            #     except Exception as e:
-            #         self.log.error("saving alert record %s error %s", payloads, e)
-
-            async with self.bot.http.post(url, json=payloads, headers=headers) as resp:
-                self.log.info(f"Alert response: %s", resp)
-                if resp.status == 200:
-                    ret_data.update({"ok": True})
-                else:
-                    ret_data.update({"ok": False, "error": await resp.text()})
-        except Exception as e:
-            self.log.error(f"push alert error: {e}")
-            ret_data.update({
-                "ok": False,
-                "error": str(e)
-            })
-        return web.json_response(ret_data, status=200)
 
     async def update_user_avatar(self, chat_id: int) -> None:
         avatar = await self.get_avatar(chat_id)
