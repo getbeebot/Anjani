@@ -3,6 +3,8 @@ import json
 from typing import ClassVar, Optional
 from datetime import datetime, timezone
 
+import base64
+
 import aiofiles.os as aio_os
 
 import asyncio
@@ -87,11 +89,13 @@ class WebServer(plugin.Plugin):
             )
         })
         get_invite_link_router = app.router.add_route("POST", "/get_invite_link", self.get_invite_link_handler)
-        alert_router = app.router.add_route("POST", "/alert", self.alert_stat_handler)
+        alert_router = app.router.add_route("POST", "/alert", self.send_alert_handler)
+        alert_v2_router = app.router.add_route("POST", "/alert/v2", self.alert_stat_handler)
         save_iq_rotuer = app.router.add_route("POST", "/save_iq", self.save_iq_text_handler)
 
         cors.add(get_invite_link_router)
         cors.add(alert_router)
+        cors.add(alert_v2_router)
         cors.add(save_iq_rotuer)
 
         app.add_routes(routers)
@@ -575,4 +579,52 @@ class WebServer(plugin.Plugin):
             self.log.error("Saving inline query context error %s", e)
             ret_data.update({"error": e})
 
+        return web.json_response(ret_data, status=200)
+
+    async def send_alert_handler(self, request: BaseRequest) -> Response:
+        ret_data = {"ok": False}
+        try:
+            url = os.getenv("ALERT_API")
+            user = os.getenv("ALERT_USER")
+            password = os.getenv("ALERT_PASS")
+
+            payloads = await request.json()
+
+            auth_token = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode("utf-8")
+            auth = f"Basic {auth_token}"
+            headers = {
+                "Authorization": auth,
+                "Content-Type": "application/json",
+            }
+
+            # if self.bot.uid == 6802454608:
+            #     async def save_alert_record(name: str, description: str):
+            #         mysql_client = MysqlPoolClient.init_from_env()
+            #         await mysql_client.connect()
+            #         sql = "INSERT INTO alert_record(name, des) VALUES(%s, %s)"
+            #         values = (name, description)
+            #         await mysql_client.update(sql, values)
+            #         await mysql_client.close()
+            #         del mysql_client
+            #     try:
+            #         msg = payloads[0]
+            #         name = msg.get("labels").get("alertname")
+            #         des = msg.get("annotations").get("description") or ""
+            #         loop = asyncio.get_running_loop()
+            #         loop.create_task(save_alert_record(name, des))
+            #     except Exception as e:
+            #         self.log.error("saving alert record %s error %s", payloads, e)
+
+            async with self.bot.http.post(url, json=payloads, headers=headers) as resp:
+                self.log.info(f"Alert response: %s", resp)
+                if resp.status == 200:
+                    ret_data.update({"ok": True})
+                else:
+                    ret_data.update({"ok": False, "error": await resp.text()})
+        except Exception as e:
+            self.log.error(f"push alert error: {e}")
+            ret_data.update({
+                "ok": False,
+                "error": str(e)
+            })
         return web.json_response(ret_data, status=200)
