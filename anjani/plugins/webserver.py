@@ -179,7 +179,8 @@ class WebServer(plugin.Plugin):
         return web.json_response(ret_data, status=200)
 
     async def auto_solve_alert(self, name: str, trace_id=0) -> None:
-        await asyncio.sleep(30)
+        # auto resolve alert after 5 mins
+        await asyncio.sleep(300)
         self.event_counter.labels(name, trace_id).reset()
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
