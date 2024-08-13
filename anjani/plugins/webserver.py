@@ -1,26 +1,20 @@
-import os
-import json
-from typing import ClassVar, Optional
-from datetime import datetime, timezone
-
+import asyncio
 import base64
+import json
+import os
+from datetime import datetime, timezone
+from typing import ClassVar, Optional
 
 import aiofiles.os as aio_os
-
-import asyncio
 import aiohttp_cors
-from aiohttp import web
-from aiohttp import WSMsgType
-from aiohttp.web import BaseRequest, Response
-
 import boto3
-
+from aiohttp import WSMsgType, web
+from aiohttp.web import BaseRequest, Response
+from prometheus_client import CollectorRegistry, Counter, Gauge, generate_latest
 from pyrogram.enums import ChatType
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from anjani import plugin
-from anjani.util.db import MysqlPoolClient
-from anjani.util.project_config import BotNotificationConfig
 from anjani.server.notification import (
     build_congrats_msg,
     build_congrats_records,
@@ -29,9 +23,9 @@ from anjani.server.notification import (
     build_lottery_create_msg,
     build_lottery_join_msg,
 )
+from anjani.util.db import MysqlPoolClient
+from anjani.util.project_config import BotNotificationConfig
 
-from prometheus_client import generate_latest
-from prometheus_client import CollectorRegistry, Counter, Gauge
 
 class WebServer(plugin.Plugin):
     name: ClassVar[str] = "WebServer"
@@ -52,15 +46,26 @@ class WebServer(plugin.Plugin):
 
     async def on_load(self) -> None:
         # init for aws s3
-        self.s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=self.bot.config.AWS_AK, aws_secret_access_key=self.bot.config.AWS_SK)
+        self.s3 = boto3.client(
+            "s3",
+            region_name="ap-southeast-1",
+            aws_access_key_id=self.bot.config.AWS_AK,
+            aws_secret_access_key=self.bot.config.AWS_SK,
+        )
         # init for mysql
         self.mysql = MysqlPoolClient.init_from_env()
         # init for prometheus client
         self.registry = CollectorRegistry()
         # init for ws clients
         self.ws_clients = set()
-        self.engage_img = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
-        self.draw_img = os.getenv("DRAW_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png")
+        self.engage_img = os.getenv(
+            "ENGAGE_IMG",
+            "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+        )
+        self.draw_img = os.getenv(
+            "DRAW_IMG",
+            "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/luckydraw.png",
+        )
 
     async def on_start(self, _: int) -> None:
         self.metrics_setup()
@@ -70,28 +75,42 @@ class WebServer(plugin.Plugin):
         is_member_router = web.post("/is_member", self.is_member_handler)
         update_user_router = web.get("/update_user", self.update_user_handler)
         send_msg_router = web.post("/sendmsg", self.send_msg_handler)
-        privilege_check_router = web.post("/check_bot_privilege", self.privilege_check_handler)
+        privilege_check_router = web.post(
+            "/check_bot_privilege", self.privilege_check_handler
+        )
         metrics_router = web.get("/metrics", self.metrics_handler)
 
         ws_router = web.get("/ws", self.project_creation_notify)
 
         # save_iq_text_router = web.post("/save_iq", self.save_iq_text_handler)
         routers = [
-            is_member_router, update_user_router, send_msg_router, privilege_check_router, ws_router, metrics_router,
+            is_member_router,
+            update_user_router,
+            send_msg_router,
+            privilege_check_router,
+            ws_router,
+            metrics_router,
             # save_iq_text_router
         ]
 
-        cors = aiohttp_cors.setup(app, defaults={
-            "*": aiohttp_cors.ResourceOptions(
-                allow_credentials=True,
-                expose_headers="*",
-                allow_headers="*"
-            )
-        })
-        get_invite_link_router = app.router.add_route("POST", "/get_invite_link", self.get_invite_link_handler)
+        cors = aiohttp_cors.setup(
+            app,
+            defaults={
+                "*": aiohttp_cors.ResourceOptions(
+                    allow_credentials=True, expose_headers="*", allow_headers="*"
+                )
+            },
+        )
+        get_invite_link_router = app.router.add_route(
+            "POST", "/get_invite_link", self.get_invite_link_handler
+        )
         alert_router = app.router.add_route("POST", "/alert", self.send_alert_handler)
-        alert_v2_router = app.router.add_route("POST", "/alert/v2", self.alert_stat_handler)
-        save_iq_rotuer = app.router.add_route("POST", "/save_iq", self.save_iq_text_handler)
+        alert_v2_router = app.router.add_route(
+            "POST", "/alert/v2", self.alert_stat_handler
+        )
+        save_iq_rotuer = app.router.add_route(
+            "POST", "/save_iq", self.save_iq_text_handler
+        )
 
         cors.add(get_invite_link_router)
         cors.add(alert_router)
@@ -117,11 +136,21 @@ class WebServer(plugin.Plugin):
 
     async def metrics_handler(self, request: BaseRequest) -> Response:
         content_type = "text/plain; version=0.0.4"
-        return web.Response(body=generate_latest(self.registry), content_type=content_type)
+        return web.Response(
+            body=generate_latest(self.registry), content_type=content_type
+        )
 
     def metrics_setup(self) -> None:
-        self.event_counter = Counter("beecon_event_counter", "Number of error events", labelnames=["name", "trace_id"])
-        self.api_rtt_gauge = Gauge("api_rtt", "API request Round Trip Time", labelnames=["path", "method", "trace_id"])
+        self.event_counter = Counter(
+            "beecon_event_counter",
+            "Number of error events",
+            labelnames=["name", "trace_id"],
+        )
+        self.api_rtt_gauge = Gauge(
+            "api_rtt",
+            "API request Round Trip Time",
+            labelnames=["path", "method", "trace_id"],
+        )
         self.registry.register(self.event_counter)
         self.registry.register(self.api_rtt_gauge)
 
@@ -130,32 +159,28 @@ class WebServer(plugin.Plugin):
         try:
             payloads = await request.json()
             alert_type = payloads.get("type")
+            trace_id = payloads.get("trace_id")
+            if not trace_id:
+                trace_id = 0
             if alert_type == "event":
-                trace_id = payloads.get("trace_id")
                 event_name = payloads.get("name")
                 loop = asyncio.get_running_loop()
-                if trace_id:
-                    self.event_counter.labels(event_name, trace_id).inc()
-                    loop.create_task(self.auto_solve_alert(event_name, trace_id))
-                else:
-                    self.event_counter.labels(event_name).inc()
-                    loop.create_task(self.auto_solve_alert(event_name))
+                self.event_counter.labels(event_name, trace_id).inc()
+                loop.create_task(self.auto_solve_alert(event_name, trace_id))
             elif alert_type == "api":
-                self.api_rtt_gauge.labels(method=payloads.get("method"), path=payloads.get("path")).set(payloads.get("latency"))
+                self.api_rtt_gauge.labels(
+                    method=payloads.get("method"),
+                    path=payloads.get("path"),
+                    trace_id=trace_id,
+                ).set(payloads.get("latency"))
         except Exception as e:
             self.log.error(f"push alert error: {e}")
-            ret_data.update({
-                "ok": False,
-                "error": str(e)
-            })
+            ret_data.update({"ok": False, "error": str(e)})
         return web.json_response(ret_data, status=200)
 
-    async def auto_solve_alert(self, name: str, trace_id=None) -> None:
+    async def auto_solve_alert(self, name: str, trace_id=0) -> None:
         await asyncio.sleep(30)
-        if trace_id:
-            self.event_counter.labels(name, trace_id).reset()
-        else:
-            self.event_counter.labels(name).reset()
+        self.event_counter.labels(name, trace_id).reset()
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
@@ -212,7 +237,7 @@ class WebServer(plugin.Plugin):
         return web.json_response(ret_data, status=200)
 
     async def send_msg_handler(self, request: BaseRequest) -> Response:
-        ret_data = { "ok": False }
+        ret_data = {"ok": False}
         try:
             payloads = await request.json()
             self.log.info("/sendmsg request payloads: %s", payloads)
@@ -220,9 +245,17 @@ class WebServer(plugin.Plugin):
             chat_type = payloads.get("type")
 
             if not chat_type:
-                return web.json_response({"ok": False, "error": "No type argument, please checkout the request arguments."}, status=200)
+                return web.json_response(
+                    {
+                        "ok": False,
+                        "error": "No type argument, please checkout the request arguments.",
+                    },
+                    status=200,
+                )
 
-            assert isinstance(chat_type, int), "type argument should be int, but got an non-int, please check it out"
+            assert isinstance(
+                chat_type, int
+            ), "type argument should be int, but got an non-int, please check it out"
 
             data = payloads.get("data")
 
@@ -232,9 +265,17 @@ class WebServer(plugin.Plugin):
                 chat_id = data.get("owner")
 
             if not chat_id:
-                return web.json_response({"ok": False, "error": "No chat_id or owner, please checkout the request arguments."}, status=200)
+                return web.json_response(
+                    {
+                        "ok": False,
+                        "error": "No chat_id or owner, please checkout the request arguments.",
+                    },
+                    status=200,
+                )
 
-            assert isinstance(chat_id, str) or isinstance(chat_id, int), "chatId/data.owner not found or not correct type"
+            assert isinstance(chat_id, str) or isinstance(
+                chat_id, int
+            ), "chatId/data.owner not found or not correct type"
 
             chat_id = int(chat_id)
 
@@ -248,11 +289,20 @@ class WebServer(plugin.Plugin):
             chat = await self.bot.client.get_chat(chat_id)
             notify_type = data.get("notifyType")
             if chat.type == ChatType.CHANNEL and notify_type in [1, 2, 3, 5]:
-                self.log.warn("Chat type is channel, not sending notification. Channel: %s, content: %s", chat.title, payloads)
-                return web.json_response({"ok": False, "error": "I'm not push notification to channel"}, status=200)
+                self.log.warn(
+                    "Chat type is channel, not sending notification. Channel: %s, content: %s",
+                    chat.title,
+                    payloads,
+                )
+                return web.json_response(
+                    {"ok": False, "error": "I'm not push notification to channel"},
+                    status=200,
+                )
 
             lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
-            withdraw_btn = InlineKeyboardButton(text="Withdraw", url=f"t.me/beecon_wallet_bot?start=true")
+            withdraw_btn = InlineKeyboardButton(
+                text="Withdraw", url="t.me/beecon_wallet_bot?start=true"
+            )
             ret_data.update({"ok": True})
             if notify_type == 1 and project_config.newdraw:
                 await self.newdraw_notify(chat_id, data, button)
@@ -260,51 +310,58 @@ class WebServer(plugin.Plugin):
                 await self.user_join_notify(chat_id, data, button)
             elif notify_type == 3 and project_config.draw:
                 await self.draw_notify(chat_id, data, button)
-            elif notify_type == 4 or notify_type == 10 or notify_type == 11 or notify_type == 12:
+            elif (
+                notify_type == 4
+                or notify_type == 10
+                or notify_type == 11
+                or notify_type == 12
+            ):
                 chat_id = data.get("owner")
-                await self.draw_list_notify(chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]]))
+                await self.draw_list_notify(
+                    chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
+                )
             elif notify_type == 5 and project_config.newtask:
                 await self.newtask_notify(chat_id, button)
-            elif notify_type == 6: # private congrats
+            elif notify_type == 6:  # private congrats
                 await self.congrats_notify(
                     chat_id,
                     data,
-                    InlineKeyboardMarkup([
-                        [lucky_draw_btn],
-                        [withdraw_btn],
-                    ])
+                    InlineKeyboardMarkup(
+                        [
+                            [lucky_draw_btn],
+                            [withdraw_btn],
+                        ]
+                    ),
                 )
             elif notify_type == 7:
                 await self.congrat_records_notify(
                     chat_id,
                     data,
-                    InlineKeyboardMarkup([
-                        [lucky_draw_btn],
-                        [withdraw_btn],
-                    ])
+                    InlineKeyboardMarkup(
+                        [
+                            [lucky_draw_btn],
+                            [withdraw_btn],
+                        ]
+                    ),
                 )
             elif notify_type == 8:
                 await self.invite_records_notify(
-                    chat_id,
-                    data,
-                    InlineKeyboardMarkup([[lucky_draw_btn]])
+                    chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
             elif notify_type == 9:
                 await self.invite_success_notify(
-                    chat_id,
-                    data,
-                    InlineKeyboardMarkup([[lucky_draw_btn]])
+                    chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
             else:
                 self.log.warn("Not send mssage for request: %s", payloads)
                 ret_data.update({"ok": False, "error": "reject by setting"})
         except Exception as e:
             self.log.error(f"Sending occurs error: {str(e)}")
-            ret_data.update({ "ok": False, "error": str(e) })
+            ret_data.update({"ok": False, "error": str(e)})
         return web.json_response(ret_data, status=200)
 
     async def get_invite_link_handler(self, request: BaseRequest) -> Response:
-        ret_data = { "ok": False }
+        ret_data = {"ok": False}
         try:
             payloads = await request.json()
             self.log.info("/get_invite_link request payloads: %s", payloads)
@@ -363,10 +420,12 @@ class WebServer(plugin.Plugin):
 
             for privilege in privileges:
                 if not bot_privileges.__getattribute__(privilege):
-                    ret_data.update({
-                        "ok": False,
-                        "error": f"bot does not have privilege: {privilege}",
-                    })
+                    ret_data.update(
+                        {
+                            "ok": False,
+                            "error": f"bot does not have privilege: {privilege}",
+                        }
+                    )
                     return web.json_response(ret_data, status=200)
 
             ret_data.update({"ok": True})
@@ -395,7 +454,9 @@ class WebServer(plugin.Plugin):
                             await wsc.send_str(f"{msg.data}")
                         await ws.close()
                 elif msg.type == WSMsgType.ERROR:
-                    self.log.error(f"ws connection closed with exception {ws.exception()}")
+                    self.log.error(
+                        f"ws connection closed with exception {ws.exception()}"
+                    )
                     break
         except Exception as e:
             self.log.error(f"Websocket connection closed, {e}")
@@ -407,7 +468,10 @@ class WebServer(plugin.Plugin):
         # 1. query user id based on chat_id
         user_id = await self.mysql.get_user_id(chat_id)
         if not user_id:
-            self.log.warn("update user avatar can not find user_id by telegram chat id %s", chat_id)
+            self.log.warn(
+                "update user avatar can not find user_id by telegram chat id %s",
+                chat_id,
+            )
             return None
         # 2. update db data for user
         await self.mysql.update_user_avatar(user_id, avatar)
@@ -428,12 +492,14 @@ class WebServer(plugin.Plugin):
                     avatar,
                     s3_bucket,
                     avatar_name,
-                    ExtraArgs={"ContentType": "image/jpeg"}
+                    ExtraArgs={"ContentType": "image/jpeg"},
                 )
 
                 await aio_os.remove(avatar)
 
-                avatar_link = f"https://{s3_bucket}.s3.ap-southeast-1.amazonaws.com/{avatar_name}"
+                avatar_link = (
+                    f"https://{s3_bucket}.s3.ap-southeast-1.amazonaws.com/{avatar_name}"
+                )
         except Exception as e:
             self.log.warn("Get chat %s avatar link error %s", chat_id, e)
 
@@ -442,12 +508,18 @@ class WebServer(plugin.Plugin):
     async def newdraw_notify(self, chat_id: int, args: dict, buttons=None):
         # send newdraw create message to group, notify_type = 1
         lottery_type = args.get("lotteryType")
-        template = await self.text(None, f"lottery-create-{lottery_type}", noformat=True)
+        template = await self.text(
+            None, f"lottery-create-{lottery_type}", noformat=True
+        )
         msg = build_lottery_create_msg(template, **args)
         if not buttons:
-            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
             return None
-        await self.bot.client.send_photo(chat_id, self.engage_img, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(
+            chat_id, self.engage_img, caption=msg, reply_markup=buttons
+        )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def user_join_notify(self, chat_id: int, args: dict, buttons=None):
@@ -456,18 +528,26 @@ class WebServer(plugin.Plugin):
         template = await self.text(None, f"lottery-join-{lottery_type}", noformat=True)
         msg = build_lottery_join_msg(template, **args)
         if not buttons:
-            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
             return None
-        await self.bot.client.send_photo(chat_id, self.engage_img, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(
+            chat_id, self.engage_img, caption=msg, reply_markup=buttons
+        )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def draw_notify(self, chat_id: int, args: dict, buttons=None):
         # send message to group when draw open, notify_type = 3
         msg = await self.text(None, "lottery-end", **args)
         if not buttons:
-            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
             return None
-        await self.bot.client.send_photo(chat_id, self.draw_img, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(
+            chat_id, self.draw_img, caption=msg, reply_markup=buttons
+        )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     def _generate_file_link(self, filename: str) -> str:
@@ -480,15 +560,17 @@ class WebServer(plugin.Plugin):
         download_link = self._generate_file_link(filename)
         reply_type = args.get("notifyType")
         reply_text = f"Please download the winners data via {download_link}\nThe participiant data is exporting, this procedure would take approximately one hour, you'll get notified when its done."
-        if reply_type == 10: # non-token participants list
+        if reply_type == 10:  # non-token participants list
             reply_text = f"Here is the participants of the draw, please download via {download_link}"
-        elif reply_type == 11: # instant draw reach deadline
+        elif reply_type == 11:  # instant draw reach deadline
             reply_text = f"The draw has been claimed.\nHere is the participants data, please download via {download_link}"
-        elif reply_type == 12: # instant draw ends
+        elif reply_type == 12:  # instant draw ends
             reply_text = f"The draw is end.\nHere is the participants data, please download it via {download_link}"
 
         if buttons:
-            await self.bot.client.send_message(chat_id, reply_text, reply_markup=buttons)
+            await self.bot.client.send_message(
+                chat_id, reply_text, reply_markup=buttons
+            )
         else:
             await self.bot.client.send_message(chat_id, reply_text)
         self.log.info("Sent message to %s with %s", chat_id, download_link)
@@ -497,9 +579,13 @@ class WebServer(plugin.Plugin):
         # send message to group while task created, notify_type = 5
         msg = await self.text(None, "task-creation")
         if not buttons:
-            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
             return None
-        await self.bot.client.send_photo(chat_id=chat_id, photo=self.engage_img, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(
+            chat_id=chat_id, photo=self.engage_img, caption=msg, reply_markup=buttons
+        )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def congrats_notify(self, chat_id: int, args: dict, buttons=None):
@@ -507,9 +593,13 @@ class WebServer(plugin.Plugin):
         template = await self.text(None, "congrats-draw", noformat=True)
         msg = build_congrats_msg(template, **args)
         if not buttons:
-            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
             return None
-        await self.bot.client.send_photo(chat_id=chat_id, photo=self.draw_img, caption=msg, reply_markup=buttons)
+        await self.bot.client.send_photo(
+            chat_id=chat_id, photo=self.draw_img, caption=msg, reply_markup=buttons
+        )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def congrat_records_notify(self, chat_id: int, args: dict, buttons=None):
@@ -517,7 +607,9 @@ class WebServer(plugin.Plugin):
         template = await self.text(None, "congrats-records", noformat=True)
         msg = build_congrats_records(template, **args)
         if not buttons:
-            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
             return None
         await self.bot.client.send_message(chat_id, msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
@@ -527,7 +619,9 @@ class WebServer(plugin.Plugin):
         template = await self.text(None, "invitation-records", noformat=True)
         msg = build_invitation_records(template, **args)
         if not buttons:
-            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
             return None
         await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
@@ -538,7 +632,9 @@ class WebServer(plugin.Plugin):
         msg = build_invitation_notify(template, **args)
 
         if not buttons:
-            self.log.error("No button, reject to send message to chat %s with %s", chat_id, msg)
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
             return None
         await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
         self.log.info("Sent message to %s with %s", chat_id, msg)
@@ -552,12 +648,17 @@ class WebServer(plugin.Plugin):
             task_id = int(payloads.get("task_id"))
             btn_text = payloads.get("btn_text")
             des = payloads.get("des")
-            pics = payloads.get("pic") or "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
+            pics = (
+                payloads.get("pic")
+                or "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/bnp_giveaway2.gif"
+            )
 
             lang = "en"
-            btn_desc = json.dumps({
-                "text": btn_text,
-            })
+            btn_desc = json.dumps(
+                {
+                    "text": btn_text,
+                }
+            )
 
             code = f"@{self.bot.user.username} ld-{project_id}-{task_id}-{lang}"
 
@@ -575,15 +676,19 @@ class WebServer(plugin.Plugin):
 
             res = await self.mysql.update(sql, values)
             if res:
-                ret_data.update({
-                    "ok": False,
-                    "error": f"project_id {project_id} or task_id {task_id} not valid"
-                })
+                ret_data.update(
+                    {
+                        "ok": False,
+                        "error": f"project_id {project_id} or task_id {task_id} not valid",
+                    }
+                )
             else:
-                ret_data.update({
-                "ok": True,
-                "data": code,
-            })
+                ret_data.update(
+                    {
+                        "ok": True,
+                        "data": code,
+                    }
+                )
 
         except Exception as e:
             self.log.error("Saving inline query context error %s", e)
@@ -600,7 +705,9 @@ class WebServer(plugin.Plugin):
 
             payloads = await request.json()
 
-            auth_token = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode("utf-8")
+            auth_token = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode(
+                "utf-8"
+            )
             auth = f"Basic {auth_token}"
             headers = {
                 "Authorization": auth,
@@ -626,15 +733,12 @@ class WebServer(plugin.Plugin):
             #         self.log.error("saving alert record %s error %s", payloads, e)
 
             async with self.bot.http.post(url, json=payloads, headers=headers) as resp:
-                self.log.info(f"Alert response: %s", resp)
+                self.log.info("Alert response: %s", resp)
                 if resp.status == 200:
                     ret_data.update({"ok": True})
                 else:
                     ret_data.update({"ok": False, "error": await resp.text()})
         except Exception as e:
             self.log.error(f"push alert error: {e}")
-            ret_data.update({
-                "ok": False,
-                "error": str(e)
-            })
+            ret_data.update({"ok": False, "error": str(e)})
         return web.json_response(ret_data, status=200)
