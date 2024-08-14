@@ -167,7 +167,7 @@ class WebServer(plugin.Plugin):
                 event_name = payloads.get("name")
                 event_desc = payloads.desc("desc") or "no description"
                 loop = asyncio.get_running_loop()
-                self.event_counter.labels(event_name, trace_id, event_desc).inc()
+                self.event_counter.labels(name=event_name, trace_id=trace_id, desc=event_desc).inc()
                 loop.create_task(self.auto_solve_alert(event_name, trace_id))
             elif alert_type == "api":
                 self.api_rtt_gauge.labels(
