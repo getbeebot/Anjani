@@ -1,34 +1,30 @@
+import asyncio
 import json
-from datetime import datetime, timezone
-
-import aiofiles
-import aiofiles.os as aio_os
 import os
+import re
+from datetime import datetime, timezone
 from os.path import join
 from typing import ClassVar, Optional
 
-import asyncio
-
+import aiofiles
+import aiofiles.os as aio_os
+import boto3
 from pyrogram import filters
 from pyrogram.enums.chat_type import ChatType
+from pyrogram.enums.parse_mode import ParseMode
 from pyrogram.types import (
-    User,
-    Message,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQuery,
     InlineQueryResultArticle,
     InlineQueryResultPhoto,
-    InputTextMessageContent,
     InlineQueryResultVideo,
+    InputTextMessageContent,
+    Message,
+    User,
 )
-from pyrogram.enums.parse_mode import ParseMode
 
-from anjani import plugin, command, util, listener
-
-import boto3
-
-import re
+from anjani import command, plugin, util
 
 
 class BeeconPlugin(plugin.Plugin):
@@ -78,7 +74,7 @@ class BeeconPlugin(plugin.Plugin):
             self.log.info(f"Invitation code: {code}")
 
             if code:
-                payloads = { "botId": self.bot.uid, "inviteCode": code }
+                payloads = {"botId": self.bot.uid, "inviteCode": code}
                 invite_link = await self.bot.apiclient.get_invite_link(payloads)
 
                 if invite_link:
@@ -102,21 +98,27 @@ class BeeconPlugin(plugin.Plugin):
             self.log.debug("Checking keyword: %s", checkin_cmd)
 
             payloads = await self._construct_user_api_payloads(from_user)
-            payloads.update({
-                "command": cmd,
-                "targetId": chat_id,
-                "targetType": 0,
-            })
+            payloads.update(
+                {
+                    "command": cmd,
+                    "targetId": chat_id,
+                    "targetType": 0,
+                }
+            )
             bot_id = self.bot.uid
             project_id = await self.mysql.get_chat_project_id(chat_id, bot_id)
             project_link = util.misc.generate_project_detail_link(project_id, bot_id)
 
-            button = InlineKeyboardMarkup([[
-                InlineKeyboardButton(
-                    text=await self.text(None, "checkin-button", noformat=True),
-                    url=project_link
-                )
-            ]])
+            button = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            text=await self.text(None, "checkin-button", noformat=True),
+                            url=project_link,
+                        )
+                    ]
+                ]
+            )
 
             reply_context = await self.bot.apiclient.checkin(payloads)
             reply_msg = await message.reply(
@@ -128,9 +130,13 @@ class BeeconPlugin(plugin.Plugin):
             # auto delete check in message
             self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
             if message.from_user.photo and message.from_user.photo.big_file_id:
-                self.bot.loop.create_task(self.update_user_avatar(message.from_user.id, message.from_user.photo.big_file_id))
+                self.bot.loop.create_task(
+                    self.update_user_avatar(
+                        message.from_user.id, message.from_user.photo.big_file_id
+                    )
+                )
         except Exception as e:
-                self.log.error("Keyword checkin error: %s", e)
+            self.log.error("Keyword checkin error: %s", e)
 
     async def _delete_msg(self, chat_id: int, message_id: int, delay: int):
         if not delay:
@@ -178,14 +184,21 @@ class BeeconPlugin(plugin.Plugin):
             filename = f"C{group_id}.jpg"
             filepath = join("downloads", filename)
 
-            await self.bot.client.download_media(file_id, file_name=f"../downloads/{filename}")
+            await self.bot.client.download_media(
+                file_id, file_name=f"../downloads/{filename}"
+            )
 
-            s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=self.aws_ak, aws_secret_access_key=self.aws_sk)
+            s3 = boto3.client(
+                "s3",
+                region_name="ap-southeast-1",
+                aws_access_key_id=self.aws_ak,
+                aws_secret_access_key=self.aws_sk,
+            )
             s3.upload_file(
                 filepath,
                 self.aws_s3_bucket,
                 filename,
-                ExtraArgs={"ContentType": "image/jpeg"}
+                ExtraArgs={"ContentType": "image/jpeg"},
             )
 
             await aio_os.remove(filepath)
@@ -214,11 +227,13 @@ class BeeconPlugin(plugin.Plugin):
 
         payloads = await self._construct_user_api_payloads(from_user)
 
-        payloads.update({
-            "command": "checkin",
-            "targetId": group_id,
-            "targetType": 0,
-        })
+        payloads.update(
+            {
+                "command": "checkin",
+                "targetId": group_id,
+                "targetType": 0,
+            }
+        )
 
         payloads = json.loads(json.dumps(payloads))
 
@@ -226,18 +241,22 @@ class BeeconPlugin(plugin.Plugin):
         project_id = await self.mysql.get_chat_project_id(group_id, bot_id)
         project_link = util.misc.generate_project_detail_link(project_id, bot_id)
 
-        button = [[
-            InlineKeyboardButton(
-                text=await self.text(None, "checkin-button", noformat=True),
-                url=project_link
-            )
-        ]]
+        button = [
+            [
+                InlineKeyboardButton(
+                    text=await self.text(None, "checkin-button", noformat=True),
+                    url=project_link,
+                )
+            ]
+        ]
 
         reply_text = await self.bot.apiclient.checkin(payloads)
 
         if from_user.photo and from_user.photo.big_file_id:
             try:
-                self.bot.loop.create_task(self.update_user_avatar(from_user.id, from_user.photo.big_file_id))
+                self.bot.loop.create_task(
+                    self.update_user_avatar(from_user.id, from_user.photo.big_file_id)
+                )
             except Exception:
                 pass
 
@@ -256,7 +275,9 @@ class BeeconPlugin(plugin.Plugin):
                 return None
             user_id = await mysql_client.get_user_id(chat_id)
             if not user_id:
-                self.log.warn("Not found user by telegram chat id (tz_app_connect.biz_user_id)")
+                self.log.warn(
+                    "Not found user by telegram chat id (tz_app_connect.biz_user_id)"
+                )
                 return None
             await mysql_client.update_user_avatar(user_id, avatar)
         except Exception:
@@ -272,17 +293,19 @@ class BeeconPlugin(plugin.Plugin):
         user_name = user.username or None
         first_name = user.first_name
         last_name = user.last_name
-        nick_name = first_name + ' ' + last_name if last_name else first_name
+        nick_name = first_name + " " + last_name if last_name else first_name
 
-        payloads.update({
-            "firstName": first_name,
-            "lastName": last_name,
-            "nickName": nick_name,
-            "userName": user_name,
-            "pic": None,
-            "tgUserId": user_id,
-            "botId": self.bot.uid,
-        })
+        payloads.update(
+            {
+                "firstName": first_name,
+                "lastName": last_name,
+                "nickName": nick_name,
+                "userName": user_name,
+                "pic": None,
+                "tgUserId": user_id,
+                "botId": self.bot.uid,
+            }
+        )
 
         return payloads
 
@@ -306,7 +329,11 @@ class BeeconPlugin(plugin.Plugin):
                 "size": top_number,
             }
 
-            (invited_number, rewards, reward_name) = await self.bot.apiclient.get_invite_log(payloads)
+            (
+                invited_number,
+                rewards,
+                reward_name,
+            ) = await self.bot.apiclient.get_invite_log(payloads)
 
             reply_text = "Sorry, you havn't inivte others yet."
             if invited_number and rewards and reward_name:
@@ -330,14 +357,16 @@ class BeeconPlugin(plugin.Plugin):
         if chat.type != ChatType.PRIVATE:
             await ctx.respond(
                 await self.text(None, "help-chat"),
-                reply_markup=InlineKeyboardMarkup([
+                reply_markup=InlineKeyboardMarkup(
                     [
-                        InlineKeyboardButton(
-                            text=await self.text(None, "help-chat-button"),
-                            url=f"t.me/{self.bot.user.username}?start=help",
-                        )
+                        [
+                            InlineKeyboardButton(
+                                text=await self.text(None, "help-chat-button"),
+                                url=f"t.me/{self.bot.user.username}?start=help",
+                            )
+                        ]
                     ]
-                ])
+                ),
             )
             return
 
@@ -345,9 +374,9 @@ class BeeconPlugin(plugin.Plugin):
         btn_link = await self.text(None, "forkme-contact-link", noformat=True)
         forkme_desc = await self.text(None, "forkme-description", noformat=True)
 
-        button = InlineKeyboardMarkup([[
-            InlineKeyboardButton(text=btn_text, url=btn_link)
-        ]])
+        button = InlineKeyboardMarkup(
+            [[InlineKeyboardButton(text=btn_text, url=btn_link)]]
+        )
         await ctx.respond(
             text=forkme_desc,
             reply_markup=button,
@@ -364,23 +393,34 @@ class BeeconPlugin(plugin.Plugin):
             task_id = match.group(2)
             lang = match.group(3)
 
-            self.log.debug("Inline query: project_id %s, task_id %s, lang %s", project_id, task_id, lang)
+            self.log.debug(
+                "Inline query: project_id %s, task_id %s, lang %s",
+                project_id,
+                task_id,
+                lang,
+            )
             task_url = util.misc.TWA_LINK
+            # TODO: make it capable for tasks which have not set pics, des and btn_text
             if task_id == 0:
-                task_url = util.misc.generate_project_detail_link(project_id, self.bot.uid)
+                task_url = util.misc.generate_project_detail_link(
+                    project_id, self.bot.uid
+                )
             else:
-                task_url = util.misc.generate_luckydraw_link(project_id, task_id, self.bot.uid)
+                task_url = util.misc.generate_luckydraw_link(
+                    project_id, task_id, self.bot.uid
+                )
 
             sql = "SELECT btn_desc, des, pics FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
             sql_res = await self.mysql.query_one(sql, (project_id, task_id, lang))
 
             if not sql_res:
+                # TODO: using default setting
                 warning_content = InputTextMessageContent("Not set")
                 reply = [
                     InlineQueryResultArticle(
                         title="Warning",
                         input_message_content=warning_content,
-                        description=f"There's not info set for project {project_id}, task {task_id} in language {lang}"
+                        description=f"There's not info set for project {project_id}, task {task_id} in language {lang}",
                     )
                 ]
                 await query.answer(reply)
@@ -389,40 +429,46 @@ class BeeconPlugin(plugin.Plugin):
             (btn_desc, desc, pics) = sql_res
 
             if not btn_desc:
-                self.log.warn("Project %s task %s lang %s not set btn_desc", project_id, task_id, lang)
+                self.log.warn(
+                    "Project %s task %s lang %s not set btn_desc",
+                    project_id,
+                    task_id,
+                    lang,
+                )
 
-            keyboard = InlineKeyboardMarkup([
+            keyboard = InlineKeyboardMarkup(
                 [
-                    InlineKeyboardButton(
-                        text=json.loads(btn_desc).get("text") or "View",
-                        url=task_url
-                    )
+                    [
+                        InlineKeyboardButton(
+                            text=json.loads(btn_desc).get("text") or "View",
+                            url=task_url,
+                        )
+                    ]
                 ]
-            ])
+            )
 
             prompt_title = f"{project_id}-{task_id}-{lang}"
 
             if not pics:
                 reply_msg = InputTextMessageContent(
-                    message_text=desc,
-                    parse_mode=ParseMode.MARKDOWN
+                    message_text=desc, parse_mode=ParseMode.MARKDOWN
                 )
                 reply_res = InlineQueryResultArticle(
                     title=prompt_title,
                     input_message_content=reply_msg,
                     description=desc,
-                    reply_markup=keyboard
+                    reply_markup=keyboard,
                 )
             else:
                 pic = pics.strip()
-                if pic.split('.')[-1] == "gif":
+                if pic.split(".")[-1] == "gif":
                     reply_res = InlineQueryResultVideo(
                         video_url=pic,
                         thumb_url=pic,
                         title=prompt_title,
                         caption=desc,
                         description=desc,
-                        reply_markup=keyboard
+                        reply_markup=keyboard,
                     )
                 else:
                     reply_res = InlineQueryResultPhoto(
@@ -430,7 +476,7 @@ class BeeconPlugin(plugin.Plugin):
                         title=prompt_title,
                         caption=desc,
                         description=desc,
-                        reply_markup=keyboard
+                        reply_markup=keyboard,
                     )
 
             self.log.debug("Reply res %s", reply_res)
@@ -459,13 +505,23 @@ class BeeconPlugin(plugin.Plugin):
     async def cmd_who(self, ctx: command.Context) -> Optional[str]:
         chat = ctx.chat
         user_id = ctx.input
-        whitelist = [6812515288, 1821086162, 7465037644, 2113937194, 7037181285, 1013334686, 6303440178]
+        whitelist = [
+            6812515288,
+            1821086162,
+            7465037644,
+            2113937194,
+            7037181285,
+            1013334686,
+            6303440178,
+        ]
 
         if chat.id not in whitelist:
             return "Command /who only for whitelist user."
 
         user: User = await self.bot.client.get_users(user_id)
-        await ctx.respond(f"ID: `{user_id}`\nContact: {user.mention()} \nDetail: {user}")
+        await ctx.respond(
+            f"ID: `{user_id}`\nContact: {user.mention()} \nDetail: {user}"
+        )
 
     @command.filters(filters.private)
     async def cmd_invitelink(self, ctx: command.Context) -> Optional[str]:
@@ -475,7 +531,9 @@ class BeeconPlugin(plugin.Plugin):
         if not self.is_whitelist(chat.id):
             return "Command /who only for whitelist user."
 
-        invite_link = await self.bot.client.create_chat_invite_link(int(chat_id), str(chat_id))
+        invite_link = await self.bot.client.create_chat_invite_link(
+            int(chat_id), str(chat_id)
+        )
         await ctx.respond(str(invite_link))
 
     @command.filters(filters.private)
@@ -490,12 +548,15 @@ class BeeconPlugin(plugin.Plugin):
             return "Please use /project <project-name> to get project id"
 
         sql = "SELECT id, name, tenant_id FROM bot_project WHERE deleted = 0 AND name LIKE %s"
-        values = (f"%{project_name}%", )
+        values = (f"%{project_name}%",)
         res = await self.mysql.query(sql, values)
         if not res:
             return f"There's no project name similar with **{project_name}**"
 
-        projects = [f'Project ID: `{r[0]}`\tpoject name: {r[1]}\tproject tenant id: {r[2]}' for r in res]
+        projects = [
+            f"Project ID: `{r[0]}`\tpoject name: {r[1]}\tproject tenant id: {r[2]}"
+            for r in res
+        ]
         reply_text = "\n".join(projects)
 
         await ctx.respond(reply_text)
@@ -515,9 +576,11 @@ class BeeconPlugin(plugin.Plugin):
         self.log.info("Add new admin %s for project %s", admin_username, project_id)
         sql = "SELECT user_id FROM tz_user WHERE user_name = %s"
         try:
-            (admin_uid, ) = await self.mysql.query_one(sql, (admin_username, ))
-        except:
-            await ctx.respond(f"User {admin_username} not registered, please contact him to register first.")
+            (admin_uid,) = await self.mysql.query_one(sql, (admin_username,))
+        except Exception:
+            await ctx.respond(
+                f"User {admin_username} not registered, please contact him to register first."
+            )
             return
 
         user_id = await self.mysql.get_user_id(chat.id)
@@ -533,7 +596,16 @@ class BeeconPlugin(plugin.Plugin):
         await ctx.respond("Ok")
 
     def is_whitelist(self, chat_id) -> Optional[bool]:
-        whitelist = [6812515288, 1821086162, 7465037644, 2113937194, 7037181285, 1013334686, 6303440178, 7054195491]
+        whitelist = [
+            6812515288,
+            1821086162,
+            7465037644,
+            2113937194,
+            7037181285,
+            1013334686,
+            6303440178,
+            7054195491,
+        ]
         if chat_id in whitelist:
             return True
 

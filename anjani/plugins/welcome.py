@@ -14,8 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import asyncio
+import os
 from html import escape
 from typing import (
     Any,
@@ -90,7 +90,6 @@ class Greeting(plugin.Plugin):
         await self.mysql.close()
         await self.redis.close()
 
-
     async def on_chat_action(self, message: Message) -> None:
         chat = message.chat
         reply_to = message.id
@@ -132,16 +131,22 @@ class Greeting(plugin.Plugin):
         self, message: Message, reply_to: int, thread_id: Optional[int]
     ) -> None:
         try:
-            project_id = await self.mysql.get_chat_project_id(message.chat.id, self.bot.uid)
+            project_id = await self.mysql.get_chat_project_id(
+                message.chat.id, self.bot.uid
+            )
             project_config = await self.get_project_config(project_id)
 
             self.log.debug("Project config: %s", project_config)
             if project_config and project_config.nojoinmsg:
                 await message.delete()
         except Exception as e:
-            self.log.warn("Can not delete member leave message(%s), error: %s", message, e)
+            self.log.warn(
+                "Can not delete member leave message(%s), error: %s", message, e
+            )
 
-    async def _member_join(self, message: Message, reply_to: int, thread_id: Optional[int]) -> None:
+    async def _member_join(
+        self, message: Message, reply_to: int, thread_id: Optional[int]
+    ) -> None:
         chat = message.chat
         if not await self.is_welcome(chat.id):
             return
@@ -153,13 +158,15 @@ class Greeting(plugin.Plugin):
             try:
                 if new_member.id == self.bot.uid:
                     pass
-                elif new_member.is_bot: # ignore bot
+                elif new_member.is_bot:  # ignore bot
                     pass
                 else:
                     text, button, msg_type, file_id = await self.welc_message(chat.id)
                     msg_type = Types(msg_type) if msg_type else Types.TEXT
                     if not text:
-                        string = await self.text(chat.id, "default-welcome", noformat=True)
+                        string = await self.text(
+                            chat.id, "default-welcome", noformat=True
+                        )
                     else:
                         string = text
 
@@ -171,7 +178,9 @@ class Greeting(plugin.Plugin):
                         button = build_button(button)
                     else:
                         bot_id = self.bot.uid
-                        project_id = await self.mysql.get_chat_project_id(chat.id, bot_id)
+                        project_id = await self.mysql.get_chat_project_id(
+                            chat.id, bot_id
+                        )
                         url = util.misc.generate_project_detail_link(project_id, bot_id)
 
                         button = build_button([("🕹 Enter", url, False)])
@@ -179,16 +188,26 @@ class Greeting(plugin.Plugin):
                     try:
                         if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
                             try:
-                                project_config = await self.get_project_config(project_id)
+                                project_config = await self.get_project_config(
+                                    project_id
+                                )
                                 self.log.debug("Project config: %s", project_config)
                                 if project_config and project_config.nojoinmsg:
                                     await message.delete()
                             except Exception as e:
-                                self.log.warn("Can not delete new member join message(%s), error: %s", message, e)
+                                self.log.warn(
+                                    "Can not delete new member join message(%s), error: %s",
+                                    message,
+                                    e,
+                                )
+                            # TODO: retrieving pics from database based on user config
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
                                 # await self.text(None, "engage-img"),
-                                os.getenv("ENGAGE_IMG","https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"),
+                                os.getenv(
+                                    "ENGAGE_IMG",
+                                    "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                                ),
                                 caption=formatted_text,
                                 message_thread_id=thread_id,
                                 # reply_to_message_id=reply_to,
@@ -216,12 +235,16 @@ class Greeting(plugin.Plugin):
                             await self.text(message.chat.id, "welcome-message-expired"),
                         )
                     except MessageEmpty:
-                        self.log.warning("Welcome message empty on %s.", message.chat.id)
+                        self.log.warning(
+                            "Welcome message empty on %s.", message.chat.id
+                        )
                     except Exception as e:
                         self.log.error("Welcome message send error: %s", e)
 
                     if msg:
-                        previous = await self.previous_welcome(chat.id, msg.id, is_bulk_welcome)
+                        previous = await self.previous_welcome(
+                            chat.id, msg.id, is_bulk_welcome
+                        )
                         if idx == 0 and previous:
                             try:
                                 await self.bot.client.delete_messages(chat.id, previous)
@@ -243,8 +266,12 @@ class Greeting(plugin.Plugin):
         welcome = await self.db.find_one({"chat_id": chat_id}, {"_id": False})
         return {self.name: welcome} if welcome else {}
 
-    async def on_plugin_restore(self, chat_id: int, data: MutableMapping[str, Any]) -> None:
-        await self.db.update_one({"chat_id": chat_id}, {"$set": data[self.name]}, upsert=True)
+    async def on_plugin_restore(
+        self, chat_id: int, data: MutableMapping[str, Any]
+    ) -> None:
+        await self.db.update_one(
+            {"chat_id": chat_id}, {"$set": data[self.name]}, upsert=True
+        )
 
     @staticmethod
     async def _build_text(
@@ -307,7 +334,9 @@ class Greeting(plugin.Plugin):
                     message_type=message_type,
                     content=None,
                 )
-                self.log.info("Migrated old welcome message on %d to new schema.", chat_id)
+                self.log.info(
+                    "Migrated old welcome message on %d to new schema.", chat_id
+                )
                 return text, button, message_type, None
             else:
                 return (
@@ -316,13 +345,19 @@ class Greeting(plugin.Plugin):
                     message.get("type"),
                     message.get("file_id"),
                 )
-        return await self.text(chat_id, "default-welcome", noformat=True), None, None, None
+        return (
+            await self.text(chat_id, "default-welcome", noformat=True),
+            None,
+            None,
+            None,
+        )
 
     async def left_message(self, chat_id: int) -> str:
         message = await self.db.find_one({"chat_id": chat_id}, {"custom_goodbye": 1})
         return (
             message.get(
-                "custom_goodbye", await self.text(chat_id, "default-goodbye", noformat=True)
+                "custom_goodbye",
+                await self.text(chat_id, "default-goodbye", noformat=True),
             )
             if message
             else await self.text(chat_id, "default-goodbye", noformat=True)
@@ -360,7 +395,9 @@ class Greeting(plugin.Plugin):
 
     async def set_custom_goodbye(self, chat_id: int, text: str) -> None:
         """Set custom goodbye"""
-        await self.db.update_one({"chat_id": chat_id}, {"$set": {"custom_goodbye": text}})
+        await self.db.update_one(
+            {"chat_id": chat_id}, {"$set": {"custom_goodbye": text}}
+        )
 
     async def del_custom_welcome(self, chat_id: int) -> None:
         """Delete custom welcome message"""
@@ -379,14 +416,20 @@ class Greeting(plugin.Plugin):
 
     async def del_custom_goodbye(self, chat_id: int) -> None:
         """Delete custom goodbye message"""
-        await self.db.update_one({"chat_id": chat_id}, {"$unset": {"custom_goodbye": ""}})
+        await self.db.update_one(
+            {"chat_id": chat_id}, {"$unset": {"custom_goodbye": ""}}
+        )
 
     async def greeting_setting(self, chat_id: int, key: str, value: bool) -> None:
         """Turn on/off greetings in chats"""
         if not value:
-            await self.db.update_one({"chat_id": chat_id}, {"$set": {key: False}}, upsert=True)
+            await self.db.update_one(
+                {"chat_id": chat_id}, {"$set": {key: False}}, upsert=True
+            )
         else:
-            await self.db.update_one({"chat_id": chat_id}, {"$unset": {key: ""}}, upsert=True)
+            await self.db.update_one(
+                {"chat_id": chat_id}, {"$unset": {key: ""}}, upsert=True
+            )
 
     async def previous_welcome(
         self, chat_id: int, msg_id: int, is_bulk: bool = False
@@ -458,7 +501,8 @@ class Greeting(plugin.Plugin):
             return await self.text(chat.id, "greetings-no-input")
 
         ret, _ = await asyncio.gather(
-            self.text(chat.id, "cust-goodbye-set"), self.set_custom_goodbye(chat.id, gby_text)
+            self.text(chat.id, "cust-goodbye-set"),
+            self.set_custom_goodbye(chat.id, gby_text),
         )
         return ret
 
@@ -509,7 +553,9 @@ class Greeting(plugin.Plugin):
             (text, button, msg_type, file_id),
             clean_service,
         ) = await asyncio.gather(
-            self.is_welcome(chat.id), self.welc_message(chat.id), self.clean_service(chat.id)
+            self.is_welcome(chat.id),
+            self.welc_message(chat.id),
+            self.clean_service(chat.id),
         )
 
         if text is None:
@@ -545,7 +591,8 @@ class Greeting(plugin.Plugin):
                 else (
                     "Empty, custom welcome message haven't set yet."
                     if not setting
-                    else "Default:\n\n" + await self.text(chat.id, "default-welcome", noformat=True)
+                    else "Default:\n\n"
+                    + await self.text(chat.id, "default-welcome", noformat=True)
                 )
             )
             msg_type = msg_type or Types.TEXT
@@ -603,7 +650,9 @@ class Greeting(plugin.Plugin):
             return ret
 
         setting, text, clean_service = await asyncio.gather(
-            self.is_goodbye(chat.id), self.left_message(chat.id), self.clean_service(chat.id)
+            self.is_goodbye(chat.id),
+            self.left_message(chat.id),
+            self.clean_service(chat.id),
         )
 
         if noformat:
@@ -629,7 +678,9 @@ class Greeting(plugin.Plugin):
         return None
 
     @command.filters(filters.admin_only)
-    async def cmd_cleanservice(self, ctx: command.Context, active: Optional[bool] = None) -> str:
+    async def cmd_cleanservice(
+        self, ctx: command.Context, active: Optional[bool] = None
+    ) -> str:
         """Clean service message on new members"""
         chat = ctx.chat
 

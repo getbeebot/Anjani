@@ -164,10 +164,16 @@ class WebServer(plugin.Plugin):
             if not trace_id:
                 trace_id = 0
             if alert_type == "event":
-                event_name = payloads.get("name")
+                event_name: str = payloads.get("name")
                 event_desc = payloads.get("desc") or "no description"
                 if event_name == "https://anjani.getbeebot.com/alert/v2":
                     event_desc = "Failed to upload alert message from client."
+                elif event_name.startswith("ERR_NETWORK"):
+                    event_name = "ERR_NETWORK"
+                    event_desc = "User encounter network error."
+                elif event_name.startswith("ECONNABORTED"):
+                    event_name = "ECONNABORTED"
+                    event_desc = "User closed app."
                 loop = asyncio.get_running_loop()
                 self.event_counter.labels(
                     name=event_name, trace_id=trace_id, desc=event_desc
@@ -321,12 +327,7 @@ class WebServer(plugin.Plugin):
                 await self.user_join_notify(chat_id, data, button)
             elif notify_type == 3 and project_config.draw:
                 await self.draw_notify(chat_id, data, button)
-            elif (
-                notify_type == 4
-                or notify_type == 10
-                or notify_type == 11
-                or notify_type == 12
-            ):
+            elif notify_type in [4, 10, 11, 12]:
                 chat_id = data.get("owner")
                 await self.draw_list_notify(
                     chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
@@ -528,6 +529,7 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
+        # TODO: retrieve pics based on user config
         await self.bot.client.send_photo(
             chat_id, self.engage_img, caption=msg, reply_markup=buttons
         )
@@ -543,6 +545,7 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
+        # TODO: retrieve pics based on user config
         await self.bot.client.send_photo(
             chat_id, self.engage_img, caption=msg, reply_markup=buttons
         )
@@ -556,6 +559,7 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
+        # TODO: retrieve pics based on user config
         await self.bot.client.send_photo(
             chat_id, self.draw_img, caption=msg, reply_markup=buttons
         )
@@ -594,6 +598,7 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
+        # TODO: retrieve pic based on user config
         await self.bot.client.send_photo(
             chat_id=chat_id, photo=self.engage_img, caption=msg, reply_markup=buttons
         )
@@ -608,6 +613,7 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
+        # TODO: retrieve draw pic based on user config
         await self.bot.client.send_photo(
             chat_id=chat_id, photo=self.draw_img, caption=msg, reply_markup=buttons
         )
