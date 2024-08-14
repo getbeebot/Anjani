@@ -165,7 +165,7 @@ class WebServer(plugin.Plugin):
                 trace_id = 0
             if alert_type == "event":
                 event_name = payloads.get("name")
-                event_desc = payloads.desc("desc") or "no description"
+                event_desc = payloads.get("desc") or "no description"
                 loop = asyncio.get_running_loop()
                 self.event_counter.labels(name=event_name, trace_id=trace_id, desc=event_desc).inc()
                 loop.create_task(self.auto_solve_alert(event_name, trace_id))
