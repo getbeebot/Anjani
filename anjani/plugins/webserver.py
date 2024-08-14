@@ -158,6 +158,7 @@ class WebServer(plugin.Plugin):
         ret_data = {"ok": True}
         try:
             payloads = await request.json()
+            self.log.debug("alert v2 request payloads: %s", payloads)
             alert_type = payloads.get("type")
             trace_id = payloads.get("trace_id")
             if not trace_id:
