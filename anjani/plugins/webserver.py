@@ -167,8 +167,14 @@ class WebServer(plugin.Plugin):
                 event_name = payloads.get("name")
                 event_desc = payloads.get("desc") or "no description"
                 loop = asyncio.get_running_loop()
-                self.event_counter.labels(name=event_name, trace_id=trace_id, desc=event_desc).inc()
-                loop.create_task(self.auto_solve_alert(event_name, trace_id))
+                self.event_counter.labels(
+                    name=event_name, trace_id=trace_id, desc=event_desc
+                ).inc()
+                loop.create_task(
+                    self.auto_solve_alert(
+                        name=event_name, trace_id=trace_id, desc=event_desc
+                    )
+                )
             elif alert_type == "api":
                 self.api_rtt_gauge.labels(
                     method=payloads.get("method"),
@@ -180,10 +186,10 @@ class WebServer(plugin.Plugin):
             ret_data.update({"ok": False, "error": str(e)})
         return web.json_response(ret_data, status=200)
 
-    async def auto_solve_alert(self, name: str, trace_id=0) -> None:
+    async def auto_solve_alert(self, name, trace_id, desc) -> None:
         # auto resolve alert after 5 mins
         await asyncio.sleep(300)
-        self.event_counter.labels(name, trace_id).reset()
+        self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).reset()
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
