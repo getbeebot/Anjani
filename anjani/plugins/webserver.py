@@ -144,7 +144,7 @@ class WebServer(plugin.Plugin):
         self.event_counter = Counter(
             "beecon_event_counter",
             "Number of error events",
-            labelnames=["name", "trace_id"],
+            labelnames=["name", "trace_id", "desc"],
         )
         self.api_rtt_gauge = Gauge(
             "api_rtt",
@@ -164,8 +164,9 @@ class WebServer(plugin.Plugin):
                 trace_id = 0
             if alert_type == "event":
                 event_name = payloads.get("name")
+                event_desc = payloads.desc("desc") or "no description"
                 loop = asyncio.get_running_loop()
-                self.event_counter.labels(event_name, trace_id).inc()
+                self.event_counter.labels(event_name, trace_id, event_desc).inc()
                 loop.create_task(self.auto_solve_alert(event_name, trace_id))
             elif alert_type == "api":
                 self.api_rtt_gauge.labels(
