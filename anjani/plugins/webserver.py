@@ -166,6 +166,8 @@ class WebServer(plugin.Plugin):
             if alert_type == "event":
                 event_name = payloads.get("name")
                 event_desc = payloads.get("desc") or "no description"
+                if event_name == "https://anjani.getbeebot.com/alert/v2":
+                    event_desc = "Failed to upload alert message from client."
                 loop = asyncio.get_running_loop()
                 self.event_counter.labels(
                     name=event_name, trace_id=trace_id, desc=event_desc
