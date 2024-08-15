@@ -47,7 +47,7 @@ class BeeconCMDPlugin(plugin.Plugin):
 
     @listener.filters(filters.regex(r"notify_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
-        match = query.matches[0].group()
+        match = query.matches[0].group(1)
         msg = await self.get_msg(query.from_user.id)
         if not msg:
             await self.bot.client.send_messsage(
@@ -145,7 +145,6 @@ class BeeconCMDPlugin(plugin.Plugin):
                 "Please make sure the args is similar like /setbtn <btn-text> <btn-url>"
             )
             return
-
         if not validators.url(args[1]):
             await ctx.respond("Please make sure the url is validate")
             return

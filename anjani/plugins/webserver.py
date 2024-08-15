@@ -171,7 +171,9 @@ class WebServer(plugin.Plugin):
                 event_desc = payloads.get("desc") or "no description"
                 if event_name == "https://anjani.getbeebot.com/alert/v2":
                     event_desc = "Failed to upload alert message from client."
-
+                elif event_desc.startswith("ERR_NETWORK"):
+                    event_desc = "User and beecon connection not stable"
+                    trace_id = 0
                 self.event_counter.labels(
                     name=event_name, trace_id=trace_id, desc=event_desc
                 ).inc()
@@ -191,9 +193,6 @@ class WebServer(plugin.Plugin):
                     path=path,
                     trace_id=trace_id,
                 ).set(rtt)
-                loop.create_task(
-                    self.auto_remove_gague(method=method, path=path, trace_id=trace_id)
-                )
         except Exception as e:
             self.log.error(f"push alert error: {e}")
             ret_data.update({"ok": False, "error": str(e)})
@@ -203,10 +202,6 @@ class WebServer(plugin.Plugin):
         # auto resolve alert after 30 seconds
         await asyncio.sleep(30)
         self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).reset()
-
-    async def auto_remove_gague(self, method, path, trace_id) -> None:
-        await asyncio.sleep(300)
-        self.api_rtt_gauge.remove(method=method, path=path, trace_id=trace_id)
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
