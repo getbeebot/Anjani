@@ -1,6 +1,7 @@
 import json
 from typing import ClassVar, Optional, Union
 
+import validators
 from pyrogram import filters
 from pyrogram.types import (
     CallbackQuery,
@@ -124,7 +125,9 @@ class BeeconCMDPlugin(plugin.Plugin):
     @command.filters(filters.private)
     async def cmd_setpic(self, ctx: command.Context):
         arg = ctx.input
-        # TODO: validate url
+        if not validators.url(arg):
+            await ctx.respond("Please make sure the url of pic is validate")
+            return
         msg = await self.get_msg(ctx.chat.id)
         if not msg:
             msg = {}
@@ -134,7 +137,15 @@ class BeeconCMDPlugin(plugin.Plugin):
     @command.filters(filters.private)
     async def cmd_setbtn(self, ctx: command.Context):
         args = ctx.input.strip().split(" ")
-        # TODO: validate args, should contain btn text and url
+        if len(args) != 2:
+            await ctx.respond(
+                "Please make sure the args is similar like /setbtn <btn-text> <btn-url>"
+            )
+            return
+
+        if not validators.url(args[1]):
+            await ctx.respond("Please make sure the url is validate")
+            return
 
         btn = {"text": args[0], "url": args[1]}
         msg = await self.get_msg(ctx.chat.id)
