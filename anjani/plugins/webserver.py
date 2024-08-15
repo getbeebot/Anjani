@@ -206,7 +206,7 @@ class WebServer(plugin.Plugin):
 
     async def auto_remove_gague(self, method, path, trace_id) -> None:
         await asyncio.sleep(300)
-        self.api_rtt_gauge.labels(method=method, path=path, trace_id=trace_id).clear()
+        self.api_rtt_gauge.remove(method=method, path=path, trace_id=trace_id)
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
