@@ -202,7 +202,7 @@ class WebServer(plugin.Plugin):
     async def auto_solve_alert(self, name, trace_id, desc) -> None:
         # auto resolve alert after 30 seconds
         await asyncio.sleep(30)
-        self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).clear()
+        self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).reset()
 
     async def auto_remove_gague(self, method, path, trace_id) -> None:
         await asyncio.sleep(300)
