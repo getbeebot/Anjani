@@ -117,10 +117,11 @@ class BeeconCMDPlugin(plugin.Plugin):
             [InlineKeyboardButton(text="Confirmed", callback_data=f"notify_{cate}")]
         )
         keyboard = InlineKeyboardMarkup(btns)
+        self.log.debug("Notify %s, %s", msg_text, btn)
         if pic:
-            await ctx.respond(photo=pic, caption=msg_text, reply_markup=keyboard)
+            await ctx.respond(msg_text, photo=pic, reply_markup=keyboard)
             return
-        await ctx.respond(text=msg_text, reply_markup=keyboard)
+        await ctx.respond(msg_text, reply_markup=keyboard)
 
     @command.filters(filters.private)
     async def cmd_setpic(self, ctx: command.Context):
@@ -129,10 +130,12 @@ class BeeconCMDPlugin(plugin.Plugin):
             await ctx.respond("Please make sure the url of pic is validate")
             return
         msg = await self.get_msg(ctx.chat.id)
+        self.log.debug("Message %s", msg)
         if not msg:
             msg = {}
         msg.update({"pic": arg})
         await self.save_msg(ctx.chat.id, msg)
+        await ctx.respond("Message image set successfully.")
 
     @command.filters(filters.private)
     async def cmd_setbtn(self, ctx: command.Context):
@@ -149,14 +152,17 @@ class BeeconCMDPlugin(plugin.Plugin):
 
         btn = {"text": args[0], "url": args[1]}
         msg = await self.get_msg(ctx.chat.id)
+        self.log.debug("Message %s", msg)
         if not msg:
             msg = {}
         msg.update({"btn": btn})
         await self.save_msg(ctx.chat.id, msg)
+        await ctx.respond("Message button set successfully.")
 
     @command.filters(filters.private)
     async def cmd_setdesc(self, ctx: command.Context):
         msg = await self.get_msg(ctx.chat.id)
+        self.log.debug("Message %s", msg)
         if not msg:
             msg = {}
         msg.update({"is_desc": 1})
@@ -166,6 +172,7 @@ class BeeconCMDPlugin(plugin.Plugin):
     @listener.filters(filters.private)
     async def on_message(self, message: Message) -> None:
         msg = await self.get_msg(message.chat.id)
+        self.log.debug("Message %s", msg)
         if not msg:
             return
         if not msg.get("is_desc"):
@@ -173,3 +180,4 @@ class BeeconCMDPlugin(plugin.Plugin):
         # TODO: need to check with message.text length to for message with pic
         msg.update({"desc": message.text})
         await self.save_msg(message.chat.id, msg)
+        await self.bot.client.send_message("Message content set successfully.")
