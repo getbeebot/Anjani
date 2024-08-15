@@ -161,6 +161,8 @@ class WebServer(plugin.Plugin):
             self.log.debug("alert v2 request payloads: %s", payloads)
             alert_type = payloads.get("type")
             trace_id = payloads.get("trace_id")
+
+            loop = asyncio.get_running_loop()
             if not trace_id:
                 trace_id = 0
             if alert_type == "event":
@@ -168,13 +170,7 @@ class WebServer(plugin.Plugin):
                 event_desc = payloads.get("desc") or "no description"
                 if event_name == "https://anjani.getbeebot.com/alert/v2":
                     event_desc = "Failed to upload alert message from client."
-                elif event_name.startswith("ERR_NETWORK"):
-                    event_name = "ERR_NETWORK"
-                    event_desc = "User encounter network error."
-                elif event_name.startswith("ECONNABORTED"):
-                    event_name = "ECONNABORTED"
-                    event_desc = "User closed app."
-                loop = asyncio.get_running_loop()
+
                 self.event_counter.labels(
                     name=event_name, trace_id=trace_id, desc=event_desc
                 ).inc()
@@ -184,20 +180,29 @@ class WebServer(plugin.Plugin):
                     )
                 )
             elif alert_type == "api":
+                method = payloads.get("method").capitalize()
+                path = payloads.get("path")
                 self.api_rtt_gauge.labels(
-                    method=payloads.get("method"),
-                    path=payloads.get("path"),
+                    method=method,
+                    path=path,
                     trace_id=trace_id,
                 ).set(payloads.get("latency"))
+                loop.create_task(
+                    self.auto_remove_gague(method=method, path=path, trace_id=trace_id)
+                )
         except Exception as e:
             self.log.error(f"push alert error: {e}")
             ret_data.update({"ok": False, "error": str(e)})
         return web.json_response(ret_data, status=200)
 
     async def auto_solve_alert(self, name, trace_id, desc) -> None:
-        # auto resolve alert after 5 mins
+        # auto resolve alert after 30 seconds
+        await asyncio.sleep(30)
+        self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).remove()
+
+    async def auto_remove_gague(self, method, path, trace_id) -> None:
         await asyncio.sleep(300)
-        self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).reset()
+        self.api_rtt_gauge.labels(method=method, path=path, trace_id=trace_id).remove()
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
