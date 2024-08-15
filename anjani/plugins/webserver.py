@@ -3,6 +3,7 @@ import base64
 import json
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import ClassVar, Optional
 
 import aiofiles.os as aio_os
@@ -180,13 +181,16 @@ class WebServer(plugin.Plugin):
                     )
                 )
             elif alert_type == "api":
-                method = payloads.get("method").capitalize()
+                method = payloads.get("method").upper()
                 path = payloads.get("path")
+                rtt = payloads.get("latency")
+                if Decimal(rtt) < Decimal(20000):
+                    return web.json_response(ret_data, status=200)
                 self.api_rtt_gauge.labels(
                     method=method,
                     path=path,
                     trace_id=trace_id,
-                ).set(payloads.get("latency"))
+                ).set(rtt)
                 loop.create_task(
                     self.auto_remove_gague(method=method, path=path, trace_id=trace_id)
                 )

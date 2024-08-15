@@ -2,7 +2,12 @@ import json
 from typing import ClassVar, Optional, Union
 
 from pyrogram import filters
-from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from anjani import command, listener, plugin, util
 
@@ -42,22 +47,32 @@ class BeeconCMDPlugin(plugin.Plugin):
     @listener.filters(filters.regex(r"notify_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
         match = query.matches[0].group()
+        msg = await self.get_msg(query.from_user.id)
+        if not msg:
+            await self.bot.client.send_messsage(
+                query.from_user.id, "Message not set, hahahaha"
+            )
+            return None
+        if match not in ["admin", "user", "all"]:
+            self.log.warn("Cate %s not supported", match)
+            return None
+        await self.send_notify(msg, match)
+
+    async def send_notify(self, msg: dict, cate: str) -> None:
         # TODO:
-        if match == "admin":
+        self.log.debug("Sending message to %s with %s", cate, msg)
+        # step 1: query chat ids based on cate
+        chat_ids = []
+        if cate == "admin":
             pass
-        elif match == "user":
+        elif cate == "user":
             pass
-        elif match == "all":
+        elif cate == "all":
             pass
         else:
             pass
-
-    async def send_notify(self, cate: str) -> None:
-        # step 1: query chat ids based on cate
-
         # step 2: create seperate task to send notify
         # self.bot.loop.create_task()
-        pass
 
     async def get_msg(self, chat_id: int) -> Optional[dict]:
         # retrieve message from redis
@@ -108,12 +123,42 @@ class BeeconCMDPlugin(plugin.Plugin):
 
     @command.filters(filters.private)
     async def cmd_setpic(self, ctx: command.Context):
-        msg = await self.get_msg()
+        arg = ctx.input
+        # TODO: validate url
+        msg = await self.get_msg(ctx.chat.id)
+        if not msg:
+            msg = {}
+        msg.update({"pic": arg})
+        await self.save_msg(ctx.chat.id, msg)
 
     @command.filters(filters.private)
     async def cmd_setbtn(self, ctx: command.Context):
-        msg = await self.get_msg()
+        args = ctx.input.strip().split(" ")
+        # TODO: validate args, should contain btn text and url
+
+        btn = {"text": args[0], "url": args[1]}
+        msg = await self.get_msg(ctx.chat.id)
+        if not msg:
+            msg = {}
+        msg.update({"btn": btn})
+        await self.save_msg(ctx.chat.id, msg)
 
     @command.filters(filters.private)
     async def cmd_setdesc(self, ctx: command.Context):
-        msg = await self.get_msg()
+        msg = await self.get_msg(ctx.chat.id)
+        if not msg:
+            msg = {}
+        msg.update({"is_desc": 1})
+        await self.save_msg(ctx.chat.id, msg)
+        await ctx.respond("Please reply send me the text you want to push to")
+
+    @listener.filters(filters.private)
+    async def on_message(self, message: Message) -> None:
+        msg = await self.get_msg(message.chat.id)
+        if not msg:
+            return
+        if not msg.get("is_desc"):
+            return
+        # TODO: need to check with message.text length to for message with pic
+        msg.update({"desc": message.text})
+        await self.save_msg(message.chat.id, msg)

@@ -203,7 +203,6 @@ class Greeting(plugin.Plugin):
                             # TODO: retrieving pics from database based on user config
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
-                                # await self.text(None, "engage-img"),
                                 os.getenv(
                                     "ENGAGE_IMG",
                                     "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
