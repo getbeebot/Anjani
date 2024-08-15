@@ -31,7 +31,7 @@ def is_whitelist(chat_id) -> Optional[bool]:
 
 
 class BeeconCMDPlugin(plugin.Plugin):
-    name: ClassVar[str] = "Beecon Admin command plugin"
+    name: ClassVar[str] = "Beecon Admin Plugin"
     helpable: ClassVar[bool] = False
 
     redis: util.db.AsyncRedisClient
@@ -177,7 +177,13 @@ class BeeconCMDPlugin(plugin.Plugin):
             return
         if not msg.get("is_desc"):
             return
+
+        if message.text.startswith("/"):
+            return
+
         # TODO: need to check with message.text length to for message with pic
-        msg.update({"desc": message.text})
+        msg.update({"desc": message.text, "is_desc": 0})
         await self.save_msg(message.chat.id, msg)
-        await self.bot.client.send_message("Message content set successfully.")
+        await self.bot.client.send_message(
+            message.chat.id, "Message content set successfully."
+        )
