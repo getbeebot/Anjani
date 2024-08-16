@@ -109,12 +109,6 @@ class BeeconCMDPlugin(plugin.Plugin):
             for chats in chat_chunks:
                 for chat_id in chats:
                     try:
-                        self.log.debug(
-                            "Sending message %s to %s with keyboard: %s",
-                            msg_text,
-                            chat_id,
-                            keyboard,
-                        )
                         await self.bot.client.send_message(
                             chat_id=int(chat_id), text=msg_text, reply_markup=keyboard
                         )
@@ -126,12 +120,6 @@ class BeeconCMDPlugin(plugin.Plugin):
         for chats in chat_chunks:
             for chat_id in chats:
                 try:
-                    self.log.debug(
-                        "Sending message %s to %s with keyboard: %s",
-                        msg_text,
-                        chat_id,
-                        keyboard,
-                    )
                     await self.bot.client.send_photo(
                         chat_id=int(chat_id),
                         photo=pic,
