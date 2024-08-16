@@ -116,7 +116,7 @@ class BeeconCMDPlugin(plugin.Plugin):
                             keyboard,
                         )
                         await self.bot.client.send_message(
-                            chat_id=chat_id, text=msg_text, reply_markup=keyboard
+                            chat_id=int(chat_id), text=msg_text, reply_markup=keyboard
                         )
                     except Exception as e:
                         self.log.warn("Push notification to %s error: %s", chat_id, e)
@@ -133,7 +133,7 @@ class BeeconCMDPlugin(plugin.Plugin):
                         keyboard,
                     )
                     await self.bot.client.send_photo(
-                        chat_id=chat_id,
+                        chat_id=int(chat_id),
                         photo=pic,
                         caption=msg_text,
                         reply_markup=keyboard,
