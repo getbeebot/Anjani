@@ -1,6 +1,8 @@
+import asyncio
 import json
 from typing import ClassVar, Optional, Union
 
+import numpy as np
 import validators
 from pyrogram import filters
 from pyrogram.types import (
@@ -11,6 +13,8 @@ from pyrogram.types import (
 )
 
 from anjani import command, listener, plugin, util
+
+CHUNK_SIZE: int = 60 * 60 / 2
 
 
 def is_whitelist(chat_id) -> Optional[bool]:
@@ -28,6 +32,10 @@ def is_whitelist(chat_id) -> Optional[bool]:
         return True
 
     return False
+
+
+def remove_duplicate(lst: list) -> list:
+    return list(dict.fromkeys(lst))
 
 
 class BeeconCMDPlugin(plugin.Plugin):
@@ -60,20 +68,75 @@ class BeeconCMDPlugin(plugin.Plugin):
         await self.send_notify(msg, match)
 
     async def send_notify(self, msg: dict, cate: str) -> None:
-        # TODO:
         self.log.debug("Sending message to %s with %s", cate, msg)
-        # step 1: query chat ids based on cate
-        chat_ids = []
-        if cate == "admin":
+        mysql_client = util.db.MysqlPoolClient.init_from_env()
+        await mysql_client.connect()
+        try:
+            res = None
+            if cate == "all":
+                sql = "SELECT DISTINCT biz_user_id FROM tz_app_connect WHERE user_id IS NOT NULL AND biz_user_id IS NOT NULL"
+                res = await mysql_client.query(sql)
+            elif cate == "user":
+                sql = "SELECT DISTINCT tac.biz_user_id FROM tz_app_connect AS tac LEFT JOIN bot_project AS bp ON tac.user_id = bp.owner_id LEFT JOIN bot_project_admin AS bpa ON tac.user_id  = bpa.user_id WHERE bp.owner_id IS NULL AND bpa.user_id IS NULL AND tac.biz_user_id IS NOT NULL"
+                res = await mysql_client.query(sql)
+            elif cate == "admin":
+                sql = "SELECT DISTINCT tac.biz_user_id FROM tz_app_connect AS tac LEFT JOIN bot_project AS bp ON tac.user_id = bp.owner_id LEFT JOIN bot_project_admin AS bpa ON tac.user_id = bpa.user_id WHERE (bp.owner_id IS NOT NULL OR bpa.user_id IS NOT NULL) AND tac.biz_user_id IS NOT NULL"
+                res = await mysql_client.query(sql)
+            else:
+                return
+        except Exception:
             pass
-        elif cate == "user":
-            pass
-        elif cate == "all":
-            pass
-        else:
-            pass
-        # step 2: create seperate task to send notify
-        # self.bot.loop.create_task()
+        finally:
+            await mysql_client.close()
+            del mysql_client
+
+        self.log.debug("MySQL DB results: %s", res)
+
+        if not res:
+            return
+        chat_ids = remove_duplicate([int(r[0]) for r in res])
+
+        self.log.debug("Chats: %s", chat_ids)
+
+        chat_chunks = np.array_split(np.array(chat_ids), CHUNK_SIZE)
+
+        btn = msg.get("btn")
+        keyboard = None
+        if btn and isinstance(btn, dict):
+            keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(**btn)]])
+
+        msg_text = msg.get("desc")
+        pic = msg.get("pic")
+        if not pic:
+            for chats in chat_chunks:
+                for chat_id in chats:
+                    try:
+                        self.log.debug(
+                            "Sending message %s %s %s", chat_id, msg_text, keyboard
+                        )
+                        # await self.bot.client.send_message(
+                        #     chat_id=chat_id, text=msg_text, reply_markup=keyboard
+                        # )
+                    except Exception:
+                        continue
+                await asyncio.sleep(1)
+            return None
+
+        for chats in chat_ids:
+            for chat_id in chats:
+                try:
+                    self.log.debug(
+                        "Sending message %s %s %s", chat_id, msg_text, keyboard
+                    )
+                    # await self.bot.client.send_photo(
+                    #     chat_id=chat_id,
+                    #     photo=pic,
+                    #     caption=msg_text,
+                    #     reply_markup=keyboard,
+                    # )
+                except Exception:
+                    continue
+            await asyncio.sleep(1)
 
     async def get_msg(self, chat_id: int) -> Optional[dict]:
         # retrieve message from redis
