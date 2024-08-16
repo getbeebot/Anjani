@@ -96,10 +96,9 @@ class BeeconCMDPlugin(plugin.Plugin):
             return
         chat_ids = remove_duplicate([int(r[0]) for r in res])
 
-        self.log.debug("Chats: %s", chat_ids)
-
         chat_chunks = np.array_split(np.array(chat_ids), CHUNK_SIZE)
 
+        self.log.debug("Chats: %s", chat_chunks)
         btn = msg.get("btn")
         keyboard = None
         if btn and isinstance(btn, dict):
@@ -122,7 +121,7 @@ class BeeconCMDPlugin(plugin.Plugin):
                 await asyncio.sleep(1)
             return None
 
-        for chats in chat_ids:
+        for chats in chat_chunks:
             for chat_id in chats:
                 try:
                     self.log.debug(
