@@ -94,11 +94,10 @@ class BeeconCMDPlugin(plugin.Plugin):
 
         if not res:
             return
-        chat_ids = remove_duplicate([int(r[0]) for r in res])
 
+        chat_ids = remove_duplicate([int(r[0]) for r in res])
         chat_chunks = np.array_split(np.array(chat_ids), CHUNK_SIZE)
 
-        self.log.debug("Chats: %s", chat_chunks)
         btn = msg.get("btn")
         keyboard = None
         if btn and isinstance(btn, dict):
@@ -111,13 +110,16 @@ class BeeconCMDPlugin(plugin.Plugin):
                 for chat_id in chats:
                     try:
                         self.log.debug(
-                            "Sending message %s %s %s", chat_id, msg_text, keyboard
+                            "Sending message %s to %s with keyboard: %s",
+                            msg_text,
+                            chat_id,
+                            keyboard,
                         )
-                        # await self.bot.client.send_message(
-                        #     chat_id=chat_id, text=msg_text, reply_markup=keyboard
-                        # )
-                    except Exception:
-                        continue
+                        await self.bot.client.send_message(
+                            chat_id=chat_id, text=msg_text, reply_markup=keyboard
+                        )
+                    except Exception as e:
+                        self.log.warn("Push notification to %s error: %s", chat_id, e)
                 await asyncio.sleep(1)
             return None
 
@@ -125,16 +127,19 @@ class BeeconCMDPlugin(plugin.Plugin):
             for chat_id in chats:
                 try:
                     self.log.debug(
-                        "Sending message %s %s %s", chat_id, msg_text, keyboard
+                        "Sending message %s to %s with keyboard: %s",
+                        msg_text,
+                        chat_id,
+                        keyboard,
                     )
-                    # await self.bot.client.send_photo(
-                    #     chat_id=chat_id,
-                    #     photo=pic,
-                    #     caption=msg_text,
-                    #     reply_markup=keyboard,
-                    # )
-                except Exception:
-                    continue
+                    await self.bot.client.send_photo(
+                        chat_id=chat_id,
+                        photo=pic,
+                        caption=msg_text,
+                        reply_markup=keyboard,
+                    )
+                except Exception as e:
+                    self.log.warn("Push notification to %s error: %s", chat_id, e)
             await asyncio.sleep(1)
 
     async def get_msg(self, chat_id: int) -> Optional[dict]:
