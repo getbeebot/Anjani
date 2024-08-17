@@ -193,6 +193,9 @@ class WebServer(plugin.Plugin):
                     path=path,
                     trace_id=trace_id,
                 ).set(rtt)
+                loop.create_task(
+                    self.reset_gague(method, path, trace_id)
+                )
         except Exception as e:
             self.log.error(f"push alert error: {e}")
             ret_data.update({"ok": False, "error": str(e)})
@@ -202,6 +205,10 @@ class WebServer(plugin.Plugin):
         # auto resolve alert after 30 seconds
         await asyncio.sleep(30)
         self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).reset()
+
+    async def reset_gague(self, method, path, trace_id) -> None:
+        await asyncio.sleep(60)
+        self.api_rtt_gauge.labels(method, path, trace_id).set(0)
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
