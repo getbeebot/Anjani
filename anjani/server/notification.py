@@ -1,5 +1,5 @@
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
 
 
 def build_lottery_create_msg(template: str, **args) -> str:
@@ -49,7 +49,7 @@ def build_lottery_join_msg(template: str, **args) -> str:
             joined_users=joined_users, prize=prize, condition=condition
         )
     elif lottery_type == 3:  # instant draw
-        pass
+        return template.format(joined_users=joined_users, prize=prize)
     else:
         return ""
 
@@ -67,7 +67,7 @@ def format_msg_timestamp(ms: int) -> str:
         return datetime.fromtimestamp(
             timestamp=ms / 1000, tz=timezone(tz_delta)
         ).strftime("%Y-%m-%d %H:%M:%S (UTC)")
-    except Exception as e:
+    except Exception:
         return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
 
 
