@@ -193,9 +193,7 @@ class WebServer(plugin.Plugin):
                     path=path,
                     trace_id=trace_id,
                 ).set(rtt)
-                loop.create_task(
-                    self.reset_gague(method, path, trace_id)
-                )
+                loop.create_task(self.reset_gague(method, path, trace_id))
         except Exception as e:
             self.log.error(f"push alert error: {e}")
             ret_data.update({"ok": False, "error": str(e)})
@@ -617,6 +615,18 @@ class WebServer(plugin.Plugin):
         else:
             await self.bot.client.send_message(chat_id, reply_text)
         self.log.info("Sent message to %s with %s", chat_id, download_link)
+
+        admins = args.get("admins")
+        self.log.info("Sending message to %s with %s", admins, download_link)
+        if admins:
+            if not buttons:
+                for admin in admins:
+                    await self.bot.client.send_message(int(admin), reply_text)
+                return
+            for admin in admins:
+                await self.bot.client.send_message(
+                    int(admin), reply_text, reply_markup=buttons
+                )
 
     async def newtask_notify(self, chat_id: int, buttons=None):
         # send message to group while task created, notify_type = 5
