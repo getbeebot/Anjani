@@ -676,6 +676,9 @@ lottery-join-1: |
   {joined_users}
   🎉  Condition: Draw after {condition} participants
   🎁  Prize Details: {prize}
+lottery-join-3: |
+  {joined_users}
+  Prize: {prize}
 lottery-end: |
   🎁 The draw for the {communityName} community event has been held! Check now to see if your're a lucky winner!
 task-creation: |

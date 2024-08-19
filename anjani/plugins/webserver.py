@@ -616,8 +616,9 @@ class WebServer(plugin.Plugin):
             await self.bot.client.send_message(chat_id, reply_text)
         self.log.info("Sent message to %s with %s", chat_id, download_link)
 
-        admins = args.get("admins")
-        self.log.info("Sending message to %s with %s", admins, download_link)
+        all_admins = args.get("admins")
+        self.log.info("Sending message to %s with %s", all_admins, download_link)
+        admins = [int(admin) for admin in all_admins if int(admin) != chat_id]
         if admins:
             if not buttons:
                 for admin in admins:
