@@ -342,7 +342,7 @@ class WebServer(plugin.Plugin):
                     chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
             elif notify_type == 5 and project_config.newtask:
-                await self.newtask_notify(chat_id, button)
+                await self.newtask_notify(chat_id, data, button)
             elif notify_type == 6:  # private congrats
                 await self.congrats_notify(
                     chat_id,
@@ -538,9 +538,9 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
-        # TODO: retrieve pics based on user config
+        pic = self._get_notify_pic(args)
         await self.bot.client.send_photo(
-            chat_id, self.engage_img, caption=msg, reply_markup=buttons
+            chat_id, pic, caption=msg, reply_markup=buttons
         )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
@@ -554,7 +554,6 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
-        # TODO:
         # 1. delete previous message
         msg_key = f"luckydraw_join_{chat_id}"
         pre_msg = await self.bot.redis.get(msg_key)
@@ -567,8 +566,9 @@ class WebServer(plugin.Plugin):
                 )
         # 2. retrieve pics based on user config
         try:
+            pic = self._get_notify_pic(args)
             msg = await self.bot.client.send_photo(
-                chat_id, self.engage_img, caption=msg, reply_markup=buttons
+                chat_id, pic, caption=msg, reply_markup=buttons
             )
             self.log.info("Sent message to %s with %s", chat_id, msg)
             # 3. save current message id to redis
@@ -585,9 +585,9 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
-        # TODO: retrieve pics based on user config
+        pic = self._get_notify_pic(args)
         await self.bot.client.send_photo(
-            chat_id, self.draw_img, caption=msg, reply_markup=buttons
+            chat_id, pic, caption=msg, reply_markup=buttons
         )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
@@ -629,7 +629,7 @@ class WebServer(plugin.Plugin):
                     int(admin), reply_text, reply_markup=buttons
                 )
 
-    async def newtask_notify(self, chat_id: int, buttons=None):
+    async def newtask_notify(self, chat_id: int, args: dict, buttons=None):
         # send message to group while task created, notify_type = 5
         msg = await self.text(None, "task-creation")
         if not buttons:
@@ -637,9 +637,9 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
-        # TODO: retrieve pic based on user config
+        pic = self._get_notify_pic(args)
         await self.bot.client.send_photo(
-            chat_id=chat_id, photo=self.engage_img, caption=msg, reply_markup=buttons
+            chat_id=chat_id, photo=pic, caption=msg, reply_markup=buttons
         )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
@@ -652,9 +652,9 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
-        # TODO: retrieve draw pic based on user config
+        pic = self._get_notify_pic(args)
         await self.bot.client.send_photo(
-            chat_id=chat_id, photo=self.draw_img, caption=msg, reply_markup=buttons
+            chat_id=chat_id, photo=pic, caption=msg, reply_markup=buttons
         )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
@@ -798,3 +798,14 @@ class WebServer(plugin.Plugin):
             self.log.error(f"push alert error: {e}")
             ret_data.update({"ok": False, "error": str(e)})
         return web.json_response(ret_data, status=200)
+
+    def _get_notify_pic(self, args: dict) -> str:
+        notify_detail = args.get("notifyDetail")
+        if notify_detail and notify_detail.get("pic"):
+            return notify_detail.get("pic")
+
+        notify_type = args.get("notifyType")
+        if notify_type and notify_type in [3, 6]:
+            return self.draw_img
+
+        return self.engage_img
