@@ -41,7 +41,7 @@ class Language(plugin.Plugin):
     """Bot language plugin"""
 
     name: ClassVar[str] = "Language"
-    helpable: ClassVar[bool] = False
+    helpable: ClassVar[bool] = True
 
     db: util.db.AsyncCollection
     _db_stream: asyncio.Task[None]
@@ -94,8 +94,12 @@ class Language(plugin.Plugin):
         language = await self.db.find_one({"chat_id": chat_id}, {"_id": False})
         return {self.name: language} if language else {}
 
-    async def on_plugin_restore(self, chat_id: int, data: MutableMapping[str, Any]) -> None:
-        await self.db.update_one({"chat_id": chat_id}, {"$set": data[self.name]}, upsert=True)
+    async def on_plugin_restore(
+        self, chat_id: int, data: MutableMapping[str, Any]
+    ) -> None:
+        await self.db.update_one(
+            {"chat_id": chat_id}, {"$set": data[self.name]}, upsert=True
+        )
 
     @listener.filters(filters.regex(r"set_lang_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
@@ -112,7 +116,9 @@ class Language(plugin.Plugin):
 
         lang = LANG_FLAG.get(lang_match)
         if not lang:
-            await query.edit_message_text(await self.text(chat.id, "language-code-error"))
+            await query.edit_message_text(
+                await self.text(chat.id, "language-code-error")
+            )
             return
 
         await self.switch_lang(chat.id, lang_match)
@@ -151,10 +157,14 @@ class Language(plugin.Plugin):
             if lang in self.bot.languages:
                 await asyncio.gather(
                     self.switch_lang(chat.id, lang),
-                    ctx.respond(await self.text(chat.id, "language-set-succes", LANG_FLAG[lang])),
+                    ctx.respond(
+                        await self.text(chat.id, "language-set-succes", LANG_FLAG[lang])
+                    ),
                 )
             else:
-                return await self.text(chat.id, "language-invalid", list(self.bot.languages.keys()))
+                return await self.text(
+                    chat.id, "language-invalid", list(self.bot.languages.keys())
+                )
         else:
             chat_name = chat.first_name or chat.title
             lang = LANG_FLAG[self.bot.chats_languages.get(chat.id, "en")]
@@ -162,7 +172,9 @@ class Language(plugin.Plugin):
             temp = []
 
             for count, i in enumerate(self.bot.languages.keys(), start=1):
-                temp.append(InlineKeyboardButton(LANG_FLAG[i], callback_data=f"set_lang_{i}"))
+                temp.append(
+                    InlineKeyboardButton(LANG_FLAG[i], callback_data=f"set_lang_{i}")
+                )
                 if count % 2 == 0:
                     keyboard.append(temp)
                     temp = []
