@@ -556,11 +556,28 @@ class WebServer(plugin.Plugin):
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
-        # TODO: retrieve pics based on user config
-        await self.bot.client.send_photo(
-            chat_id, self.engage_img, caption=msg, reply_markup=buttons
-        )
-        self.log.info("Sent message to %s with %s", chat_id, msg)
+        # TODO:
+        # 1. delete previous message
+        msg_key = f"luckydraw_join_{chat_id}"
+        pre_msg = await self.bot.redis.get(msg_key)
+        if pre_msg:
+            try:
+                await self.bot.client.delete_messages(chat_id, int(pre_msg))
+            except Exception as e:
+                self.log.warn(
+                    "Delete previous user join luckydraw message error: %s", e
+                )
+        # 2. retrieve pics based on user config
+        try:
+            msg = await self.bot.client.send_photo(
+                chat_id, self.engage_img, caption=msg, reply_markup=buttons
+            )
+            self.log.info("Sent message to %s with %s", chat_id, msg)
+            # 3. save current message id to redis
+            if msg:
+                await self.bot.redis.set(msg_key, msg.id)
+        except Exception as e:
+            self.log.error("Push user join luckdraw message error: %s", e)
 
     async def draw_notify(self, chat_id: int, args: dict, buttons=None):
         # send message to group when draw open, notify_type = 3
