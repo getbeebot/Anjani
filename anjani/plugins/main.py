@@ -21,7 +21,6 @@ import re
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, List, Optional
 
-from aiopath import AsyncPath
 from pymongo.errors import PyMongoError
 from pyrogram.enums.chat_type import ChatType
 from pyrogram.enums.parse_mode import ParseMode
@@ -171,8 +170,6 @@ class Main(plugin.Plugin):
             )
             # for language db
             self._db_stream.cancel()
-
-            util.misc.session_backup_sync()
 
             await self.mysql.close()
 
