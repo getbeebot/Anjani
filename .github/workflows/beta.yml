@@ -63,7 +63,7 @@ jobs:
             pushd /home/ops/anjani
             docker stop anjani
             pushd session
-            mv anjani.latest.session anjani.latest.old
+            mv anjani.latest.session anjani.latest.session.old
             sqlite3 anjani.latest.session.old '.clone anjani.latest.session'
             popd
             docker compose up -d --build --no-deps --pull always
