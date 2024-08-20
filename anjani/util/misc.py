@@ -14,20 +14,47 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+import os
+import shutil
 from typing import TYPE_CHECKING, Any, Callable, Set, Tuple, Union
 
-import msgpack
 import base58
-import os
-
+import msgpack
 from aiopath import AsyncPath
-
 from pyrogram.filters import AndFilter, Filter, InvertFilter, OrFilter
 
 from anjani.util.types import CustomFilter
 
 if TYPE_CHECKING:
     from anjani.core import Anjani
+
+logger = logging.getLogger("misc")
+
+
+def session_backup_sync():
+    try:
+        src = "anjani/anjani.session"
+        dest = "session/anjani.latest.session"
+        shutil.copy2(src, dest)
+        logger.info("Session backed up successfully from %s to %s", src, dest)
+    except shutil.SameFileError:
+        logger.error("Souce and destination are the same file.")
+    except OSError as e:
+        logger.error("Error copying database file %s", e)
+
+
+def session_restore_sync():
+    try:
+        src = "session/anjani.latest.session"
+        dest = "anjani/anjani.session"
+        shutil.copy2(src, dest)
+        logger.info("Session restored successfully from %s to %s", src, dest)
+    except shutil.SameFileError:
+        logger.error("Souce and destination are the same file.")
+    except OSError as e:
+        logger.error("Error copying database file %s", e)
+
 
 async def copy_file(src: AsyncPath, dest: AsyncPath):
     async with src.open(mode="rb") as s, dest.open(mode="wb") as d:
@@ -37,6 +64,7 @@ async def copy_file(src: AsyncPath, dest: AsyncPath):
                 break
             await d.write(data)
 
+
 async def session_backup_latest():
     session_dir = AsyncPath("session")
     if not await session_dir.exists():
@@ -44,6 +72,7 @@ async def session_backup_latest():
     src = AsyncPath("anjani/anjani.session")
     dest = AsyncPath("session/anjani.latest.session")
     await copy_file(src, dest)
+
 
 async def session_backup():
     session_dir = AsyncPath("session")
@@ -53,6 +82,7 @@ async def session_backup():
     dest = AsyncPath("session/anjani.session")
     await copy_file(src, dest)
 
+
 async def session_restore():
     src = AsyncPath("session/anjani.latest.session")
     dest = AsyncPath("anjani/anjani.session")
@@ -60,7 +90,9 @@ async def session_restore():
         return
     await copy_file(src, dest)
 
+
 TWA_LINK = os.getenv("TWA_LINK")
+
 
 def encode_args(args: dict) -> str:
     packed = msgpack.packb(args)
@@ -70,6 +102,7 @@ def encode_args(args: dict) -> str:
 def decode_args(args_str: str) -> dict:
     p_args = base58.b58decode(args_str.encode("utf-8"))
     return msgpack.unpackb(p_args)
+
 
 def generate_project_detail_link(project_id: int, bot_id: int):
     if project_id:
@@ -82,6 +115,7 @@ def generate_project_detail_link(project_id: int, bot_id: int):
         return f"{TWA_LINK}={args}"
     else:
         return TWA_LINK
+
 
 def generate_task_detail_link(project_id: int, task_id: int, bot_id: int):
     if project_id:
@@ -96,18 +130,20 @@ def generate_task_detail_link(project_id: int, task_id: int, bot_id: int):
     else:
         return TWA_LINK
 
+
 def generate_luckydraw_link(project_id: int, task_id: int, bot_id: int):
     if project_id:
         payloads = {
             "target": "lotteryDetail",
             "id": int(project_id),
             "subid": int(task_id),
-            "botid": int(bot_id)
+            "botid": int(bot_id),
         }
         args = encode_args(payloads)
         return f"{TWA_LINK}={args}"
     else:
         return TWA_LINK
+
 
 def generate_project_leaderboard_link(project_id: int, bot_id: int):
     if project_id:
@@ -120,6 +156,7 @@ def generate_project_leaderboard_link(project_id: int, bot_id: int):
         return f"{TWA_LINK}={args}"
     else:
         return TWA_LINK
+
 
 def check_filters(filters: Union[Filter, CustomFilter], anjani: "Anjani") -> None:
     """Recursively check filters to set :obj:`~Anjani` into :obj:`~CustomFilter` if needed"""

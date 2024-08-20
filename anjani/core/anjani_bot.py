@@ -21,6 +21,7 @@ from typing import Optional
 import aiohttp
 import pyrogram
 
+from anjani.util import misc
 from anjani.util.apiclient import APIClient
 from anjani.util.config import Config
 from anjani.util.db import AsyncRedisClient, MysqlPoolClient
@@ -73,6 +74,7 @@ class Anjani(
         try:
             # restore session for anjani to avoid peer id loss
             # await misc.session_restore()
+            misc.session_restore_sync()
 
             anjani = cls(config)
             await anjani.run()
@@ -88,10 +90,6 @@ class Anjani(
             await self.dispatch_event("stop")
             if self.client.is_connected:
                 await self.client.stop()
-
-        # # backup session
-        # self.log.info("Backing up session")
-        # await misc.session_backup()
 
         await self.mysql.close()
         await self.redis.close()

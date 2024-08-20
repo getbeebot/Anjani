@@ -19,11 +19,9 @@ import json
 import os
 import re
 from functools import partial
-from hashlib import sha256
 from typing import TYPE_CHECKING, Any, ClassVar, List, Optional
 
 from aiopath import AsyncPath
-from bson.binary import Binary
 from pymongo.errors import PyMongoError
 from pyrogram.enums.chat_type import ChatType
 from pyrogram.enums.parse_mode import ParseMode
@@ -33,7 +31,6 @@ from pyrogram.errors import (
     MessageDeleteForbidden,
     MessageNotModified,
 )
-from pyrogram.raw.functions.updates.get_state import GetState
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -138,31 +135,23 @@ class Main(plugin.Plugin):
 
     async def on_stop(self) -> None:
         async with asyncio.Lock():
-            self.log.info("Backing up session file")
-            await util.misc.session_backup_latest()
-            await asyncio.sleep(5)
-
-            file = AsyncPath("anjani/anjani.session")
-            if not await file.exists():
-                return
-
-            data = await self.bot.client.invoke(GetState())
-            try:
-                await self.db.update_one(
-                    {"_id": sha256(self.bot.config.BOT_TOKEN.encode()).hexdigest()},
-                    {
-                        "$set": {
-                            "session": Binary(await file.read_bytes()),
-                            "date": data.date,
-                            "pts": data.pts,
-                            "qts": data.qts,
-                            "seq": data.seq,
-                        }
-                    },
-                    upsert=True,
-                )
-            except Exception as e:
-                self.log.warn("Saving session to db error %s", e)
+            # data = await self.bot.client.invoke(GetState())
+            # try:
+            #     await self.db.update_one(
+            #         {"_id": sha256(self.bot.config.BOT_TOKEN.encode()).hexdigest()},
+            #         {
+            #             "$set": {
+            #                 "session": Binary(await file.read_bytes()),
+            #                 "date": data.date,
+            #                 "pts": data.pts,
+            #                 "qts": data.qts,
+            #                 "seq": data.seq,
+            #             }
+            #         },
+            #         upsert=True,
+            #     )
+            # except Exception as e:
+            #     self.log.warn("Saving session to db error %s", e)
 
             status_msg = await self.send_to_log("Shutdowning system...")
             self.bot.log.info("Preparing to shutdown...")
@@ -182,6 +171,8 @@ class Main(plugin.Plugin):
             )
             # for language db
             self._db_stream.cancel()
+
+            util.misc.session_backup_sync()
 
             await self.mysql.close()
 
