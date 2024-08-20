@@ -22,10 +22,9 @@ import aiohttp
 import pyrogram
 
 from anjani.util import misc
-from anjani.util.config import Config
 from anjani.util.apiclient import APIClient
-from anjani.util.db import MysqlPoolClient
-from anjani.util.db import AsyncRedisClient
+from anjani.util.config import Config
+from anjani.util.db import AsyncRedisClient, MysqlPoolClient
 
 from .command_dispatcher import CommandDispatcher
 from .database_provider import DatabaseProvider
@@ -34,7 +33,9 @@ from .plugin_extenter import PluginExtender
 from .telegram_bot import TelegramBot
 
 
-class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, EventDispatcher):
+class Anjani(
+    TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, EventDispatcher
+):
     # Initialized during instantiation
     log: logging.Logger
     http: aiohttp.ClientSession
@@ -72,7 +73,8 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
 
         try:
             # restore session for anjani to avoid peer id loss
-            await misc.session_restore()
+            # await misc.session_restore()
+            misc.session_restore_sync()
 
             anjani = cls(config)
             await anjani.run()
@@ -88,10 +90,6 @@ class Anjani(TelegramBot, DatabaseProvider, PluginExtender, CommandDispatcher, E
             await self.dispatch_event("stop")
             if self.client.is_connected:
                 await self.client.stop()
-
-        # # backup session
-        # self.log.info("Backing up session")
-        # await misc.session_backup()
 
         await self.mysql.close()
         await self.redis.close()
