@@ -21,7 +21,6 @@ from typing import Optional
 import aiohttp
 import pyrogram
 
-from anjani.util import misc
 from anjani.util.apiclient import APIClient
 from anjani.util.config import Config
 from anjani.util.db import AsyncRedisClient, MysqlPoolClient
@@ -72,10 +71,6 @@ class Anjani(
             asyncio.set_event_loop(loop)
 
         try:
-            # restore session for anjani to avoid peer id loss
-            # await misc.session_restore()
-            misc.session_restore_sync()
-
             anjani = cls(config)
             await anjani.run()
             return anjani

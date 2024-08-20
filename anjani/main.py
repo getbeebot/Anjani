@@ -29,6 +29,7 @@ import dotenv
 from . import DEFAULT_CONFIG_PATH
 from .core import Anjani
 from .util.config import Config
+from .util import misc
 
 log = logging.getLogger("launch")
 
@@ -110,6 +111,9 @@ def start() -> None:
         sys.version_info.micro,
     )
     log.info("Loading code")
+
+    # restore session file before bot start
+    misc.session_restore_sync()
 
     _uvloop = False
     if sys.platform == "win32":
