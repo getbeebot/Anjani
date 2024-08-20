@@ -61,6 +61,7 @@ jobs:
         run: |
           ssh -T beecon <<'EOL'
             pushd /home/ops/anjani
+            docker stop anjani
             pushd session
             mv anjani.latest.session anjani.latest.old
             sqlite3 anjani.latest.session.old '.clone anjani.latest.session'
