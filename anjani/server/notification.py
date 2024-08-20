@@ -1,5 +1,6 @@
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
+
 
 def build_lottery_create_msg(template: str, **args) -> str:
     community_name = args.get("communityName", "")
@@ -10,10 +11,14 @@ def build_lottery_create_msg(template: str, **args) -> str:
     if lottery_type == 0:
         end_time_ms = args.get("endTime", 0)
         end_time = format_msg_timestamp(end_time_ms)
-        return template.format(community_name=community_name, prize=prize, end_time=end_time)
+        return template.format(
+            community_name=community_name, prize=prize, end_time=end_time
+        )
     elif lottery_type == 1:
         condition = args.get("miniCount")
-        return template.format(community_name=community_name, prize=prize, condition=condition)
+        return template.format(
+            community_name=community_name, prize=prize, condition=condition
+        )
     else:
         return ""
 
@@ -35,10 +40,16 @@ def build_lottery_join_msg(template: str, **args) -> str:
     if lottery_type == 0:
         end_time_ms = args.get("endTime", 0)
         end_time = format_msg_timestamp(end_time_ms)
-        return template.format(joined_users=joined_users, prize=prize, end_time=end_time)
+        return template.format(
+            joined_users=joined_users, prize=prize, end_time=end_time
+        )
     elif lottery_type == 1:
         condition = args.get("miniCount")
-        return template.format(joined_users=joined_users, prize=prize, condition=condition)
+        return template.format(
+            joined_users=joined_users, prize=prize, condition=condition
+        )
+    elif lottery_type == 3:  # instant draw
+        return template.format(joined_users=joined_users, prize=prize)
     else:
         return ""
 
@@ -53,14 +64,18 @@ def format_msg_timestamp(ms: int) -> str:
         # for some un-known reason, java request timestamp is utc-8
         # to make the time correct, add 8h
         tz_delta = timedelta(hours=8)
-        return datetime.fromtimestamp(timestamp=ms/1000, tz=timezone(tz_delta)).strftime("%Y-%m-%d %H:%M:%S (UTC)")
-    except Exception as e:
+        return datetime.fromtimestamp(
+            timestamp=ms / 1000, tz=timezone(tz_delta)
+        ).strftime("%Y-%m-%d %H:%M:%S (UTC)")
+    except Exception:
         return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
+
 
 def build_congrats_msg(template: str, **args) -> str:
     prize = args.get("prize")
     drawtime = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
     return template.format(prize=prize, drawtime=drawtime)
+
 
 def build_congrats_records(template: str, **args) -> str:
     draw_records = args.get("drawLogList")
@@ -77,13 +92,19 @@ def build_congrats_records(template: str, **args) -> str:
 
     amount_records = [float(item.get("prizeAmount")) for item in records]
     unit_records = [item.get("symbolAlias") or "USDT" for item in records]
-    time_records = [format_msg_timestamp(int(item.get("rewardTime"))) for item in records]
-    records_arr = [f'**Record {i+1}**\n> Prize: {v[0]} {v[1]}\n> Date: {v[2]}' for i, v in enumerate(zip(amount_records, unit_records, time_records))]
+    time_records = [
+        format_msg_timestamp(int(item.get("rewardTime"))) for item in records
+    ]
+    records_arr = [
+        f"**Record {i+1}**\n> Prize: {v[0]} {v[1]}\n> Date: {v[2]}"
+        for i, v in enumerate(zip(amount_records, unit_records, time_records))
+    ]
     r_text = "\n".join(records_arr)
 
     a_text = f"{amount:.3f} {unit_records[0]}"
 
     return template.format(amount=a_text, count=count, records=r_text)
+
 
 def build_invitation_notify(template: str, **args) -> str:
     invitation = args.get("invitation")
@@ -91,6 +112,7 @@ def build_invitation_notify(template: str, **args) -> str:
     remind_draw_times = invitation.get("leftDrawTimes")
 
     return template.format(invitee=invitee, draw=remind_draw_times)
+
 
 def build_invitation_records(template: str, **args) -> str:
     invite_records = args.get("inviteList")
@@ -105,8 +127,13 @@ def build_invitation_records(template: str, **args) -> str:
         records = invite_records
 
     id_records = [item.get("inviteeUserName") for item in records]
-    time_records = [format_msg_timestamp(int(item.get("inviteTime"))) for item in records]
-    records_arr = [f'**Record {i+1}**\n> ID: {v[0]}\n> Date: {v[1]}' for i, v in enumerate(zip(id_records, time_records))]
+    time_records = [
+        format_msg_timestamp(int(item.get("inviteTime"))) for item in records
+    ]
+    records_arr = [
+        f"**Record {i+1}**\n> ID: {v[0]}\n> Date: {v[1]}"
+        for i, v in enumerate(zip(id_records, time_records))
+    ]
 
     r_text = "\n".join(records_arr)
 

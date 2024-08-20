@@ -1,21 +1,19 @@
-import os
 import asyncio
-
-from typing import ClassVar, List, Dict
-from aiopath import AsyncPath
-
+import os
 from datetime import datetime
+from typing import ClassVar, Dict, List
 
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
+from aiopath import AsyncPath
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from anjani import plugin
-from anjani.util import misc
 from anjani.language import get_template
-from anjani.util.db import MysqlPoolClient, AsyncRedisClient
+from anjani.util import misc
+from anjani.util.db import AsyncRedisClient, MysqlPoolClient
 from anjani.util.project_config import BotNotificationConfig
+
 
 class CronJob(plugin.Plugin):
     name: ClassVar[str] = "CronJob"
@@ -43,7 +41,13 @@ class CronJob(plugin.Plugin):
 
         for interval, projects in project_intervals.items():
             trigger = IntervalTrigger(seconds=interval)
-            scheduler.add_job(self.push_overview, args=[projects, ], trigger=trigger)
+            scheduler.add_job(
+                self.push_overview,
+                args=[
+                    projects,
+                ],
+                trigger=trigger,
+            )
 
         scheduler.start()
         self.log.info("Started auto notification cron job")
@@ -92,22 +96,29 @@ class CronJob(plugin.Plugin):
                 continue
 
             project_link = misc.generate_project_detail_link(project_id, self.bot.uid)
-            button = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🕹 Enter", url=project_link)]
-            ])
+            button = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("🕹 Enter", url=project_link)]]
+            )
             tasks = await self.mysql.get_project_tasks(project_id)
             participants = await self.mysql.get_project_participants(project_id)
 
-            self.log.info(f"Auto push notification group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}")
+            self.log.info(
+                f"Auto push notification group {group_id}, project {project_id}, tasks: {tasks}, participants: {participants}"
+            )
 
             if tasks and participants > 7:
                 group_context = await get_template("group-start-pm")
-                group_notify_msg = group_context.format(tasks=tasks,participants=participants)
+                group_notify_msg = group_context.format(
+                    tasks=tasks, participants=participants
+                )
             elif tasks:
                 group_context = await get_template("group-notify-no-participants")
                 group_notify_msg = group_context.format(tasks=tasks)
             else:
-                self.log.warn("Not meet nofity condition, skipped: %s", (group_id, project_id, self.bot.uid))
+                self.log.warn(
+                    "Not meet nofity condition, skipped: %s",
+                    (group_id, project_id, self.bot.uid),
+                )
                 return
 
             # delete last notification
@@ -117,8 +128,11 @@ class CronJob(plugin.Plugin):
                     await self.bot.client.delete_messages(group_id, int(pre_msg))
                 except Exception as e:
                     self.log.warn("Delete previous pushed message error: %s", e)
-
-            engage_img = os.getenv("ENGAGE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png")
+            # TODO: get engage_img based on user config
+            engage_img = os.getenv(
+                "ENGAGE_IMG",
+                "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+            )
 
             try:
                 msg = await self.bot.client.send_photo(
@@ -130,7 +144,12 @@ class CronJob(plugin.Plugin):
                 if msg:
                     await self.redis.set(f"notify_{group_id}", msg.id)
             except Exception as e:
-                self.log.error("Push overview (project_id: %s, chat_id: %s)notification error %s", project_id, group_id, e)
+                self.log.error(
+                    "Push overview (project_id: %s, chat_id: %s)notification error %s",
+                    project_id,
+                    group_id,
+                    e,
+                )
 
     async def backup_session(self):
         async with asyncio.Lock():

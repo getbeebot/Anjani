@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bullseye as base
+FROM python:3.10-slim-bullseye AS base
 
 ENV POETRY_NO_INTERACTION=true \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
@@ -14,7 +14,7 @@ RUN apt-get -qq update && \
     apt-get -y install doppler
 
 
-FROM base as builder
+FROM base AS builder
 WORKDIR /app
 
 COPY pyproject.toml poetry.lock ./
@@ -32,7 +32,7 @@ RUN chmod +x ./preinstall.sh
 RUN ./preinstall.sh && rm -rf $POETRY_CACHE_DIR
 
 
-FROM base as runner
+FROM base AS runner
 WORKDIR /app
 
 ENV VENV_PATH=/app/.venv \

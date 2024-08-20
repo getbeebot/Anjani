@@ -10,7 +10,6 @@ help-pm: |
   **Main** commands available:
   - /start: Starts me, can be used to check i'm alive or not.
   - /help: PM's you this message.
-  - /setlang: Change your language preference.
 
 # start-chat: Sending you a warm hi & wishing your day is a happy one!
 start-chat: To assist in automatically identifying the completion status of community tasks, please ensure that @beecon_bot has granted default admin permissions
@@ -677,6 +676,9 @@ lottery-join-1: |
   {joined_users}
   🎉  Condition: Draw after {condition} participants
   🎁  Prize Details: {prize}
+lottery-join-3: |
+  {joined_users}
+  Prize: {prize}
 lottery-end: |
   🎁 The draw for the {communityName} community event has been held! Check now to see if your're a lucky winner!
 task-creation: |
