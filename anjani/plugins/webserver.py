@@ -339,7 +339,7 @@ class WebServer(plugin.Plugin):
             elif notify_type in [4, 10, 11, 12]:
                 chat_id = data.get("owner")
                 await self.draw_list_notify(
-                    chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
+                    int(chat_id), data, InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
             elif notify_type == 5 and project_config.newtask:
                 await self.newtask_notify(chat_id, data, button)
