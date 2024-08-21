@@ -400,7 +400,7 @@ class BeeconPlugin(plugin.Plugin):
                 lang,
             )
             task_url = util.misc.TWA_LINK
-            # TODO: make it capable for tasks which have not set pics, des and btn_text
+
             if task_id == 0:
                 task_url = util.misc.generate_project_detail_link(
                     project_id, self.bot.uid
@@ -412,29 +412,44 @@ class BeeconPlugin(plugin.Plugin):
 
             sql = "SELECT btn_desc, des, pics FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
             sql_res = await self.mysql.query_one(sql, (project_id, task_id, lang))
+            # Default value for inline query
+            btn_desc = ""
+            desc = ""
+            pics = ""
 
             if not sql_res:
-                # TODO: using default setting
-                warning_content = InputTextMessageContent("Not set")
-                reply = [
-                    InlineQueryResultArticle(
-                        title="Warning",
-                        input_message_content=warning_content,
-                        description=f"There's not info set for project {project_id}, task {task_id} in language {lang}",
-                    )
-                ]
-                await query.answer(reply)
-                return
-
-            (btn_desc, desc, pics) = sql_res
+                # TODO: make it capable for tasks which have not set pics, des and btn_text
+                try:
+                    payloads = {
+                        "botId": self.bot.uid,
+                        "project_id": project_id,
+                        "res_type": 4,
+                    }
+                    project_res = await self.bot.apiclient.get_project_res(payloads)
+                    if project_res[0]:
+                        pics = project_res[0]
+                    else:
+                        warning_content = InputTextMessageContent("Not set")
+                        reply = [
+                            InlineQueryResultArticle(
+                                title="Warning",
+                                input_message_content=warning_content,
+                                description=f"There's not info set for project {project_id}, task {task_id} in language {lang}",
+                            )
+                        ]
+                        await query.answer(reply)
+                        return
+                except Exception as e:
+                    self.log.warn("Get share card pics error %s", e)
 
             if not btn_desc:
-                self.log.warn(
-                    "Project %s task %s lang %s not set btn_desc",
-                    project_id,
-                    task_id,
-                    lang,
-                )
+                btn_desc = sql_res[0]
+
+            if not desc:
+                desc = sql_res[1]
+
+            if not pics:
+                pics = sql_res[2]
 
             keyboard = InlineKeyboardMarkup(
                 [

@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-import os
 from html import escape
 from typing import (
     Any,
@@ -201,12 +200,31 @@ class Greeting(plugin.Plugin):
                                     e,
                                 )
                             # TODO: retrieving pics from database based on user config
+                            pic = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
+                            try:
+                                payloads = {
+                                    "botId": self.bot.uid,
+                                    "project_id": project_id,
+                                    "res_type": 1,
+                                }
+                                project_res = await self.bot.apiclient.get_project_res(
+                                    payloads
+                                )
+                                if not project_res[1]:
+                                    self.log.warn(
+                                        "Project %s turned off welcome message",
+                                        project_id,
+                                    )
+                                    return
+
+                                if project_res[0]:
+                                    pic = project_res[0]
+                            except Exception as e:
+                                self.log.warn("Get project pics error %s", e)
+
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
-                                os.getenv(
-                                    "ENGAGE_IMG",
-                                    "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
-                                ),
+                                pic,
                                 caption=formatted_text,
                                 message_thread_id=thread_id,
                                 # reply_to_message_id=reply_to,
