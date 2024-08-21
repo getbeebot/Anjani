@@ -61,9 +61,19 @@ jobs:
         run: |
           ssh -T beebot <<'EOL'
             pushd /home/ops/ops/anjani
+            docker stop anjani
+            pushd session
+            mv anjani.latest.session anjani.latest.session.old
+            sqlite3 anjani.latest.session.old '.clone anjani.latest.session'
+            popd
             docker compose up -d --build --no-deps --pull always
             popd
             pushd /home/ops/ops/sakura
+            docker stop sakura
+            pushd session
+            mv anjani.latest.session anjani.latest.session.old
+            sqlite3 anjani.latest.session.old '.clone anjani.latest.session'
+            popd
             docker compose up -d --build --no-deps --pull always
             popd
             docker image prune --force

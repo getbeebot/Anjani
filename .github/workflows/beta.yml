@@ -53,14 +53,19 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
   deploy:
-    name: Update anjaniBot images
+    name: Update anjani images
     needs: build
     runs-on: p060
     steps:
-      - name: Auto update on dev environment
+      - name: Auto update on production environment
         run: |
           ssh -T beecon <<'EOL'
             pushd /home/ops/anjani
+            docker stop anjani
+            pushd session
+            mv anjani.latest.session anjani.latest.session.old
+            sqlite3 anjani.latest.session.old '.clone anjani.latest.session'
+            popd
             docker compose up -d --build --no-deps --pull always
             docker image prune --force
           EOL
