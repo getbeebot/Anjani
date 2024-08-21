@@ -162,16 +162,6 @@ class Greeting(plugin.Plugin):
                 else:
                     text, button, msg_type, file_id = await self.welc_message(chat.id)
                     msg_type = Types(msg_type) if msg_type else Types.TEXT
-                    if not text:
-                        string = await self.text(
-                            chat.id, "default-welcome", noformat=True
-                        )
-                    else:
-                        string = text
-
-                    formatted_text = await self._build_text(
-                        string, new_member, chat, self.bot.client
-                    )
 
                     if button:
                         button = build_button(button)
@@ -199,29 +189,43 @@ class Greeting(plugin.Plugin):
                                     message,
                                     e,
                                 )
-                            # TODO: retrieving pics from database based on user config
                             pic = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
+
+                            string = text
                             try:
                                 payloads = {
                                     "botId": self.bot.uid,
                                     "project_id": project_id,
                                     "res_type": 1,
                                 }
-                                project_res = await self.bot.apiclient.get_project_res(
-                                    payloads
-                                )
-                                if not project_res[1]:
+                                (
+                                    project_pic,
+                                    status,
+                                    desc,
+                                    _,
+                                ) = await self.bot.apiclient.get_project_res(payloads)
+                                if not status:
                                     self.log.warn(
                                         "Project %s turned off welcome message",
                                         project_id,
                                     )
                                     return
 
-                                if project_res[0]:
-                                    pic = project_res[0]
+                                if project_pic:
+                                    pic = project_pic
+
+                                if desc:
+                                    string = f"👏 Welcome {{username}}.\n{desc}"
                             except Exception as e:
                                 self.log.warn("Get project pics error %s", e)
 
+                            if not string:
+                                string = await self.text(
+                                    chat.id, "default-welcome", noformat=True
+                                )
+                            formatted_text = await self._build_text(
+                                string, new_member, chat, self.bot.client
+                            )
                             msg = await self.bot.client.send_photo(
                                 message.chat.id,
                                 pic,

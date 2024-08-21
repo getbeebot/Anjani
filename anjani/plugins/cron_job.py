@@ -128,7 +128,6 @@ class CronJob(plugin.Plugin):
                     await self.bot.client.delete_messages(group_id, int(pre_msg))
                 except Exception as e:
                     self.log.warn("Delete previous pushed message error: %s", e)
-            # TODO: get engage_img based on user config
             engage_img = os.getenv(
                 "ENGAGE_IMG",
                 "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",

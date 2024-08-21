@@ -223,10 +223,14 @@ class APIClient:
                 self.log.info("Get project res response: %s", res)
                 status = res.get("status") or 1
                 items = res.get("itemList")
+                desc = None
                 pic = None
+                text = None
                 if isinstance(items, list) and len(items) == 1:
                     pic = items[0].get("image") if items[0] else None
-                return (pic, status)
+                    desc = items[0].get("description") if items[0] else None
+                    text = items[0].get("text") if items[0] else None
+                return (pic, status, desc, text)
             else:
                 self.log.error("Get project pic error: %s", await resp.text())
-                return (None, 1)
+                return (None, 1, None, None)

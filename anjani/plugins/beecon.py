@@ -418,16 +418,27 @@ class BeeconPlugin(plugin.Plugin):
             pics = ""
 
             if not sql_res:
-                # TODO: make it capable for tasks which have not set pics, des and btn_text
                 try:
                     payloads = {
                         "botId": self.bot.uid,
                         "project_id": project_id,
                         "res_type": 4,
                     }
-                    project_res = await self.bot.apiclient.get_project_res(payloads)
-                    if project_res[0]:
-                        pics = project_res[0]
+                    (
+                        project_pic,
+                        status,
+                        project_desc,
+                        btn_text,
+                    ) = await self.bot.apiclient.get_project_res(payloads)
+
+                    if project_desc:
+                        desc = project_desc
+
+                    if btn_text:
+                        btn_desc = f'{{"text": "{btn_text}"}}'
+
+                    if project_pic:
+                        pics = project_pic
                     else:
                         warning_content = InputTextMessageContent("Not set")
                         reply = [
