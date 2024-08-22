@@ -81,21 +81,22 @@ class BeeconPlugin(plugin.Plugin):
                     reply_context = await self.text(None, "invite-link", invite_link)
                     await message.reply(reply_context)
 
-        checkin_word = await self.bot.redis.get(f"checkin_{chat.id}")
+        checkin_info = await self.bot.redis.get(f"checkin_{chat.id}")
 
-        if not checkin_word:
+        if not checkin_info:
             return None
 
         try:
-            checkin_cmd = checkin_word.decode("utf-8")
-            cmd = checkin_cmd[1:-1]
+            self.log.debug("Checking info: %s", checkin_info)
+            checkin = json.loads(checkin_info.decode("utf-8"))
+            cmd = checkin.get("cmd")
+            pic = checkin.get("pic")
 
             if cmd != message.text:
                 return None
 
             chat_id = chat.id
             from_user = message.from_user
-            self.log.debug("Checking keyword: %s", checkin_cmd)
 
             payloads = await self._construct_user_api_payloads(from_user)
             payloads.update(
@@ -121,12 +122,22 @@ class BeeconPlugin(plugin.Plugin):
             )
 
             reply_context = await self.bot.apiclient.checkin(payloads)
-            reply_msg = await message.reply(
-                text=reply_context,
-                reply_to_message_id=message.id,
-                reply_markup=button,
-                parse_mode=ParseMode.MARKDOWN,
-            )
+            if not pic:
+                reply_msg = await message.reply(
+                    text=reply_context,
+                    reply_to_message_id=message.id,
+                    reply_markup=button,
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            else:
+                reply_msg = await self.bot.client.send_photo(
+                    chat_id,
+                    pic,
+                    caption=reply_context,
+                    reply_markup=button,
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_to_message_id=message.id,
+                )
             # auto delete check in message
             self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
             if message.from_user.photo and message.from_user.photo.big_file_id:
