@@ -89,8 +89,11 @@ class BeeconPlugin(plugin.Plugin):
         try:
             self.log.debug("Checking info: %s", checkin_info)
             checkin = json.loads(checkin_info.decode("utf-8"))
-            cmd = checkin.get("cmd")
-            pic = checkin.get("pic")
+            if isinstance(checkin, dict):
+                cmd = checkin.get("cmd")
+                pic = checkin.get("pic")
+            else:
+                cmd = checkin
 
             if cmd != message.text:
                 return None
