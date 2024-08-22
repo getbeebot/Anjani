@@ -638,6 +638,8 @@ class WebServer(plugin.Plugin):
             )
             return None
         pic = self._get_notify_pic(args)
+        if args.get("description"):
+            msg = args.get("description")
         await self.bot.client.send_photo(
             chat_id=chat_id, photo=pic, caption=msg, reply_markup=buttons
         )
@@ -770,24 +772,6 @@ class WebServer(plugin.Plugin):
                 "Content-Type": "application/json",
             }
 
-            # if self.bot.uid == 6802454608:
-            #     async def save_alert_record(name: str, description: str):
-            #         mysql_client = MysqlPoolClient.init_from_env()
-            #         await mysql_client.connect()
-            #         sql = "INSERT INTO alert_record(name, des) VALUES(%s, %s)"
-            #         values = (name, description)
-            #         await mysql_client.update(sql, values)
-            #         await mysql_client.close()
-            #         del mysql_client
-            #     try:
-            #         msg = payloads[0]
-            #         name = msg.get("labels").get("alertname")
-            #         des = msg.get("annotations").get("description") or ""
-            #         loop = asyncio.get_running_loop()
-            #         loop.create_task(save_alert_record(name, des))
-            #     except Exception as e:
-            #         self.log.error("saving alert record %s error %s", payloads, e)
-
             async with self.bot.http.post(url, json=payloads, headers=headers) as resp:
                 self.log.info("Alert response: %s", resp)
                 if resp.status == 200:
@@ -800,12 +784,7 @@ class WebServer(plugin.Plugin):
         return web.json_response(ret_data, status=200)
 
     def _get_notify_pic(self, args: dict) -> str:
-        notify_detail = args.get("notifyDetail")
-        if notify_detail and notify_detail.get("pic"):
-            return notify_detail.get("pic")
-
-        notify_type = args.get("notifyType")
-        if notify_type and notify_type in [3, 6]:
-            return self.draw_img
+        if args.get("pic"):
+            return args.get("pic")
 
         return self.engage_img

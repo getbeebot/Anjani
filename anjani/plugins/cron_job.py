@@ -119,7 +119,7 @@ class CronJob(plugin.Plugin):
                     "Not meet nofity condition, skipped: %s",
                     (group_id, project_id, self.bot.uid),
                 )
-                return
+                continue
 
             # delete last notification
             pre_msg = await self.redis.get(f"notify_{group_id}")
@@ -128,11 +128,24 @@ class CronJob(plugin.Plugin):
                     await self.bot.client.delete_messages(group_id, int(pre_msg))
                 except Exception as e:
                     self.log.warn("Delete previous pushed message error: %s", e)
-            # TODO: get engage_img based on user config
             engage_img = os.getenv(
                 "ENGAGE_IMG",
                 "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
             )
+            try:
+                payloads = {
+                    "botId": self.bot.uid,
+                    "project_id": project_id,
+                    "res_type": 2,
+                }
+                project_res = await self.bot.apiclient.get_project_res(payloads)
+                if not project_res[1]:
+                    self.log.warn("Project %s turn off push notify", project_id)
+                    continue
+                if project_res[0]:
+                    engage_img = project_res[0]
+            except Exception as e:
+                self.log.warn("Get project task notify pic error: %s", e)
 
             try:
                 msg = await self.bot.client.send_photo(
