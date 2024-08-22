@@ -226,7 +226,7 @@ class APIClient:
                 desc = None
                 pic = None
                 text = None
-                if isinstance(items, list) and len(items) == 1:
+                if isinstance(items, list) and len(items) > 1:
                     pic = items[0].get("image") if items[0] else None
                     desc = items[0].get("description") if items[0] else None
                     text = items[0].get("text") if items[0] else None
