@@ -800,12 +800,7 @@ class WebServer(plugin.Plugin):
         return web.json_response(ret_data, status=200)
 
     def _get_notify_pic(self, args: dict) -> str:
-        notify_detail = args.get("notifyDetail")
-        if notify_detail and notify_detail.get("pic"):
-            return notify_detail.get("pic")
-
-        notify_type = args.get("notifyType")
-        if notify_type and notify_type in [3, 6]:
-            return self.draw_img
+        if args.get("pic"):
+            return args.get("pic")
 
         return self.engage_img
