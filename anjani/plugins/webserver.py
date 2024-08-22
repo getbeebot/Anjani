@@ -638,6 +638,8 @@ class WebServer(plugin.Plugin):
             )
             return None
         pic = self._get_notify_pic(args)
+        if args.get("description"):
+            msg = args.get("description")
         await self.bot.client.send_photo(
             chat_id=chat_id, photo=pic, caption=msg, reply_markup=buttons
         )

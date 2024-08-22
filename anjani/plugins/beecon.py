@@ -433,6 +433,10 @@ class BeeconPlugin(plugin.Plugin):
             pics = ""
 
             if not sql_res:
+                if task_id != 0:
+                    task_url = util.misc.generate_task_detail_link(
+                        project_id, task_id, self.bot.uid
+                    )
                 try:
                     payloads = {
                         "botId": self.bot.uid,
