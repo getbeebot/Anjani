@@ -176,3 +176,6 @@ class CronJob(plugin.Plugin):
             await misc.copy_file(src, dest)
             await asyncio.sleep(10)
             self.log.info("Backing up session file done.")
+
+    async def classify_user(self):
+        pass

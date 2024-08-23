@@ -205,7 +205,7 @@ class WebServer(plugin.Plugin):
         self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).reset()
 
     async def reset_gague(self, method, path, trace_id) -> None:
-        await asyncio.sleep(60)
+        await asyncio.sleep(30)
         self.api_rtt_gauge.labels(method, path, trace_id).set(0)
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
