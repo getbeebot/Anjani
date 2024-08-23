@@ -221,7 +221,7 @@ class APIClient:
             if resp.status == 200:
                 res = await resp.json()
                 self.log.info("Get project res response: %s", res)
-                status = res.get("status") or 1
+                status = res.get("status")
                 items = res.get("itemList")
                 desc = None
                 pic = None
