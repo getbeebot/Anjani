@@ -139,7 +139,7 @@ class CronJob(plugin.Plugin):
                     "res_type": 2,
                 }
                 project_res = await self.bot.apiclient.get_project_res(payloads)
-                if not project_res[1]:
+                if project_res[1] == 0:
                     self.log.warn("Project %s turn off push notify", project_id)
                     continue
                 if project_res[0]:
