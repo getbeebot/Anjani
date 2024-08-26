@@ -34,6 +34,12 @@ class CronJob(plugin.Plugin):
         session_bk_trigger = IntervalTrigger(seconds=1800)
         scheduler.add_job(self.backup_session, trigger=session_bk_trigger)
 
+        # tagging admins
+        self.log.info("Add tagging admin job")
+        # tagging_admin_trigger = IntervalTrigger(seconds=28800)
+        tagging_admin_trigger = IntervalTrigger(seconds=60)
+        scheduler.add_job(self.tagging_admin, trigger=tagging_admin_trigger)
+
         project_intervals = await self.get_project_intervals()
         if not project_intervals:
             self.log.warn("No cron job cause no project")
@@ -177,5 +183,15 @@ class CronJob(plugin.Plugin):
             await asyncio.sleep(10)
             self.log.info("Backing up session file done.")
 
-    async def classify_user(self):
-        pass
+    async def tagging_admin(self):
+        admin_tag_id = await self.mysql.get_tag_id_by_name("admin")
+        if not admin_tag_id:
+            self.log.warn("Can not find admin tag")
+            return None
+        admins = await self.mysql.get_admins_with_notag()
+        if not admins:
+            self.log.warn("No new admins need to tag")
+            return None
+        admin_tags = [(a[0], admin_tag_id) for a in admins]
+        self.log.deubg("admins with tags %s", admin_tags)
+        await self.mysql.update_admins(admins)
