@@ -214,7 +214,8 @@ class MysqlPoolClient:
 
     async def get_tag_id_by_name(self, name: str):
         sql = "SELECT tag_id FROM tags WHERE tag_name = %s"
-        return await self.query_one(sql, (name,))
+        res = await self.query_one(sql, (name,))
+        return res[0] if res else None
 
     async def get_admins(self):
         sql = "SELECT DISTINCT tu.user_id FROM tz_user AS tu LEFT JOIN bot_project AS bp on tu.user_id = bp.owner_id LEFT JOIN bot_project_admin AS bpa ON tu.user_id = bpa.user_id WHERE (bp.owner_id IS NOT NULL OR bpa.user_id IS NOT NULL) AND tu.user_id IS NOT NULL"
