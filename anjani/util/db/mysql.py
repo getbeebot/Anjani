@@ -222,7 +222,7 @@ class MysqlPoolClient:
         return await self.query(sql)
 
     async def get_admins_with_notag(self):
-        sql = "SELECT DISTINCT tu.user_id FROM tz_user AS tu LEFT JOIN bot_project AS bp on tu.user_id = bp.owner_id LEFT JOIN bot_project_admin AS bpa ON tu.user_id = bpa.user_id LEFT JOIN user_tags AS ut ON tu.user_id = ut.user_id WHERE (bp.owner_id IS NOT NULL OR bpa.user_id IS NOT NULL AND ut.user_id IS NULL) AND tu.user_id IS NOT NULL"
+        sql = "SELECT DISTINCT tu.user_id FROM tz_user AS tu LEFT JOIN bot_project AS bp on tu.user_id = bp.owner_id LEFT JOIN bot_project_admin AS bpa ON tu.user_id = bpa.user_id LEFT JOIN user_tags AS ut ON tu.user_id = ut.user_id WHERE ((bp.owner_id IS NOT NULL OR bpa.user_id IS NOT NULL) AND ut.user_id IS NULL) AND tu.user_id IS NOT NULL"
         return await self.query(sql)
 
     async def update_admins(self, admins):
