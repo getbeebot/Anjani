@@ -36,8 +36,7 @@ class CronJob(plugin.Plugin):
 
         # tagging admins
         self.log.info("Add tagging admin job")
-        # tagging_admin_trigger = IntervalTrigger(seconds=28800)
-        tagging_admin_trigger = IntervalTrigger(seconds=60)
+        tagging_admin_trigger = IntervalTrigger(seconds=28800)  # every 8 hours
         scheduler.add_job(self.tagging_admin, trigger=tagging_admin_trigger)
 
         project_intervals = await self.get_project_intervals()
