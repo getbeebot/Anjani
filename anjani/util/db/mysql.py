@@ -1,17 +1,22 @@
-import logging
-import aiomysql
 import asyncio
-
+import logging
+from enum import Enum
 from os import getenv
 from typing import Optional
 
-from enum import Enum
+import aiomysql
+
+
 class QueryType(Enum):
+    EXECUTEMANY = "executemany"
     FETCHONE = "fetchone"
     FETCHALL = "fetchall"
 
+
 class MysqlPoolClient:
-    def __init__(self, host: str, port: int, username: str, password: str, database: str):
+    def __init__(
+        self, host: str, port: int, username: str, password: str, database: str
+    ):
         self.host = host
         self.port = port
         self.username = username
@@ -32,10 +37,14 @@ class MysqlPoolClient:
     async def connect(self):
         if not self._pool:
             self._pool = await aiomysql.create_pool(
-                host=self.host, port=self.port,
-                user=self.username, password=self.password,
-                db=self.database, autocommit=True,
-                maxsize=10, loop=asyncio.get_running_loop()
+                host=self.host,
+                port=self.port,
+                user=self.username,
+                password=self.password,
+                db=self.database,
+                autocommit=True,
+                maxsize=10,
+                loop=asyncio.get_running_loop(),
             )
 
     async def execute(self, sql, values, method: QueryType = None):
@@ -49,7 +58,12 @@ class MysqlPoolClient:
         try:
             async with self._pool.acquire() as conn:
                 async with conn.cursor() as cur:
-                    self.log.debug("Executing mysql query %s with values %s", sql, values)
+                    self.log.debug(
+                        "Executing mysql query %s with values %s", sql, values
+                    )
+                    if method == QueryType.EXECUTEMANY:
+                        await cur.executemany(sql, values)
+                        return
                     if values:
                         await cur.execute(sql, values)
                     else:
@@ -59,7 +73,12 @@ class MysqlPoolClient:
                         query_func = getattr(cur, method.value)
                         res = await query_func()
         except Exception as e:
-            self.log.error("MySQL execute query %s with values %s failed, error: %s", sql, values, e)
+            self.log.error(
+                "MySQL execute query %s with values %s failed, error: %s",
+                sql,
+                values,
+                e,
+            )
         return res
 
     async def close(self):
@@ -67,7 +86,7 @@ class MysqlPoolClient:
             self._pool.close()
             await self._pool.wait_closed()
 
-    async def query(self, sql: str, values = ()):
+    async def query(self, sql: str, values=()):
         return await self.execute(sql, values, method=QueryType.FETCHALL)
 
     async def query_one(self, sql, values=()):
@@ -77,6 +96,9 @@ class MysqlPoolClient:
         res = await self.execute(sql, values)
         if not res:
             return "Error"
+
+    async def update_many(self, sql, values=[]):
+        await self.execute(sql, values, QueryType.EXECUTEMANY)
 
     async def update_chat_info(self, data):
         chat_type = int(data.get("chat_type"))
@@ -103,10 +125,12 @@ class MysqlPoolClient:
         avatar = data.get("avatar")
 
         sql = f"SELECT user_id FROM tz_app_connect WHERE biz_user_id = {tg_user_id}"
-        (user_id, ) = await self.query_one(sql)
+        (user_id,) = await self.query_one(sql)
 
         if user_id is not None:
-            sql = "UPDATE tz_user SET user_name=%s, nick_name=%s, pic=%s WHERE user_id=%s"
+            sql = (
+                "UPDATE tz_user SET user_name=%s, nick_name=%s, pic=%s WHERE user_id=%s"
+            )
             values = (username, nickname, avatar, user_id)
             await self.update(sql, values)
 
@@ -117,7 +141,7 @@ class MysqlPoolClient:
 
     async def get_project_ids(self, bot_id: int):
         sql = "SELECT DISTINCT bp.id, bp.target_id FROM bot_project AS bp JOIN beebot.tz_user_tg_group AS tutg ON bp.target_id = tutg.chat_id WHERE bp.target_id IS NOT NULL AND bp.deleted = 0 AND tutg.chat_type = 0 AND tutg.bot_id=%s"
-        res = await self.query(sql, (bot_id, ))
+        res = await self.query(sql, (bot_id,))
         return res
 
     async def get_user_projects(self, user_id: int, bot_id: int):
@@ -128,17 +152,17 @@ class MysqlPoolClient:
 
     async def get_project_tasks(self, project_id: int):
         sql = "SELECT COUNT(*) FROM beebot.bot_task WHERE project_id = %s AND deleted <> 1"
-        (count, )= await self.query_one(sql, (project_id, ))
+        (count,) = await self.query_one(sql, (project_id,))
         return count
 
     async def get_project_participants(self, project_id: int):
         sql = "SELECT COUNT(*) FROM beebot.bot_user_action WHERE project_id = %s"
-        (count, ) = await self.query_one(sql, (project_id, ))
+        (count,) = await self.query_one(sql, (project_id,))
         return count
 
     async def get_project_brief(self, project_id: int):
         sql = "SELECT name, description FROM beebot.bot_project WHERE id = %s"
-        res = await self.query_one(sql, (project_id, ))
+        res = await self.query_one(sql, (project_id,))
         return res
 
     async def save_start_record(self, chat_id: int, bot_id: int):
@@ -152,7 +176,7 @@ class MysqlPoolClient:
 
     async def get_user_id(self, chat_id: int):
         sql = "SELECT user_id FROM tz_app_connect WHERE biz_user_id = %s AND app_id = 1"
-        res = await self.query_one(sql, (chat_id, ))
+        res = await self.query_one(sql, (chat_id,))
         return res[0] if res else None
 
     async def update_user_avatar(self, user_id: str, avatar: str):
@@ -160,12 +184,16 @@ class MysqlPoolClient:
         values = (avatar, user_id)
         await self.update(sql, values)
 
-    async def update_project_info(self, tenant_id: int, project_id: int, avatar: str, slogan: str):
+    async def update_project_info(
+        self, tenant_id: int, project_id: int, avatar: str, slogan: str
+    ):
         sql = "UPDATE bot_project SET slogan = %s, logo_url = %s WHERE id = %s AND tenant_id = %s"
         values = (slogan, avatar, project_id, tenant_id)
         await self.update(sql, values)
 
-    async def save_new_member(self, chat_id: int, chat_type: int, tg_user_id: int, bot_id: int, joined_date):
+    async def save_new_member(
+        self, chat_id: int, chat_type: int, tg_user_id: int, bot_id: int, joined_date
+    ):
         sql = "SELECT id FROM chat_user_join_record WHERE chat_id = %s AND chat_type = %s AND tg_user_id = %s AND bot_id = %s"
         res = await self.query_one(sql, (chat_id, chat_type, tg_user_id, bot_id))
         if not res:
@@ -177,9 +205,25 @@ class MysqlPoolClient:
 
     async def get_chats(self, bot_id: int):
         sql = "SELECT chat_id, chat_type FROM tz_user_tg_group WHERE bot_id = %s AND chat_type <> 2 AND updated = 0"
-        res = await self.query(sql, (bot_id, ))
+        res = await self.query(sql, (bot_id,))
         return res
 
     async def update_chat_status(self, bot_id: int, chat_id: int, chat_type: int):
         sql = "UPDATE tz_user_tg_group SET updated = 1 WHERE bot_id = %s AND chat_id = %s AND chat_type = %s"
         await self.update(sql, (bot_id, chat_id, chat_type))
+
+    async def get_tag_id_by_name(self, name: str):
+        sql = "SELECT tag_id FROM tags WHERE tag_name = %s"
+        return await self.query_one(sql, (name,))
+
+    async def get_admins(self):
+        sql = "SELECT DISTINCT tu.user_id FROM tz_user AS tu LEFT JOIN bot_project AS bp on tu.user_id = bp.owner_id LEFT JOIN bot_project_admin AS bpa ON tu.user_id = bpa.user_id WHERE (bp.owner_id IS NOT NULL OR bpa.user_id IS NOT NULL) AND tu.user_id IS NOT NULL"
+        return await self.query(sql)
+
+    async def get_admins_with_notag(self):
+        sql = "SELECT DISTINCT tu.user_id FROM tz_user AS tu LEFT JOIN bot_project AS bp on tu.user_id = bp.owner_id LEFT JOIN bot_project_admin AS bpa ON tu.user_id = bpa.user_id LEFT JOIN user_tags AS ut ON tu.user_id = ut.user_id WHERE (bp.owner_id IS NOT NULL OR bpa.user_id IS NOT NULL AND ut.user_id IS NULL) AND tu.user_id IS NOT NULL"
+        return await self.query(sql)
+
+    async def update_admins(self, admins):
+        sql = "INSERT INTO user_tags(user_id, tag_id) VALUES (%s, %s)"
+        await self.update_many(sql, admins)
