@@ -193,5 +193,5 @@ class CronJob(plugin.Plugin):
             self.log.warn("No new admins need to tag")
             return None
         admin_tags = [(a[0], admin_tag_id) for a in admins]
-        self.log.deubg("admins with tags %s", admin_tags)
+        self.log.debug("admins with tags %s", admin_tags)
         await self.mysql.update_admins(admins)
