@@ -91,7 +91,7 @@ class Anjani(
 
         await self.mysql.close()
         await self.redis.close()
-        await self.apiclient.http.close()
+        await self.apiclient.close()
 
         await self.http.close()
         await self.db.close()

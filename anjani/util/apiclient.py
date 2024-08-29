@@ -28,6 +28,10 @@ class APIClient:
         if bot_id:
             self.headers.update({"Botid": str(bot_id)})
 
+    async def close(self):
+        if not self.http.closed:
+            await self.http.close()
+
     async def distribute_join_rewards(self, payloads: dict) -> Optional[str]:
         self.log.info("Distribute join rewards request payloads: %s", payloads)
 

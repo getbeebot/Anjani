@@ -188,7 +188,6 @@ class Main(plugin.Plugin):
         self, chat_id: int, is_link: bool = False
     ) -> List[List[InlineKeyboardButton]]:
         projects: List[List[InlineKeyboardButton]] = []
-        # user_projects = await self.mysql.get_user_projects(chat_id, self.bot.uid)
         user_id = await self.mysql.get_user_id(chat_id)
         if not user_id:
             return
