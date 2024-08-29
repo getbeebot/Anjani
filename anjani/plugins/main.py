@@ -604,13 +604,8 @@ class Main(plugin.Plugin):
             try:
                 start_record = orm.TgUserStartBot(chat_id=chat.id, bot_id=self.bot.uid)
                 await start_record.save(self.mydb)
-                # mysql_client = util.db.MysqlPoolClient.init_from_env()
-                # await mysql_client.save_start_record(chat.id, self.bot.uid)
             except Exception as e:
                 self.log.warn("Saving start bot records error: %s", e)
-            # finally:
-            #     await mysql_client.close()
-            #     del mysql_client
 
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
