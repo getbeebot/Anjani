@@ -22,8 +22,12 @@ CREATE TABLE `tg_user_start_bot` (
 
     chat_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     bot_id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    create_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now())
-    update_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now())
+    create_at: Mapped[datetime] = mapped_column(
+        DateTime(), name="create_time", default=datetime.now()
+    )
+    update_at: Mapped[datetime] = mapped_column(
+        DateTime(), name="update_time", default=datetime.now()
+    )
 
     def __init__(self, chat_id: int, bot_id: int):
         self.chat_id = str(chat_id)
