@@ -712,9 +712,6 @@ class WebServer(plugin.Plugin):
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def union_draw_notify(self, chat_id: int, args: dict, buttons=None):
-        """
-        {'chatId': -1002222814033, 'data': {'communityName': 'sunny day', 'description': "  🚀 There's a new reward created in our community, check it now.", 'notifyType': 5, 'pic': 'https://beeconavatar.s3.ap-southeast-1.amazonaws.com/BISO4Dqu7Hj', 'shareBtn': '🎁 OPEN 🎁', 'shareText': '🎉 AIRDROP!\xa0\n🚀 Complete the task and verify success✨\n🎁 Share the luckydraw with your community and friends, and you can win more prizes!\n👇Click below to open 🌈 ⬇️', 'uri': 'https://t.me/bee_lee_bot/beebeebee?startapp=3ATcUk2UTZEkDVDZ8FXTijzBe4LzpEteG7UBaLzXcM5q7iNrdz9mqwHdEADxj2aYuPQk59APkfFgLcTMyJeErZUrt56UuNc'}, 'type': 99}
-        """
         pic = self._get_notify_pic(args)
         msg = args.get("shareText")
         if not buttons:
