@@ -268,9 +268,9 @@ class WebServer(plugin.Plugin):
             payloads = await request.json()
             self.log.info("/sendmsg request payloads: %s", payloads)
 
-            chat_type = payloads.get("type")
+            event_type = payloads.get("type")
 
-            if not chat_type:
+            if not event_type:
                 return web.json_response(
                     {
                         "ok": False,
@@ -280,7 +280,7 @@ class WebServer(plugin.Plugin):
                 )
 
             assert isinstance(
-                chat_type, int
+                event_type, int
             ), "type argument should be int, but got an non-int, please check it out"
 
             data = payloads.get("data")
@@ -314,7 +314,11 @@ class WebServer(plugin.Plugin):
 
             chat = await self.bot.client.get_chat(chat_id)
             notify_type = data.get("notifyType")
-            if chat.type == ChatType.CHANNEL and notify_type in [1, 2, 3, 5]:
+            if (
+                event_type != 99
+                and chat.type == ChatType.CHANNEL
+                and notify_type in [1, 2, 3, 5]
+            ):
                 self.log.warn(
                     "Chat type is channel, not sending notification. Channel: %s, content: %s",
                     chat.title,
@@ -372,6 +376,15 @@ class WebServer(plugin.Plugin):
             elif notify_type == 9:
                 await self.invite_success_notify(
                     chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
+                )
+            elif event_type == 99 and notify_type == 13:
+                btn_text = data.get("shareBtn") | "Open"
+                await self.union_draw_notify(
+                    chat_id,
+                    data,
+                    InlineKeyboardMarkup(
+                        [[InlineKeyboardButton(text=btn_text, url=uri)]]
+                    ),
                 )
             else:
                 self.log.warn("Not send mssage for request: %s", payloads)
@@ -689,6 +702,16 @@ class WebServer(plugin.Plugin):
         template = await self.text(None, "invitation-notify", noformat=True)
         msg = build_invitation_notify(template, **args)
 
+        if not buttons:
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
+            return None
+        await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def union_draw_notify(self, chat_id: int, args: dict, buttons=None):
+        msg = args.get("shareText")
         if not buttons:
             self.log.error(
                 "No button, reject to send message to chat %s with %s", chat_id, msg
