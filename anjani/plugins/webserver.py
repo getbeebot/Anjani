@@ -378,6 +378,7 @@ class WebServer(plugin.Plugin):
                     chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
             elif event_type == 99 and notify_type == 13:
+                chat_id = os.get("DAILY_GIFT_CHAT_ID") or -1002216827412
                 btn_text = data.get("shareBtn") | "Open"
                 await self.union_draw_notify(
                     chat_id,
