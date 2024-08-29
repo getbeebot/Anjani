@@ -383,7 +383,7 @@ class WebServer(plugin.Plugin):
 
             if event_type == 99:
                 chat_id = os.getenv("DAILY_GIFT_CHAT_ID") or -1002216827412
-                btn_text = data.get("shareBtn") | "Open"
+                btn_text = data.get("shareBtn") or "Open"
                 await self.union_draw_notify(
                     chat_id,
                     data,
