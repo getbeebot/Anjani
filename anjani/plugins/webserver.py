@@ -377,7 +377,7 @@ class WebServer(plugin.Plugin):
                 await self.invite_success_notify(
                     chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
-            elif event_type == 99 and notify_type == 13:
+            elif event_type == 99:
                 chat_id = os.get("DAILY_GIFT_CHAT_ID") or -1002216827412
                 btn_text = data.get("shareBtn") | "Open"
                 await self.union_draw_notify(
@@ -712,13 +712,19 @@ class WebServer(plugin.Plugin):
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def union_draw_notify(self, chat_id: int, args: dict, buttons=None):
+        """
+        {'chatId': -1002222814033, 'data': {'communityName': 'sunny day', 'description': "  🚀 There's a new reward created in our community, check it now.", 'notifyType': 5, 'pic': 'https://beeconavatar.s3.ap-southeast-1.amazonaws.com/BISO4Dqu7Hj', 'shareBtn': '🎁 OPEN 🎁', 'shareText': '🎉 AIRDROP!\xa0\n🚀 Complete the task and verify success✨\n🎁 Share the luckydraw with your community and friends, and you can win more prizes!\n👇Click below to open 🌈 ⬇️', 'uri': 'https://t.me/bee_lee_bot/beebeebee?startapp=3ATcUk2UTZEkDVDZ8FXTijzBe4LzpEteG7UBaLzXcM5q7iNrdz9mqwHdEADxj2aYuPQk59APkfFgLcTMyJeErZUrt56UuNc'}, 'type': 99}
+        """
+        pic = self._get_notify_pic(args)
         msg = args.get("shareText")
         if not buttons:
             self.log.error(
                 "No button, reject to send message to chat %s with %s", chat_id, msg
             )
             return None
-        await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
+        await self.bot.client.send_photo(
+            int(chat_id), photo=pic, caption=msg, reply_markup=buttons
+        )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def save_iq_text_handler(self, request: BaseRequest) -> Response:
