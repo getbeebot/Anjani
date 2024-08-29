@@ -37,7 +37,7 @@ from pyrogram.types import (
     Message,
 )
 
-from anjani import command, filters, listener, plugin, util
+from anjani import command, filters, listener, orm, plugin, util
 from anjani.util.project_config import BotNotificationConfig
 
 from .language import LANG_FLAG
@@ -52,6 +52,7 @@ class Main(plugin.Plugin):
     name: ClassVar[str] = "Main"
 
     mysql: util.db.MysqlPoolClient
+    mydb: orm.AsyncSession
 
     bot_name: str
     db: util.db.AsyncCollection
@@ -88,6 +89,8 @@ class Main(plugin.Plugin):
         self.mysql = util.db.MysqlPoolClient.init_from_env()
         await self.mysql.connect()
 
+        self.mydb = orm.AsyncSession(self.bot.myengine)
+
         self.db = self.bot.db.get_collection("SESSION")
         self.lang_db = self.bot.db.get_collection("LANGUAGE")
         self._start_db_stream()
@@ -98,6 +101,8 @@ class Main(plugin.Plugin):
             if self.bot.user.last_name
             else self.bot.user.first_name
         )
+
+        await self.mydb.flush()
 
         restart = await self.db.find_one({"_id": 5})
         if restart is not None:
@@ -597,13 +602,15 @@ class Main(plugin.Plugin):
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             # for start bot task
             try:
-                mysql_client = util.db.MysqlPoolClient.init_from_env()
-                await mysql_client.save_start_record(chat.id, self.bot.uid)
+                start_record = orm.TgUserStartBot(chat_id=chat.id, bot_id=self.bot.uid)
+                await start_record.save(self.mydb)
+                # mysql_client = util.db.MysqlPoolClient.init_from_env()
+                # await mysql_client.save_start_record(chat.id, self.bot.uid)
             except Exception as e:
                 self.log.warn("Saving start bot records error: %s", e)
-            finally:
-                await mysql_client.close()
-                del mysql_client
+            # finally:
+            #     await mysql_client.close()
+            #     del mysql_client
 
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
