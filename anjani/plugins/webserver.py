@@ -377,7 +377,11 @@ class WebServer(plugin.Plugin):
                 await self.invite_success_notify(
                     chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
                 )
-            elif event_type == 99:
+            else:
+                self.log.warn("Not send mssage for request: %s", payloads)
+                ret_data.update({"ok": False, "error": "reject by setting"})
+
+            if event_type == 99:
                 chat_id = os.get("DAILY_GIFT_CHAT_ID") or -1002216827412
                 btn_text = data.get("shareBtn") | "Open"
                 await self.union_draw_notify(
@@ -387,9 +391,7 @@ class WebServer(plugin.Plugin):
                         [[InlineKeyboardButton(text=btn_text, url=uri)]]
                     ),
                 )
-            else:
-                self.log.warn("Not send mssage for request: %s", payloads)
-                ret_data.update({"ok": False, "error": "reject by setting"})
+
         except Exception as e:
             self.log.error(f"Sending occurs error: {str(e)}")
             ret_data.update({"ok": False, "error": str(e)})

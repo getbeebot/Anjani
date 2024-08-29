@@ -89,6 +89,7 @@ class Anjani(
 
         misc.session_backup_sync()
 
+        await self.myengine.dispose()
         await self.mysql.close()
         await self.redis.close()
         await self.apiclient.close()
