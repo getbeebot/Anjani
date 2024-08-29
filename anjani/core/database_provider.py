@@ -17,7 +17,7 @@
 import sys
 from typing import TYPE_CHECKING, Any
 
-from anjani import util
+from anjani import orm, util
 
 from .anjani_mixin_base import MixinBase
 
@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 class DatabaseProvider(MixinBase):
     db: util.db.AsyncDatabase
+    myengine: orm.AsyncEngine
 
     def __init__(self: "Anjani", **kwargs: Any) -> None:
         if sys.platform == "win32":
@@ -39,6 +40,7 @@ class DatabaseProvider(MixinBase):
             client = util.db.AsyncClient(self.config.DB_URI, connect=False)
 
         self.db = client.get_database("AnjaniBot")
+        self.myengine = orm.init_engine()
 
         # Propagate initialization to other mixins
         super().__init__(**kwargs)
