@@ -92,6 +92,9 @@ async def session_restore():
 
 
 TWA_LINK = os.getenv("TWA_LINK")
+UNION_DRAW_PORTAL = (
+    os.getenv("UNION_DRAW_PORTAL") or "https://bot.beecon.me/trafficExchange"
+)
 
 
 def encode_args(args: dict) -> str:
