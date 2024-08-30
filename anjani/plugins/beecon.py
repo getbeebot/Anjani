@@ -425,7 +425,7 @@ class BeeconPlugin(plugin.Plugin):
                     project_id, task_id, self.bot.uid
                 )
 
-            if project_id == 0 and task_id == 0:
+            if int(project_id) == 0 and int(task_id) == 0:
                 task_url = util.misc.UNION_DRAW_PORTAL
 
             sql = "SELECT btn_desc, des, pics FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
@@ -496,7 +496,7 @@ class BeeconPlugin(plugin.Plugin):
             )
 
             prompt_title = f"{project_id}-{task_id}-{lang}"
-            if project_id == 0 and task_id == 0:
+            if int(project_id) == 0 and int(task_id) == 0:
                 prompt_title = "Union Draw Portal"
 
             if not pics:
