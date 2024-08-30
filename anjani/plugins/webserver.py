@@ -150,7 +150,7 @@ class WebServer(plugin.Plugin):
         self.api_rtt_gauge = Gauge(
             "api_rtt",
             "API request Round Trip Time",
-            labelnames=["path", "method", "trace_id"],
+            labelnames=["path", "method"],
         )
         self.registry.register(self.event_counter)
         self.registry.register(self.api_rtt_gauge)
@@ -186,14 +186,10 @@ class WebServer(plugin.Plugin):
                 method = payloads.get("method").upper()
                 path = payloads.get("path")
                 rtt = payloads.get("latency")
-                if Decimal(rtt) < Decimal(20000):
-                    return web.json_response(ret_data, status=200)
                 self.api_rtt_gauge.labels(
                     method=method,
                     path=path,
-                    trace_id=trace_id,
                 ).set(rtt)
-                loop.create_task(self.reset_gague(method, path, trace_id))
         except Exception as e:
             self.log.error(f"push alert error: {e}")
             ret_data.update({"ok": False, "error": str(e)})
@@ -203,10 +199,6 @@ class WebServer(plugin.Plugin):
         # auto resolve alert after 30 seconds
         await asyncio.sleep(30)
         self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).reset()
-
-    async def reset_gague(self, method, path, trace_id) -> None:
-        await asyncio.sleep(30)
-        self.api_rtt_gauge.labels(method, path, trace_id).set(0)
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
