@@ -426,7 +426,7 @@ class BeeconPlugin(plugin.Plugin):
                 )
 
             if int(project_id) == 0 and int(task_id) == 0:
-                task_url = util.misc.UNION_DRAW_PORTAL
+                task_url = util.misc.generate_union_draw_portal_link(self.bot.uid)
 
             sql = "SELECT btn_desc, des, pics FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
             sql_res = await self.mysql.query_one(sql, (project_id, task_id, lang))

@@ -92,9 +92,6 @@ async def session_restore():
 
 
 TWA_LINK = os.getenv("TWA_LINK")
-UNION_DRAW_PORTAL = (
-    os.getenv("UNION_DRAW_PORTAL") or "https://bot.beecon.me/trafficExchange"
-)
 
 
 def encode_args(args: dict) -> str:
@@ -159,6 +156,12 @@ def generate_project_leaderboard_link(project_id: int, bot_id: int):
         return f"{TWA_LINK}={args}"
     else:
         return TWA_LINK
+
+
+def generate_union_draw_portal_link(bot_id: int):
+    payloads = {"target": "trafficExchange", "botid": int(bot_id)}
+    args = encode_args(payloads)
+    return f"{TWA_LINK}={args}"
 
 
 def check_filters(filters: Union[Filter, CustomFilter], anjani: "Anjani") -> None:
