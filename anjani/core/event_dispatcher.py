@@ -15,40 +15,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import asyncio
 import bisect
+import json
+import os
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, MutableMapping, MutableSequence, Optional, Tuple
 
 import aiofiles
 import aiofiles.os as aio_os
-import json
-
+import boto3
+import websockets
 from pyrogram import raw
+from pyrogram.enums import ChatType
+from pyrogram.enums.parse_mode import ParseMode
 from pyrogram.filters import Filter
 from pyrogram.raw import functions
 from pyrogram.types import (
-    CallbackQuery, InlineQuery,
-    Message, InlineKeyboardButton,
+    CallbackQuery,
+    Chat,
+    ChatMemberUpdated,
+    InlineKeyboardButton,
     InlineKeyboardMarkup,
-    Chat, ChatMemberUpdated, User
+    InlineQuery,
+    Message,
+    User,
 )
-from pyrogram.enums import ChatType
-from pyrogram.enums.parse_mode import ParseMode
+from websockets import client
 
 from anjani import plugin, util
 from anjani.error import EventDispatchError
+from anjani.language import get_template
 from anjani.listener import Listener, ListenerFunc
 from anjani.util.misc import StopPropagation
-
-from anjani.language import get_template
-
-import boto3
-
-import websockets
-from websockets import client
 
 from .anjani_mixin_base import MixinBase
 from .metrics import EventCount, EventLatencySecond, UnhandledError
@@ -182,7 +182,7 @@ class EventDispatcher(MixinBase):
                 invite_link = await self.client.create_chat_invite_link(chat.id)
                 link = invite_link.invite_link
         except Exception as e:
-            self.log.warning("Can not link of chat %s (%s)", chat.title, chat.id)
+            self.log.warning("Can not link of chat %s (%s): %s", chat.title, chat.id, e)
 
         return link
 
@@ -203,14 +203,16 @@ class EventDispatcher(MixinBase):
                 "chat_id": chat_id,
                 "chat_name": chat_name,
                 "invite_link": chat_link,
-                "bot_id": self.uid
+                "bot_id": self.uid,
             }
             self.log.info(f"Bot joining {chat.type} {chat_name}({chat_id}) {chat_link}")
             await self.mysql.update_chat_info(chat_info)
         except Exception as e:
             self.log.error("Update chat info error: %s", e)
 
-    async def create_project_on_join(self: "Anjani", updated: ChatMemberUpdated) -> None:
+    async def create_project_on_join(
+        self: "Anjani", updated: ChatMemberUpdated
+    ) -> None:
         new_member = updated.new_chat_member
         chat = updated.chat
 
@@ -220,15 +222,26 @@ class EventDispatcher(MixinBase):
         if not chat:
             return None
 
-
         async def get_avatar_link(chat_id: int, file_id: str) -> Optional[str]:
             try:
                 filename = f"C{chat_id}.jpg"
                 filepath = os.path.join("downloads", filename)
 
-                await self.client.download_media(file_id, file_name=f"../downloads/{filename}")
-                s3 = boto3.client("s3", region_name="ap-southeast-1", aws_access_key_id=self.config.AWS_AK, aws_secret_access_key=self.config.AWS_SK)
-                s3.upload_file(filepath, self.config.AWS_S3_BUCKET, filename, ExtraArgs={"ContentType": "image/jpeg"})
+                await self.client.download_media(
+                    file_id, file_name=f"../downloads/{filename}"
+                )
+                s3 = boto3.client(
+                    "s3",
+                    region_name="ap-southeast-1",
+                    aws_access_key_id=self.config.AWS_AK,
+                    aws_secret_access_key=self.config.AWS_SK,
+                )
+                s3.upload_file(
+                    filepath,
+                    self.config.AWS_S3_BUCKET,
+                    filename,
+                    ExtraArgs={"ContentType": "image/jpeg"},
+                )
                 await aio_os.remove(filepath)
                 return f"https://{self.config.AWS_S3_BUCKET}.s3.ap-southeast-1.amazonaws.com/{filename}"
             except Exception as e:
@@ -245,20 +258,22 @@ class EventDispatcher(MixinBase):
         async def construct_payloads(user: User) -> dict:
             payloads = {}
             user_id = user.id
-            user_name= user.username or None
+            user_name = user.username or None
             first_name = user.first_name
             last_name = user.last_name
-            nick_name = first_name + ' ' + last_name if last_name else first_name
+            nick_name = first_name + " " + last_name if last_name else first_name
 
-            payloads.update({
-                "firstName": first_name,
-                "lastName": last_name,
-                "nickName": nick_name,
-                "userName": user_name,
-                "pic": None,
-                "tgUserId": user_id,
-                "botId": self.uid
-            })
+            payloads.update(
+                {
+                    "firstName": first_name,
+                    "lastName": last_name,
+                    "nickName": nick_name,
+                    "userName": user_name,
+                    "pic": None,
+                    "tgUserId": user_id,
+                    "botId": self.uid,
+                }
+            )
             return payloads
 
         async def update_admin_avatar(chat_id: int, file_id: str) -> None:
@@ -269,7 +284,10 @@ class EventDispatcher(MixinBase):
                     return None
                 user_id = await mysql_client.get_user_id(chat_id)
                 if not user_id:
-                    self.log.warn("Update admin avatar error: can not found user_id by chat_id %s", chat_id)
+                    self.log.warn(
+                        "Update admin avatar error: can not found user_id by chat_id %s",
+                        chat_id,
+                    )
                 await mysql_client.update_user_avatar(user_id, avatar)
                 self.log.info("Updated user %s avatar to %s", user_id, avatar)
             except Exception:
@@ -278,29 +296,47 @@ class EventDispatcher(MixinBase):
                 await mysql_client.close()
                 del mysql_client
 
-        async def update_project_info(tenant_id: int, project_id: int, chat: Chat) -> None:
+        async def update_project_info(
+            tenant_id: int, project_id: int, chat: Chat
+        ) -> None:
             mysql_client = util.db.MysqlPoolClient.init_from_env()
             try:
                 avatar = None
                 if chat.photo and chat.photo.big_file_id:
                     avatar = await get_avatar_link(chat.id, chat.photo.big_file_id)
                 slogan = await get_chat_description(chat.id)
-                await mysql_client.update_project_info(tenant_id, project_id, avatar, slogan)
-                self.log.info("Updated project %s logo_url to %s, slogan to %s", project_id, avatar, slogan)
+                await mysql_client.update_project_info(
+                    tenant_id, project_id, avatar, slogan
+                )
+                self.log.info(
+                    "Updated project %s logo_url to %s, slogan to %s",
+                    project_id,
+                    avatar,
+                    slogan,
+                )
             except Exception:
                 pass
             finally:
                 await mysql_client.close()
                 del mysql_client
 
-        guide_img_link = os.getenv("GUIDE_IMG", "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png")
+        guide_img_link = os.getenv(
+            "GUIDE_IMG",
+            "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/guide.png",
+        )
         add_me_btn_text = await get_template("add-to-group-button")
         usage_guide = await get_template("usage-guide")
         usage_guide = usage_guide.format(add_me_btn_text)
 
-        start_me_btn = InlineKeyboardMarkup([[
-            InlineKeyboardButton("Start me", url=f"t.me/{self.user.username}?start")
-        ]])
+        start_me_btn = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "Start me", url=f"t.me/{self.user.username}?start=true"
+                    )
+                ]
+            ]
+        )
 
         group_id = chat.id
 
@@ -344,7 +380,7 @@ class EventDispatcher(MixinBase):
                 photo=guide_img_link,
                 caption=err_msg,
                 reply_markup=start_me_btn,
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return None
 
@@ -352,16 +388,18 @@ class EventDispatcher(MixinBase):
 
         share_link = await self.get_chat_link(chat)
 
-        payloads.update({
-            "name": chat.title,
-            "ownerTgId": admin.id,
-            "shareLink": share_link,
-            "status": 1,
-            "targetId": group_id,
-            "targetType": chat_type,
-            "slogan": None,
-            "logoUrl": None,
-        })
+        payloads.update(
+            {
+                "name": chat.title,
+                "ownerTgId": admin.id,
+                "shareLink": share_link,
+                "status": 1,
+                "targetId": group_id,
+                "targetType": chat_type,
+                "slogan": None,
+                "logoUrl": None,
+            }
+        )
 
         payloads = json.loads(json.dumps(payloads))
 
@@ -400,16 +438,20 @@ class EventDispatcher(MixinBase):
                 # Update project info seperately
                 loop = asyncio.get_running_loop()
                 if admin.photo and admin.photo.big_file_id:
-                    loop.create_task(update_admin_avatar(admin.id, admin.photo.big_file_id))
+                    loop.create_task(
+                        update_admin_avatar(admin.id, admin.photo.big_file_id)
+                    )
                 loop.create_task(update_project_info(tenant_id, project_id, chat))
             except Exception as e:
                 self.log.warn("Update project init info error %s", e)
 
-            notify_msg = json.dumps({
-                "project_id": project_id,
-                "owner_tg_id": admin.id,
-                "bot_id": self.uid,
-            })
+            notify_msg = json.dumps(
+                {
+                    "project_id": project_id,
+                    "owner_tg_id": admin.id,
+                    "bot_id": self.uid,
+                }
+            )
 
             async with client.connect("ws://127.0.0.1:8080/ws") as ws:
                 try:
@@ -458,7 +500,7 @@ class EventDispatcher(MixinBase):
                 await save_msg(f"C{args[0].chat.id}", str(args[0]))
             else:
                 await save_msg(event, str(args))
-        except Exception as e:
+        except Exception:
             await save_msg(event, str(args))
 
         # storing group info when bot joined
@@ -472,14 +514,15 @@ class EventDispatcher(MixinBase):
             elif chat.type == ChatType.GROUP:
                 chat_type = 2
 
-
             new_member = updated.new_chat_member
             if new_member and new_member.joined_date:
                 try:
                     tg_user_id = new_member.user.id
                     joined_date = new_member.joined_date
                     mysql_client = util.db.MysqlPoolClient.init_from_env()
-                    await mysql_client.save_new_member(chat.id, chat_type, tg_user_id, self.uid, joined_date)
+                    await mysql_client.save_new_member(
+                        chat.id, chat_type, tg_user_id, self.uid, joined_date
+                    )
                 except Exception as e:
                     self.log.error("saving member join record %s error %s", updated, e)
                 finally:
@@ -497,11 +540,19 @@ class EventDispatcher(MixinBase):
 
                 project_id = await self.mysql.get_chat_project_id(chat.id, self.uid)
                 if not project_id:
-                    self.log.error("Can not get project id for chat (%s, %s)", chat.title, chat.id)
+                    self.log.error(
+                        "Can not get project id for chat (%s, %s)", chat.title, chat.id
+                    )
 
-                config = await util.project_config.BotNotificationConfig.get_project_config(project_id)
+                config = (
+                    await util.project_config.BotNotificationConfig.get_project_config(
+                        project_id
+                    )
+                )
 
-                self.log.debug("Chat %s(%s) project config: %s", chat.title, chat.id, config)
+                self.log.debug(
+                    "Chat %s(%s) project config: %s", chat.title, chat.id, config
+                )
 
                 if config.verify:
                     payloads = [chat.id, invite_link.invite_link]
@@ -509,12 +560,16 @@ class EventDispatcher(MixinBase):
                     verify_args = util.misc.encode_args(payloads)
 
                     btn_text = await get_template("rewards-to-claim-button")
-                    button = InlineKeyboardMarkup([[
-                        InlineKeyboardButton(
-                            btn_text,
-                            url=f"t.me/{self.user.username}?start={verify_args}"
-                        )
-                    ]])
+                    button = InlineKeyboardMarkup(
+                        [
+                            [
+                                InlineKeyboardButton(
+                                    btn_text,
+                                    url=f"t.me/{self.user.username}?start={verify_args}",
+                                )
+                            ]
+                        ]
+                    )
                     reply_text = await get_template("rewards-to-claim")
                     reply_text = reply_text.format(from_user.mention)
                     if chat.type == ChatType.CHANNEL:
@@ -522,15 +577,18 @@ class EventDispatcher(MixinBase):
                             await self.client.send_message(
                                 chat_id=from_user.id,
                                 text=reply_text,
-                                reply_markup=button
+                                reply_markup=button,
                             )
                         except Exception as e:
-                            self.log.warn("Unable to push notification %s to user %s, error: %s", reply_text, from_user, e)
+                            self.log.warn(
+                                "Unable to push notification %s to user %s, error: %s",
+                                reply_text,
+                                from_user,
+                                e,
+                            )
                     else:
                         await self.client.send_message(
-                            chat_id=chat.id,
-                            text=reply_text,
-                            reply_markup=button
+                            chat_id=chat.id, text=reply_text, reply_markup=button
                         )
                 else:
                     payloads = {
@@ -541,30 +599,39 @@ class EventDispatcher(MixinBase):
                     }
 
                     btn_text = await get_template("rewards-msg-button")
-                    project_link = util.misc.generate_project_detail_link(project_id, self.uid)
-                    button = InlineKeyboardMarkup([
-                        [InlineKeyboardButton(text=btn_text, url=project_link)]
-                    ])
+                    project_link = util.misc.generate_project_detail_link(
+                        project_id, self.uid
+                    )
+                    button = InlineKeyboardMarkup(
+                        [[InlineKeyboardButton(text=btn_text, url=project_link)]]
+                    )
 
                     rewards = await self.apiclient.distribute_join_rewards(payloads)
                     if rewards:
                         reply_text = await get_template("rewards-claimed")
                         if rewards:
-                            reply_text = reply_text.format(rewards=rewards, mention=from_user.mention)
+                            reply_text = reply_text.format(
+                                rewards=rewards, mention=from_user.mention
+                            )
                             if chat.type == ChatType.CHANNEL:
                                 try:
                                     await self.client.send_message(
                                         chat_id=from_user.id,
                                         text=reply_text,
-                                        reply_markup=button
+                                        reply_markup=button,
                                     )
                                 except Exception as e:
-                                    self.log.warn("Unable to push notification %s to user %s, error: %s", reply_text, from_user, e)
+                                    self.log.warn(
+                                        "Unable to push notification %s to user %s, error: %s",
+                                        reply_text,
+                                        from_user,
+                                        e,
+                                    )
                             else:
                                 await self.client.send_message(
                                     chat_id=chat.id,
                                     text=reply_text,
-                                    reply_markup=button
+                                    reply_markup=button,
                                 )
 
         EventCount.labels(event).inc()

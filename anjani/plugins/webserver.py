@@ -3,7 +3,6 @@ import base64
 import json
 import os
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import ClassVar, Optional
 
 import aiofiles.os as aio_os
