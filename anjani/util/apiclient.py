@@ -38,8 +38,7 @@ class APIClient:
         rewards = None
 
         # special logical for join api
-        req_uri = "https://api.beecon.me/p/task/bot-project/join"
-        # req_uri = f"{self.url_prefix}/p/task/bot-project/join"
+        req_uri = f"{self.url_prefix}/p/task/bot-project/join"
 
         self.update_headers(payloads)
         self.headers.update({"Content-Type": "application/json"})
