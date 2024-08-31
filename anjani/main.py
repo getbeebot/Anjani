@@ -28,8 +28,8 @@ import dotenv
 
 from . import DEFAULT_CONFIG_PATH
 from .core import Anjani
-from .util.config import Config
 from .util import misc
+from .util.config import Config
 
 log = logging.getLogger("launch")
 
@@ -95,6 +95,9 @@ def _setup_log() -> None:
     logging.getLogger("botocore").setLevel(logging.WARNING)
     logging.getLogger("boto3").setLevel(logging.WARNING)
     logging.getLogger("s3transfer").setLevel(logging.WARNING)
+    # SQLAlchemy
+    logging.getLogger("sqlalchemy.engine").setLevel(level)
+    logging.getLogger("sqlalchemy.pool").setLevel(level)
 
 
 def start() -> None:

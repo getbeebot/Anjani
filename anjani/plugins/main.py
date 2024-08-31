@@ -21,7 +21,6 @@ import re
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, List, Optional
 
-from aiopath import AsyncPath
 from pymongo.errors import PyMongoError
 from pyrogram.enums.chat_type import ChatType
 from pyrogram.enums.parse_mode import ParseMode
@@ -38,7 +37,7 @@ from pyrogram.types import (
     Message,
 )
 
-from anjani import command, filters, listener, plugin, util
+from anjani import command, filters, listener, orm, plugin, util
 from anjani.util.project_config import BotNotificationConfig
 
 from .language import LANG_FLAG
@@ -53,6 +52,7 @@ class Main(plugin.Plugin):
     name: ClassVar[str] = "Main"
 
     mysql: util.db.MysqlPoolClient
+    mydb: orm.AsyncSession
 
     bot_name: str
     db: util.db.AsyncCollection
@@ -89,6 +89,8 @@ class Main(plugin.Plugin):
         self.mysql = util.db.MysqlPoolClient.init_from_env()
         await self.mysql.connect()
 
+        self.mydb = orm.AsyncSession(self.bot.myengine)
+
         self.db = self.bot.db.get_collection("SESSION")
         self.lang_db = self.bot.db.get_collection("LANGUAGE")
         self._start_db_stream()
@@ -99,6 +101,8 @@ class Main(plugin.Plugin):
             if self.bot.user.last_name
             else self.bot.user.first_name
         )
+
+        await self.mydb.flush()
 
         restart = await self.db.find_one({"_id": 5})
         if restart is not None:
@@ -135,24 +139,6 @@ class Main(plugin.Plugin):
 
     async def on_stop(self) -> None:
         async with asyncio.Lock():
-            # data = await self.bot.client.invoke(GetState())
-            # try:
-            #     await self.db.update_one(
-            #         {"_id": sha256(self.bot.config.BOT_TOKEN.encode()).hexdigest()},
-            #         {
-            #             "$set": {
-            #                 "session": Binary(await file.read_bytes()),
-            #                 "date": data.date,
-            #                 "pts": data.pts,
-            #                 "qts": data.qts,
-            #                 "seq": data.seq,
-            #             }
-            #         },
-            #         upsert=True,
-            #     )
-            # except Exception as e:
-            #     self.log.warn("Saving session to db error %s", e)
-
             status_msg = await self.send_to_log("Shutdowning system...")
             self.bot.log.info("Preparing to shutdown...")
             if not status_msg:
@@ -171,8 +157,6 @@ class Main(plugin.Plugin):
             )
             # for language db
             self._db_stream.cancel()
-
-            util.misc.session_backup_sync()
 
             await self.mysql.close()
 
@@ -209,7 +193,6 @@ class Main(plugin.Plugin):
         self, chat_id: int, is_link: bool = False
     ) -> List[List[InlineKeyboardButton]]:
         projects: List[List[InlineKeyboardButton]] = []
-        # user_projects = await self.mysql.get_user_projects(chat_id, self.bot.uid)
         user_id = await self.mysql.get_user_id(chat_id)
         if not user_id:
             return
@@ -619,13 +602,10 @@ class Main(plugin.Plugin):
         if chat.type == ChatType.PRIVATE:  # only send in PM's
             # for start bot task
             try:
-                mysql_client = util.db.MysqlPoolClient.init_from_env()
-                await mysql_client.save_start_record(chat.id, self.bot.uid)
+                start_record = orm.TgUserStartBot(chat_id=chat.id, bot_id=self.bot.uid)
+                await start_record.save(self.mydb)
             except Exception as e:
                 self.log.warn("Saving start bot records error: %s", e)
-            finally:
-                await mysql_client.close()
-                del mysql_client
 
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)

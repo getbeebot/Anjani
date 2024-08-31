@@ -21,6 +21,7 @@ from typing import Optional
 import aiohttp
 import pyrogram
 
+from anjani.util import misc
 from anjani.util.apiclient import APIClient
 from anjani.util.config import Config
 from anjani.util.db import AsyncRedisClient, MysqlPoolClient
@@ -86,9 +87,12 @@ class Anjani(
             if self.client.is_connected:
                 await self.client.stop()
 
+        misc.session_backup_sync()
+
+        await self.myengine.dispose()
         await self.mysql.close()
         await self.redis.close()
-        await self.apiclient.http.close()
+        await self.apiclient.close()
 
         await self.http.close()
         await self.db.close()

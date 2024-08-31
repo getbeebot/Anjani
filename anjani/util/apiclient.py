@@ -1,8 +1,8 @@
-import os
-import aiohttp
 import logging
-
+import os
 from typing import Optional
+
+import aiohttp
 
 
 class APIClient:
@@ -28,6 +28,10 @@ class APIClient:
         if bot_id:
             self.headers.update({"Botid": str(bot_id)})
 
+    async def close(self):
+        if not self.http.closed:
+            await self.http.close()
+
     async def distribute_join_rewards(self, payloads: dict) -> Optional[str]:
         self.log.info("Distribute join rewards request payloads: %s", payloads)
 
@@ -39,9 +43,7 @@ class APIClient:
         self.headers.update({"Content-Type": "application/json"})
 
         async with self.http.put(
-            url=req_uri,
-            json=payloads,
-            headers=self.headers
+            url=req_uri, json=payloads, headers=self.headers
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
@@ -65,9 +67,7 @@ class APIClient:
         self.headers.update({"Content-Type": "application/json"})
 
         async with self.http.put(
-            url=req_uri,
-            json=payloads,
-            headers=self.headers
+            url=req_uri, json=payloads, headers=self.headers
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
@@ -91,9 +91,7 @@ class APIClient:
         self.update_headers(payloads)
 
         async with self.http.get(
-            url=req_uri,
-            params=payloads,
-            headers=self.headers
+            url=req_uri, params=payloads, headers=self.headers
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
@@ -115,9 +113,7 @@ class APIClient:
         self.headers.update({"Content-Type": "application/json"})
 
         async with self.http.post(
-            url=req_uri,
-            json=payloads,
-            headers=self.headers
+            url=req_uri, json=payloads, headers=self.headers
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
@@ -146,9 +142,7 @@ class APIClient:
         self.update_headers(payloads)
 
         async with self.http.get(
-            url=req_uri,
-            params=payloads,
-            headers=self.headers
+            url=req_uri, params=payloads, headers=self.headers
         ) as resp:
             if resp.status == 200:
                 res = await resp.json()
@@ -169,7 +163,9 @@ class APIClient:
 
         self.update_headers(payloads)
 
-        async with self.http.get(url=req_uri, params=payloads, headers=self.headers) as resp:
+        async with self.http.get(
+            url=req_uri, params=payloads, headers=self.headers
+        ) as resp:
             if resp.status == 200:
                 res = await resp.json()
                 self.log.info("Get ranks response: %s", res)
@@ -183,7 +179,9 @@ class APIClient:
         req_uri = f"{self.url_prefix}/p/task/bot-project/addAdmin"
 
         self.update_headers(payloads)
-        async with self.http.post(url=req_uri, json=payloads, headers=self.headers) as resp:
+        async with self.http.post(
+            url=req_uri, json=payloads, headers=self.headers
+        ) as resp:
             if resp.status == 200:
                 res = await resp.json()
                 self.log.info("Add admin response: %s", res)
@@ -196,7 +194,9 @@ class APIClient:
 
         user_id = payloads.get("user_id")
 
-        req_uri = f"{self.url_prefix}/p/task/bot-project/getProjectsManaged?userId={user_id}"
+        req_uri = (
+            f"{self.url_prefix}/p/task/bot-project/getProjectsManaged?userId={user_id}"
+        )
 
         self.update_headers(payloads)
 
@@ -211,3 +211,30 @@ class APIClient:
                 return projects
             else:
                 self.log.error("Get user projects error: %s", await resp.text())
+
+    async def get_project_res(self, payloads: dict):
+        self.log.info("Get project res request payloads: %s", payloads)
+
+        project_id = payloads.get("project_id")
+        res_type = payloads.get("res_type")
+        req_uri = f"{self.url_prefix}/p/task/bot-resource/getResourceByType?projectId={project_id}&type={res_type}"
+
+        self.update_headers(payloads)
+
+        async with self.http.get(url=req_uri, headers=self.headers) as resp:
+            if resp.status == 200:
+                res = await resp.json()
+                self.log.info("Get project res response: %s", res)
+                status = res.get("status")
+                items = res.get("itemList")
+                desc = None
+                pic = None
+                text = None
+                if isinstance(items, list) and len(items) >= 1:
+                    pic = items[0].get("image") if items[0] else None
+                    desc = items[0].get("description") if items[0] else None
+                    text = items[0].get("text") if items[0] else None
+                return (pic, status, desc, text)
+            else:
+                self.log.error("Get project pic error: %s", await resp.text())
+                return (None, 1, None, None)

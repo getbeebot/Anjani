@@ -158,6 +158,12 @@ def generate_project_leaderboard_link(project_id: int, bot_id: int):
         return TWA_LINK
 
 
+def generate_union_draw_portal_link(bot_id: int):
+    payloads = {"target": "trafficExchange", "botid": int(bot_id)}
+    args = encode_args(payloads)
+    return f"{TWA_LINK}={args}"
+
+
 def check_filters(filters: Union[Filter, CustomFilter], anjani: "Anjani") -> None:
     """Recursively check filters to set :obj:`~Anjani` into :obj:`~CustomFilter` if needed"""
     if isinstance(filters, (AndFilter, OrFilter, InvertFilter)):

@@ -3,7 +3,6 @@ import base64
 import json
 import os
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import ClassVar, Optional
 
 import aiofiles.os as aio_os
@@ -150,7 +149,7 @@ class WebServer(plugin.Plugin):
         self.api_rtt_gauge = Gauge(
             "api_rtt",
             "API request Round Trip Time",
-            labelnames=["path", "method", "trace_id"],
+            labelnames=["path", "method"],
         )
         self.registry.register(self.event_counter)
         self.registry.register(self.api_rtt_gauge)
@@ -186,14 +185,10 @@ class WebServer(plugin.Plugin):
                 method = payloads.get("method").upper()
                 path = payloads.get("path")
                 rtt = payloads.get("latency")
-                if Decimal(rtt) < Decimal(20000):
-                    return web.json_response(ret_data, status=200)
                 self.api_rtt_gauge.labels(
                     method=method,
                     path=path,
-                    trace_id=trace_id,
                 ).set(rtt)
-                loop.create_task(self.reset_gague(method, path, trace_id))
         except Exception as e:
             self.log.error(f"push alert error: {e}")
             ret_data.update({"ok": False, "error": str(e)})
@@ -203,10 +198,6 @@ class WebServer(plugin.Plugin):
         # auto resolve alert after 30 seconds
         await asyncio.sleep(30)
         self.event_counter.labels(name=name, trace_id=trace_id, desc=desc).reset()
-
-    async def reset_gague(self, method, path, trace_id) -> None:
-        await asyncio.sleep(60)
-        self.api_rtt_gauge.labels(method, path, trace_id).set(0)
 
     async def is_member_handler(self, request: BaseRequest) -> Response:
         ret_data = {"ok": False}
@@ -268,9 +259,9 @@ class WebServer(plugin.Plugin):
             payloads = await request.json()
             self.log.info("/sendmsg request payloads: %s", payloads)
 
-            chat_type = payloads.get("type")
+            event_type = payloads.get("type")
 
-            if not chat_type:
+            if not event_type:
                 return web.json_response(
                     {
                         "ok": False,
@@ -280,7 +271,7 @@ class WebServer(plugin.Plugin):
                 )
 
             assert isinstance(
-                chat_type, int
+                event_type, int
             ), "type argument should be int, but got an non-int, please check it out"
 
             data = payloads.get("data")
@@ -314,7 +305,11 @@ class WebServer(plugin.Plugin):
 
             chat = await self.bot.client.get_chat(chat_id)
             notify_type = data.get("notifyType")
-            if chat.type == ChatType.CHANNEL and notify_type in [1, 2, 3, 5]:
+            if (
+                event_type != 99
+                and chat.type == ChatType.CHANNEL
+                and notify_type in [1, 2, 3, 5]
+            ):
                 self.log.warn(
                     "Chat type is channel, not sending notification. Channel: %s, content: %s",
                     chat.title,
@@ -376,6 +371,19 @@ class WebServer(plugin.Plugin):
             else:
                 self.log.warn("Not send mssage for request: %s", payloads)
                 ret_data.update({"ok": False, "error": "reject by setting"})
+
+            # push union draw to daily gift channel
+            if event_type == 99 and notify_type == 1:
+                chat_id = os.getenv("DAILY_GIFT_CHAT_ID") or -1002216827412
+                btn_text = data.get("shareBtn") or "Open"
+                await self.union_draw_notify(
+                    chat_id,
+                    data,
+                    InlineKeyboardMarkup(
+                        [[InlineKeyboardButton(text=btn_text, url=uri)]]
+                    ),
+                )
+
         except Exception as e:
             self.log.error(f"Sending occurs error: {str(e)}")
             ret_data.update({"ok": False, "error": str(e)})
@@ -529,10 +537,19 @@ class WebServer(plugin.Plugin):
     async def newdraw_notify(self, chat_id: int, args: dict, buttons=None):
         # send newdraw create message to group, notify_type = 1
         lottery_type = args.get("lotteryType")
-        template = await self.text(
-            None, f"lottery-create-{lottery_type}", noformat=True
-        )
-        msg = build_lottery_create_msg(template, **args)
+        msg = None
+        if lottery_type == 3:
+            msg = args.get("shareText")
+            btn_url = args.get("uri") or os.getenv("TWA_LINK")
+            btn_text = args.get("shareBtn") or "Open"
+            buttons = InlineKeyboardMarkup(
+                [[InlineKeyboardButton(text=btn_text, url=btn_url)]]
+            )
+        else:
+            template = await self.text(
+                None, f"lottery-create-{lottery_type}", noformat=True
+            )
+            msg = build_lottery_create_msg(template, **args)
         if not buttons:
             self.log.error(
                 "No button, reject to send message to chat %s with %s", chat_id, msg
@@ -638,6 +655,8 @@ class WebServer(plugin.Plugin):
             )
             return None
         pic = self._get_notify_pic(args)
+        if args.get("description"):
+            msg = args.get("description")
         await self.bot.client.send_photo(
             chat_id=chat_id, photo=pic, caption=msg, reply_markup=buttons
         )
@@ -693,6 +712,19 @@ class WebServer(plugin.Plugin):
             )
             return None
         await self.bot.client.send_message(int(chat_id), msg, reply_markup=buttons)
+        self.log.info("Sent message to %s with %s", chat_id, msg)
+
+    async def union_draw_notify(self, chat_id: int, args: dict, buttons=None):
+        pic = self._get_notify_pic(args)
+        msg = args.get("shareText")
+        if not buttons:
+            self.log.error(
+                "No button, reject to send message to chat %s with %s", chat_id, msg
+            )
+            return None
+        await self.bot.client.send_photo(
+            int(chat_id), photo=pic, caption=msg, reply_markup=buttons
+        )
         self.log.info("Sent message to %s with %s", chat_id, msg)
 
     async def save_iq_text_handler(self, request: BaseRequest) -> Response:
@@ -770,24 +802,6 @@ class WebServer(plugin.Plugin):
                 "Content-Type": "application/json",
             }
 
-            # if self.bot.uid == 6802454608:
-            #     async def save_alert_record(name: str, description: str):
-            #         mysql_client = MysqlPoolClient.init_from_env()
-            #         await mysql_client.connect()
-            #         sql = "INSERT INTO alert_record(name, des) VALUES(%s, %s)"
-            #         values = (name, description)
-            #         await mysql_client.update(sql, values)
-            #         await mysql_client.close()
-            #         del mysql_client
-            #     try:
-            #         msg = payloads[0]
-            #         name = msg.get("labels").get("alertname")
-            #         des = msg.get("annotations").get("description") or ""
-            #         loop = asyncio.get_running_loop()
-            #         loop.create_task(save_alert_record(name, des))
-            #     except Exception as e:
-            #         self.log.error("saving alert record %s error %s", payloads, e)
-
             async with self.bot.http.post(url, json=payloads, headers=headers) as resp:
                 self.log.info("Alert response: %s", resp)
                 if resp.status == 200:
@@ -800,12 +814,7 @@ class WebServer(plugin.Plugin):
         return web.json_response(ret_data, status=200)
 
     def _get_notify_pic(self, args: dict) -> str:
-        notify_detail = args.get("notifyDetail")
-        if notify_detail and notify_detail.get("pic"):
-            return notify_detail.get("pic")
-
-        notify_type = args.get("notifyType")
-        if notify_type and notify_type in [3, 6]:
-            return self.draw_img
+        if args.get("pic"):
+            return args.get("pic")
 
         return self.engage_img

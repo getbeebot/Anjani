@@ -81,21 +81,26 @@ class BeeconPlugin(plugin.Plugin):
                     reply_context = await self.text(None, "invite-link", invite_link)
                     await message.reply(reply_context)
 
-        checkin_word = await self.bot.redis.get(f"checkin_{chat.id}")
+        checkin_info = await self.bot.redis.get(f"checkin_{chat.id}")
 
-        if not checkin_word:
+        if not checkin_info:
             return None
 
         try:
-            checkin_cmd = checkin_word.decode("utf-8")
-            cmd = checkin_cmd[1:-1]
+            self.log.debug("Checking info: %s", checkin_info)
+            checkin = json.loads(checkin_info.decode("utf-8"))
+            pic = None
+            if isinstance(checkin, dict):
+                cmd = checkin.get("cmd")
+                pic = checkin.get("pic")
+            else:
+                cmd = checkin
 
             if cmd != message.text:
                 return None
 
             chat_id = chat.id
             from_user = message.from_user
-            self.log.debug("Checking keyword: %s", checkin_cmd)
 
             payloads = await self._construct_user_api_payloads(from_user)
             payloads.update(
@@ -121,12 +126,22 @@ class BeeconPlugin(plugin.Plugin):
             )
 
             reply_context = await self.bot.apiclient.checkin(payloads)
-            reply_msg = await message.reply(
-                text=reply_context,
-                reply_to_message_id=message.id,
-                reply_markup=button,
-                parse_mode=ParseMode.MARKDOWN,
-            )
+            if not pic:
+                reply_msg = await message.reply(
+                    text=reply_context,
+                    reply_to_message_id=message.id,
+                    reply_markup=button,
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            else:
+                reply_msg = await self.bot.client.send_photo(
+                    chat_id,
+                    pic,
+                    caption=reply_context,
+                    reply_markup=button,
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_to_message_id=message.id,
+                )
             # auto delete check in message
             self.bot.loop.create_task(self._delete_msg(chat_id, reply_msg.id, 60))
             if message.from_user.photo and message.from_user.photo.big_file_id:
@@ -400,7 +415,7 @@ class BeeconPlugin(plugin.Plugin):
                 lang,
             )
             task_url = util.misc.TWA_LINK
-            # TODO: make it capable for tasks which have not set pics, des and btn_text
+
             if task_id == 0:
                 task_url = util.misc.generate_project_detail_link(
                     project_id, self.bot.uid
@@ -410,31 +425,64 @@ class BeeconPlugin(plugin.Plugin):
                     project_id, task_id, self.bot.uid
                 )
 
+            if int(project_id) == 0 and int(task_id) == 0:
+                task_url = util.misc.generate_union_draw_portal_link(self.bot.uid)
+
             sql = "SELECT btn_desc, des, pics FROM luckydraw_share WHERE project_id = %s AND task_id = %s AND lang = %s"
             sql_res = await self.mysql.query_one(sql, (project_id, task_id, lang))
+            # Default value for inline query
+            btn_desc = ""
+            desc = ""
+            pics = ""
 
             if not sql_res:
-                # TODO: using default setting
-                warning_content = InputTextMessageContent("Not set")
-                reply = [
-                    InlineQueryResultArticle(
-                        title="Warning",
-                        input_message_content=warning_content,
-                        description=f"There's not info set for project {project_id}, task {task_id} in language {lang}",
+                if task_id != 0:
+                    task_url = util.misc.generate_task_detail_link(
+                        project_id, task_id, self.bot.uid
                     )
-                ]
-                await query.answer(reply)
-                return
+                try:
+                    payloads = {
+                        "botId": self.bot.uid,
+                        "project_id": project_id,
+                        "res_type": 4,
+                    }
+                    (
+                        project_pic,
+                        status,
+                        project_desc,
+                        btn_text,
+                    ) = await self.bot.apiclient.get_project_res(payloads)
 
-            (btn_desc, desc, pics) = sql_res
+                    if project_desc:
+                        desc = project_desc
+
+                    if btn_text:
+                        btn_desc = f'{{"text": "{btn_text}"}}'
+
+                    if project_pic:
+                        pics = project_pic
+                    else:
+                        warning_content = InputTextMessageContent("Not set")
+                        reply = [
+                            InlineQueryResultArticle(
+                                title="Warning",
+                                input_message_content=warning_content,
+                                description=f"There's not info set for project {project_id}, task {task_id} in language {lang}",
+                            )
+                        ]
+                        await query.answer(reply)
+                        return
+                except Exception as e:
+                    self.log.warn("Get share card pics error %s", e)
 
             if not btn_desc:
-                self.log.warn(
-                    "Project %s task %s lang %s not set btn_desc",
-                    project_id,
-                    task_id,
-                    lang,
-                )
+                btn_desc = sql_res[0]
+
+            if not desc:
+                desc = sql_res[1]
+
+            if not pics:
+                pics = sql_res[2]
 
             keyboard = InlineKeyboardMarkup(
                 [
@@ -448,6 +496,8 @@ class BeeconPlugin(plugin.Plugin):
             )
 
             prompt_title = f"{project_id}-{task_id}-{lang}"
+            if int(project_id) == 0 and int(task_id) == 0:
+                prompt_title = "Union Draw Portal"
 
             if not pics:
                 reply_msg = InputTextMessageContent(

@@ -34,6 +34,11 @@ class CronJob(plugin.Plugin):
         session_bk_trigger = IntervalTrigger(seconds=1800)
         scheduler.add_job(self.backup_session, trigger=session_bk_trigger)
 
+        # tagging admins
+        self.log.info("Add tagging admin job")
+        tagging_admin_trigger = IntervalTrigger(seconds=28800)  # every 8 hours
+        scheduler.add_job(self.tagging_admin, trigger=tagging_admin_trigger)
+
         project_intervals = await self.get_project_intervals()
         if not project_intervals:
             self.log.warn("No cron job cause no project")
@@ -119,7 +124,7 @@ class CronJob(plugin.Plugin):
                     "Not meet nofity condition, skipped: %s",
                     (group_id, project_id, self.bot.uid),
                 )
-                return
+                continue
 
             # delete last notification
             pre_msg = await self.redis.get(f"notify_{group_id}")
@@ -128,11 +133,24 @@ class CronJob(plugin.Plugin):
                     await self.bot.client.delete_messages(group_id, int(pre_msg))
                 except Exception as e:
                     self.log.warn("Delete previous pushed message error: %s", e)
-            # TODO: get engage_img based on user config
             engage_img = os.getenv(
                 "ENGAGE_IMG",
                 "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
             )
+            try:
+                payloads = {
+                    "botId": self.bot.uid,
+                    "project_id": project_id,
+                    "res_type": 2,
+                }
+                project_res = await self.bot.apiclient.get_project_res(payloads)
+                if project_res[1] == 0:
+                    self.log.warn("Project %s turn off push notify", project_id)
+                    continue
+                if project_res[0]:
+                    engage_img = project_res[0]
+            except Exception as e:
+                self.log.warn("Get project task notify pic error: %s", e)
 
             try:
                 msg = await self.bot.client.send_photo(
@@ -163,3 +181,16 @@ class CronJob(plugin.Plugin):
             await misc.copy_file(src, dest)
             await asyncio.sleep(10)
             self.log.info("Backing up session file done.")
+
+    async def tagging_admin(self):
+        admin_tag_id = await self.mysql.get_tag_id_by_name("admin")
+        if not admin_tag_id:
+            self.log.warn("Can not find admin tag")
+            return None
+        admins = await self.mysql.get_admins_with_notag()
+        if not admins:
+            self.log.warn("No new admins need to tag")
+            return None
+        admin_tags = [(a[0], admin_tag_id) for a in admins]
+        self.log.debug("admins with tags %s", admin_tags)
+        await self.mysql.update_admins(admin_tags)
