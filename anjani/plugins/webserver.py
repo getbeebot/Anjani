@@ -144,7 +144,7 @@ class WebServer(plugin.Plugin):
         self.event_counter = Counter(
             "beecon_event_counter",
             "Number of error events",
-            labelnames=["name", "trace_id", "desc"],
+            labelnames=["name", "desc"],
         )
         self.api_rtt_gauge = Gauge(
             "api_rtt",
@@ -160,10 +160,7 @@ class WebServer(plugin.Plugin):
             payloads = await request.json()
             self.log.debug("alert v2 request payloads: %s", payloads)
             alert_type = payloads.get("type")
-            trace_id = payloads.get("trace_id")
 
-            if not trace_id:
-                trace_id = 0
             if alert_type == "event":
                 event_name: str = payloads.get("name")
                 event_desc = payloads.get("desc") or "no description"
@@ -171,10 +168,7 @@ class WebServer(plugin.Plugin):
                     event_desc = "Failed to upload alert message from client."
                 elif event_desc.startswith("ERR_NETWORK"):
                     event_desc = "User and beecon connection not stable"
-                    trace_id = 0
-                self.event_counter.labels(
-                    name=event_name, trace_id=trace_id, desc=event_desc
-                ).inc()
+                self.event_counter.labels(name=event_name, desc=event_desc).inc()
 
             elif alert_type == "api":
                 method = payloads.get("method").upper()
