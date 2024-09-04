@@ -241,3 +241,13 @@ class BeeconCMDPlugin(plugin.Plugin):
         await self.bot.client.send_message(
             message.chat.id, "Message content set successfully."
         )
+
+    @command.filters(filters.private)
+    async def cmd_genurl(self, ctx: command.Context) -> Optional[str]:
+        args = ctx.input.split(" ")
+        if len(args) == 1:  # project
+            return util.misc.generate_project_detail_link(int(args[0]), self.bot.uid)
+        elif len(args) == 2:  # task
+            return util.misc.generate_luckydraw_link(
+                int(args[0]), int(args[1]), self.bot.uid
+            )
