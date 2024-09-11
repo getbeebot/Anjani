@@ -89,7 +89,7 @@ def _setup_log() -> None:
 
     if log_color:
         formatter = MyColoredFormatter(
-            "%(log_color)s%(asctime)s %(levelname)-8s%(reset)s %(name)s %(log_color)s%(message)s%(reset)s",
+            "%(log_color)s%(asctime)s %(levelname)-5s%(reset)s %(name)s %(log_color)s%(message)s%(reset)s",
             datefmt="%Y-%m-%dT%H:%M:%S.%f%Z",
         )
     else:
