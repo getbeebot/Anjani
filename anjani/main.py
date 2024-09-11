@@ -82,7 +82,7 @@ def _setup_log() -> None:
     log_color: bool = os.environ.get("LOG_COLOR") in {"enable", 1, "1", "true"}
 
     file_format = "%(asctime)s %(levelname)-5s %(name)s %(message)s"
-    logfile = logging.FileHandler("logs/Anjani.log")
+    logfile = logging.FileHandler("Anjani.log")
     formatter = MyFormatter(file_format, datefmt="%Y-%m-%dT%H:%M:%S.%f%Z")
     logfile.setFormatter(formatter)
     logfile.setLevel(level)
