@@ -715,6 +715,7 @@ class WebServer(plugin.Plugin):
         ret_data = {"ok": False}
         try:
             payloads = await request.json()
+            self.log.info("/save_iq router request payloads: %s", payloads)
 
             project_id = int(payloads.get("project_id"))
             task_id = int(payloads.get("task_id"))
@@ -746,21 +747,14 @@ class WebServer(plugin.Plugin):
 
             values = (project_id, task_id, lang, pics, btn_desc, des)
 
-            res = await self.mysql.update(sql, values)
-            if res:
-                ret_data.update(
-                    {
-                        "ok": False,
-                        "error": f"project_id {project_id} or task_id {task_id} not valid",
-                    }
-                )
-            else:
-                ret_data.update(
-                    {
-                        "ok": True,
-                        "data": code,
-                    }
-                )
+            await self.mysql.update(sql, values)
+
+            ret_data.update(
+                {
+                    "ok": True,
+                    "data": code,
+                }
+            )
 
         except Exception as e:
             self.log.error("Saving inline query context error %s", e)
