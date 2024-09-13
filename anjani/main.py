@@ -19,6 +19,7 @@ import logging
 import logging.handlers
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, MutableMapping  # noqa: F401
 
@@ -32,6 +33,30 @@ from .util import misc
 from .util.config import Config
 
 log = logging.getLogger("launch")
+
+
+class MyFormatter(logging.Formatter):
+    converter = datetime.fromtimestamp
+
+    def formatTime(self, record, datefmt=None):
+        ct = self.converter(record.created)
+        if datefmt:
+            s = ct.strftime(datefmt)
+        else:
+            s = ct.strftime("%Y-%m-%dT%H:%M:%S.%f%Z")
+        return s
+
+
+class MyColoredFormatter(colorlog.ColoredFormatter):
+    converter = datetime.fromtimestamp
+
+    def formatTime(self, record, datefmt=None):
+        ct = self.converter(record.created)
+        if datefmt:
+            s = ct.strftime(datefmt)
+        else:
+            s = ct.strftime("%Y-%m-%dT%H:%M:%S.%f%Z")
+        return s
 
 
 def _level_check(level: str) -> int:
@@ -56,28 +81,19 @@ def _setup_log() -> None:
     # Color log config
     log_color: bool = os.environ.get("LOG_COLOR") in {"enable", 1, "1", "true"}
 
-    file_format = "[ %(asctime)s: %(levelname)-8s ] %(name)-21s - %(message)s"
+    file_format = "%(asctime)s %(levelname)-5s %(name)s %(message)s"
     logfile = logging.FileHandler("Anjani.log")
-    # logfile = logging.handlers.TimedRotatingFileHandler(
-    #     filename="Anjani.log",
-    #     when='midnight',
-    #     interval=1,
-    #     backupCount=30,
-    #     utc=True
-    # )
-    formatter = logging.Formatter(file_format, datefmt="%Y-%m-%d %H:%M:%S %Z")
+    formatter = MyFormatter(file_format, datefmt="%Y-%m-%dT%H:%M:%S.%f%Z")
     logfile.setFormatter(formatter)
     logfile.setLevel(level)
 
     if log_color:
-        formatter = colorlog.ColoredFormatter(
-            "  %(log_color)s %(asctime)s %(levelname)-8s%(reset)s  |  "
-            "%(name)-21s  |  %(log_color)s%(message)s%(reset)s"
+        formatter = MyColoredFormatter(
+            "%(log_color)s%(asctime)s %(levelname)-5s%(reset)s %(name)s %(log_color)s%(message)s%(reset)s",
+            datefmt="%Y-%m-%dT%H:%M:%S.%f%Z",
         )
     else:
-        formatter = logging.Formatter(
-            "%(asctime)s  %(levelname)-8s  |  %(name)-21s  |  %(message)s"
-        )
+        formatter = MyFormatter(file_format, datefmt="%Y-%m-%dT%H:%M:%S.%f%Z")
     stream = logging.StreamHandler()
     stream.setLevel(level)
     stream.setFormatter(formatter)

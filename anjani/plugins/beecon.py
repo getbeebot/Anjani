@@ -45,10 +45,11 @@ class BeeconPlugin(plugin.Plugin):
 
     async def on_message(self, message: Message) -> None:
         data = "".join(str(message).split())
-        self.log.debug(f"Receiving message: {data}")
+        # self.log.debug(f"Receiving message: {data}")
+        self.log.info(f"Received message {data} {message.text}")
 
-        data = json.loads(data)
-        await self.save_message(data)
+        # data = json.loads(data)
+        # await self.save_message(data)
 
         chat = message.chat
 
