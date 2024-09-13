@@ -93,9 +93,7 @@ class MysqlPoolClient:
         return await self.execute(sql, values, method=QueryType.FETCHONE)
 
     async def update(self, sql, values=()):
-        res = await self.execute(sql, values)
-        if not res:
-            return "Error"
+        await self.execute(sql, values)
 
     async def update_many(self, sql, values=[]):
         await self.execute(sql, values, QueryType.EXECUTEMANY)
