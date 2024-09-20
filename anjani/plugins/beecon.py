@@ -532,7 +532,7 @@ class BeeconPlugin(plugin.Plugin):
 
             self.log.debug("Reply res %s", reply_res)
 
-            await query.answer([reply_res])
+            await query.answer([reply_res], cache_time=0)
 
     async def cmd_bnpzbyy(self, ctx: command.Context) -> Optional[str]:
         chat = ctx.chat
