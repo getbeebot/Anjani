@@ -397,6 +397,11 @@ class WebServer(plugin.Plugin):
             )
             invite_link = link.invite_link
 
+            if invite_link:
+                await self.bot.redis.set(
+                    invite_link, f"{group_id}-{user_id}".encode("utf-8")
+                )
+
             res = {
                 "group_id": group_id,
                 "user_id": user_id,

@@ -554,6 +554,8 @@ class EventDispatcher(MixinBase):
                     "Chat %s(%s) project config: %s", chat.title, chat.id, config
                 )
 
+                java_call_p = await self.redis.get(invite_link.invite_link)
+
                 if config.verify:
                     payloads = [chat.id, invite_link.invite_link]
 
@@ -590,7 +592,9 @@ class EventDispatcher(MixinBase):
                         await self.client.send_message(
                             chat_id=chat.id, text=reply_text, reply_markup=button
                         )
-                else:
+
+                if not config.verify and java_call_p:
+                    # Reduce java api call
                     payloads = {
                         "chatId": chat.id,
                         "tgUserId": from_user.id,
