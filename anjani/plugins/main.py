@@ -200,7 +200,10 @@ class Main(plugin.Plugin):
             "botId": self.bot.uid,
             "user_id": user_id,
         }
-        user_projects = await self.bot.apiclient.get_user_projects(payloads)
+        try:
+            user_projects = await self.bot.apiclient.get_user_projects(payloads)
+        except Exception as e:
+            self.log.warning("Get user %s projects error %s", user_id, e)
 
         if not user_projects:
             return
@@ -605,7 +608,7 @@ class Main(plugin.Plugin):
                 start_record = orm.TgUserStartBot(chat_id=chat.id, bot_id=self.bot.uid)
                 await start_record.save(self.mydb)
             except Exception as e:
-                self.log.warn("Saving start bot records error: %s", e)
+                self.log.warning("Saving start bot records error: %s", e)
 
             if ctx.input and ctx.input == "help":
                 keyboard = await self.help_builder(chat.id)
@@ -646,7 +649,7 @@ class Main(plugin.Plugin):
                 try:
                     args = util.misc.decode_args(ctx.input)
                 except Exception:
-                    self.log.warn("args not able to decode")
+                    self.log.warning("args not able to decode")
                     args = None
 
                 if isinstance(args, list):
@@ -738,19 +741,23 @@ class Main(plugin.Plugin):
             if start_btns:
                 keyboard.extend(start_btns)
 
-            await ctx.respond(
-                await self.text(chat.id, "start-pm", self.bot.user.username),
-                photo=guide_img_link,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode=ParseMode.MARKDOWN,
-            )
+            try:
+                await ctx.respond(
+                    await self.text(chat.id, "start-pm", self.bot.user.username),
+                    photo=guide_img_link,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            except Exception as e:
+                self.log.error("/start command not respond correctly: %s", e)
+                await util.alert.send_alert(
+                    f"/start in private chat({chat.id}) not respond", str(e), "critical"
+                )
             return None
 
         # group start message
         bot_id = self.bot.uid
         is_exist = await self.mysql.get_chat_project_id(chat.id, bot_id)
-        # if not is_exist:
-        #     pass
 
         project_id = is_exist
         counter = 0
@@ -761,27 +768,31 @@ class Main(plugin.Plugin):
 
         # no project for group, error exception
         if not project_id:
-            group_start_msg = await self.text(
-                chat.id, "group-start-exception", noformat=True
-            )
-            add_to_group_btn_text = await self.text(
-                chat.id, "add-to-group-button", noformat=True
-            )
-            usage_guide = await self.text(chat.id, "usage-guide", add_to_group_btn_text)
-            group_start_msg += usage_guide
-            button = [
-                [
-                    InlineKeyboardButton(
-                        "Start me", url=f"t.me/{self.bot.user.username}?start=true"
-                    )
-                ]
-            ]
-            await ctx.respond(
-                group_start_msg,
-                photo=guide_img_link,
-                reply_markup=InlineKeyboardMarkup(button),
-                parse_mode=ParseMode.MARKDOWN,
-            )
+            # group_start_msg = await self.text(
+            #     chat.id, "group-start-exception", noformat=True
+            # )
+            # add_to_group_btn_text = await self.text(
+            #     chat.id, "add-to-group-button", noformat=True
+            # )
+            # usage_guide = await self.text(chat.id, "usage-guide", add_to_group_btn_text)
+            # group_start_msg += usage_guide
+            # button = [
+            #     [
+            #         InlineKeyboardButton(
+            #             "Start me", url=f"t.me/{self.bot.user.username}?start=true"
+            #         )
+            #     ]
+            # ]
+            # try:
+            #     await ctx.respond(
+            #         group_start_msg,
+            #         photo=guide_img_link,
+            #         reply_markup=InlineKeyboardMarkup(button),
+            #         parse_mode=ParseMode.MARKDOWN,
+            #     )
+            # except Exception as e:
+            #     self.log.error("/start command in group not reponse: %s", e)
+            #     await util.alert.send_alert(f"/start in group({chat.id}) not respond", str(e))
             return None
 
         project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
@@ -826,12 +837,18 @@ class Main(plugin.Plugin):
                 chat.id, "group-no-task-exception", noformat=True
             )
 
-        await ctx.respond(
-            group_start_msg,
-            photo=engage_img_link,
-            reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode=ParseMode.MARKDOWN,
-        )
+        try:
+            await ctx.respond(
+                group_start_msg,
+                photo=engage_img_link,
+                reply_markup=InlineKeyboardMarkup(buttons),
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        except Exception as e:
+            self.log.error("/start command in group not response: %s", e)
+            await util.alert.send_alert(
+                f"/start in group({chat.id}) not respond", str(e), "critical"
+            )
         return None
 
     async def switch_lang(self, chat_id: int, language: str) -> None:

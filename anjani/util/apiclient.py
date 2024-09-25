@@ -201,7 +201,11 @@ class APIClient:
 
         self.update_headers(payloads)
 
-        async with self.http.get(url=req_uri, headers=self.headers) as resp:
+        timeout = aiohttp.ClientTimeout(total=3)
+
+        async with self.http.get(
+            url=req_uri, headers=self.headers, timeout=timeout
+        ) as resp:
             if resp.status == 200:
                 res = await resp.json()
                 self.log.info("Get user projects response: %s", res)
