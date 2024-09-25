@@ -13,7 +13,7 @@ async def send_alert(name: str, description: str, level: str = "info") -> None:
         "labels": {
             "alertname": name,
             "severity": level,
-            "alert_type": "app",
+            "alert_type": "nginx",
             "instance": "anjani",
         },
         "annotations": {"description": description},

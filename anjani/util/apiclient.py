@@ -15,6 +15,7 @@ class APIClient:
         self.url_prefix = prefix
         self.http = aiohttp.ClientSession()
         self.headers = {}
+        self.http.timeout = aiohttp.ClientTimeout(total=3)
         self.log = logging.getLogger("Java API")
 
     @classmethod
