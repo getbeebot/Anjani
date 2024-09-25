@@ -265,25 +265,6 @@ class WebServer(plugin.Plugin):
             if not chat_id:
                 chat_id = data.get("owner")
 
-            if int(event_type) == 99999:
-                try:
-                    recipients = set()
-                    recipients.add(int(chat_id))
-                    admins = data.get("admins")
-                    if admins:
-                        recipients.update({int(a) for a in admins})
-                    for r in recipients:
-                        try:
-                            await self.bot.client.send_message(r, data)
-                        except Exception as e:
-                            self.log.warning(
-                                "send message %s to %s error: %s", data, r, e
-                            )
-                    ret_data.update({"ok": True})
-                except Exception as e:
-                    ret_data.update({"error": str(e)})
-                return web.json_response(ret_data, status=200)
-
             if not chat_id:
                 return web.json_response(
                     {
@@ -302,6 +283,27 @@ class WebServer(plugin.Plugin):
             uri = data.get("uri") or os.getenv("TWA_LINK")
 
             button = InlineKeyboardMarkup([[InlineKeyboardButton("🕹 Enter", url=uri)]])
+
+            if int(event_type) == 99999:
+                try:
+                    recipients = set()
+                    recipients.add(int(chat_id))
+                    admins = data.get("admins")
+                    if admins:
+                        recipients.update({int(a) for a in admins})
+                    for r in recipients:
+                        try:
+                            await self.bot.client.send_message(
+                                r, data, reply_markup=button
+                            )
+                        except Exception as e:
+                            self.log.warning(
+                                "send message %s to %s error: %s", data, r, e
+                            )
+                    ret_data.update({"ok": True})
+                except Exception as e:
+                    ret_data.update({"error": str(e)})
+                return web.json_response(ret_data, status=200)
 
             project_id = await self.bot.mysql.get_chat_project_id(chat_id, self.bot.uid)
             project_config = await BotNotificationConfig.get_project_config(project_id)
