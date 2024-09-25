@@ -628,12 +628,28 @@ class WebServer(plugin.Plugin):
         if admins:
             if not buttons:
                 for admin in admins:
-                    await self.bot.client.send_message(int(admin), reply_text)
+                    try:
+                        await self.bot.client.send_message(int(admin), reply_text)
+                    except Exception as e:
+                        self.log.error(
+                            "Send message to admin %s with %s failed: %s",
+                            admin,
+                            reply_text,
+                            e,
+                        )
                 return
             for admin in admins:
-                await self.bot.client.send_message(
-                    int(admin), reply_text, reply_markup=buttons
-                )
+                try:
+                    await self.bot.client.send_message(
+                        int(admin), reply_text, reply_markup=buttons
+                    )
+                except Exception as e:
+                    self.log.error(
+                        "Send message to admin %s with %s failed: %s",
+                        admin,
+                        reply_text,
+                        e,
+                    )
 
     async def newtask_notify(self, chat_id: int, args: dict, buttons=None):
         # send message to group while task created, notify_type = 5
