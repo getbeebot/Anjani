@@ -748,7 +748,6 @@ class Main(plugin.Plugin):
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode=ParseMode.MARKDOWN,
                 )
-                raise Exception("Start error mock")
             except Exception as e:
                 self.log.error("/start command not respond correctly: %s", e)
                 await util.alert.send_alert(
