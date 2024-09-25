@@ -15,6 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from . import (  # skipcq: PY-W2000
+    alert,
+    apiclient,
     async_helper,
     cache_limiter,
     config,
@@ -22,12 +24,11 @@ from . import (  # skipcq: PY-W2000
     db,
     error,
     misc,
+    project_config,
     system,
     tg,
     time,
     types,
-    apiclient,
-    project_config,
 )
 
 run_sync = async_helper.run_sync
