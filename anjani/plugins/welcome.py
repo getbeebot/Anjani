@@ -188,20 +188,38 @@ class Greeting(plugin.Plugin):
 
                         string = text
                         value = await self.redis.get(f"resource_{project_id}_1")
+
+                        p_res = {}
                         if not value:
-                            self.log.warning(
-                                "Not config for project %s, chat: %s",
-                                project_id,
-                                chat.id,
-                            )
-                            return
-                        p_res = json.loads(value.decode("utf-8"))
+                            payloads = {
+                                "botId": self.bot.uid,
+                                "project_id": project_id,
+                                "res_type": 1,
+                            }
+                            (
+                                p_pic,
+                                p_status,
+                                p_desc,
+                                _,
+                            ) = await self.bot.apiclient.get_project_res(payloads)
+                            if not p_status:
+                                return
+
+                            p_res = {
+                                "image": p_pic,
+                                "status": p_status,
+                                "description": p_desc,
+                            }
+
+                        if not p_res:
+                            p_res = json.loads(value.decode("utf-8"))
+
                         pic = (
-                            p_res.get("")
+                            p_res.get("image")
                             or "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
                         )
-                        p_status = p_res.get("")
-                        p_desc = p_res.get("")
+                        p_status = p_res.get("status")
+                        p_desc = p_res.get("description")
 
                         if not p_status:
                             return
