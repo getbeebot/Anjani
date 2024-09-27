@@ -210,6 +210,10 @@ class Greeting(plugin.Plugin):
                                 "status": p_status,
                                 "description": p_desc,
                             }
+                            await self.redis.set(
+                                f"resource_{project_id}_1",
+                                json.dumps(p_res).encode("utf-8"),
+                            )
 
                         if not p_res:
                             p_res = json.loads(value.decode("utf-8"))
