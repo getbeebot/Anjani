@@ -153,7 +153,7 @@ class Greeting(plugin.Plugin):
 
         new_members = message.new_chat_members
 
-        is_bulk_welcome = len(new_members) > 1
+        # is_bulk_welcome = len(new_members) > 1
         for idx, new_member in enumerate(new_members):
             try:
                 # filter out bot
@@ -238,6 +238,12 @@ class Greeting(plugin.Plugin):
                         formatted_text = await self._build_text(
                             string, new_member, chat, self.bot.client
                         )
+                        pre_msg = await self.redis.get(f"pre_welc_{chat.id}")
+                        if pre_msg:
+                            try:
+                                await self.bot.client.delete_messages(chat.id, pre_msg)
+                            except MessageDeleteForbidden:
+                                pass
                         msg = await self.bot.client.send_photo(
                             message.chat.id,
                             pic,
@@ -273,16 +279,20 @@ class Greeting(plugin.Plugin):
                     self.log.error("Welcome message send error: %s", e)
 
                 if msg:
-                    previous = await self.previous_welcome(
-                        chat.id, msg.id, is_bulk_welcome
-                    )
-                    if idx == 0 and previous:
-                        try:
-                            await self.bot.client.delete_messages(chat.id, previous)
-                        except MessageDeleteForbidden:
-                            pass
+                    await self.redis.set(f"pre_welc_{chat.id}", msg.id)
+                    self.bot.loop.create_task(self.del_msg(chat.id, msg.id, 15))
+
             except ChatWriteForbidden:
                 pass
+
+    async def del_msg(self, chat_id: int, msg_id: int, delay: int = 0):
+        try:
+            await asyncio.sleep(delay)
+            await self.bot.client.delete_messages(chat_id, msg_id)
+        except MessageDeleteForbidden:
+            pass
+        except Exception:
+            pass
 
     async def on_chat_migrate(self, message: Message) -> None:
         new_chat = message.chat.id
