@@ -806,12 +806,15 @@ class Main(plugin.Plugin):
             group_start_msg = await self.text(
                 chat.id, "group-no-participant-exception", tasks
             )
-            pass
         else:
             group_start_msg = await self.text(
                 chat.id, "group-no-task-exception", noformat=True
             )
-            await ctx.respond(group_start_msg)
+            try:
+                await ctx.respond(group_start_msg, delete_after=60)
+                await self.bot.client.delete_messages(chat.id, ctx.message.id)
+            except Exception:
+                pass
             return
 
         try:
@@ -820,7 +823,9 @@ class Main(plugin.Plugin):
                 photo=engage_img_link,
                 reply_markup=InlineKeyboardMarkup(buttons),
                 parse_mode=ParseMode.MARKDOWN,
+                delete_after=60,
             )
+            await self.bot.client.delete_messages(chat.id, ctx.message.id)
         except Exception as e:
             self.log.error("/start command in group not response: %s", e)
             await util.alert.send_alert(
