@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
+import json
 from html import escape
 from typing import (
     Any,
@@ -139,7 +140,7 @@ class Greeting(plugin.Plugin):
             if project_config and project_config.nojoinmsg:
                 await message.delete()
         except Exception as e:
-            self.log.warn(
+            self.log.warning(
                 "Can not delete member leave message(%s), error: %s", message, e
             )
 
@@ -155,122 +156,109 @@ class Greeting(plugin.Plugin):
         is_bulk_welcome = len(new_members) > 1
         for idx, new_member in enumerate(new_members):
             try:
-                if new_member.id == self.bot.uid:
-                    pass
-                elif new_member.is_bot:  # ignore bot
-                    pass
+                # filter out bot
+                if new_member.is_bot:
+                    return
+
+                text, button, msg_type, file_id = await self.welc_message(chat.id)
+                msg_type = Types(msg_type) if msg_type else Types.TEXT
+
+                if button:
+                    button = build_button(button)
                 else:
-                    text, button, msg_type, file_id = await self.welc_message(chat.id)
-                    msg_type = Types(msg_type) if msg_type else Types.TEXT
+                    bot_id = self.bot.uid
+                    project_id = await self.mysql.get_chat_project_id(chat.id, bot_id)
+                    url = util.misc.generate_project_detail_link(project_id, bot_id)
 
-                    if button:
-                        button = build_button(button)
-                    else:
-                        bot_id = self.bot.uid
-                        project_id = await self.mysql.get_chat_project_id(
-                            chat.id, bot_id
+                    button = build_button([("🕹 Enter", url, False)])
+                msg = None
+                try:
+                    if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
+                        try:
+                            project_config = await self.get_project_config(project_id)
+                            self.log.debug("Project config: %s", project_config)
+                            if project_config and project_config.nojoinmsg:
+                                await message.delete()
+                        except Exception as e:
+                            self.log.warning(
+                                "Can not delete new member join message(%s), error: %s",
+                                message,
+                                e,
+                            )
+
+                        string = text
+                        value = await self.redis.get(f"resource_{project_id}_1")
+                        if not value:
+                            self.log.warning(
+                                "Not config for project %s, chat: %s",
+                                project_id,
+                                chat.id,
+                            )
+                            return
+                        p_res = json.loads(value.decode("utf-8"))
+                        pic = (
+                            p_res.get("")
+                            or "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
                         )
-                        url = util.misc.generate_project_detail_link(project_id, bot_id)
+                        p_status = p_res.get("")
+                        p_desc = p_res.get("")
 
-                        button = build_button([("🕹 Enter", url, False)])
-                    msg = None
-                    try:
-                        if msg_type in {Types.TEXT, Types.BUTTON_TEXT}:
-                            try:
-                                project_config = await self.get_project_config(
-                                    project_id
-                                )
-                                self.log.debug("Project config: %s", project_config)
-                                if project_config and project_config.nojoinmsg:
-                                    await message.delete()
-                            except Exception as e:
-                                self.log.warn(
-                                    "Can not delete new member join message(%s), error: %s",
-                                    message,
-                                    e,
-                                )
-                            pic = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png"
+                        if not p_status:
+                            return
 
-                            string = text
-                            try:
-                                payloads = {
-                                    "botId": self.bot.uid,
-                                    "project_id": project_id,
-                                    "res_type": 1,
-                                }
-                                (
-                                    project_pic,
-                                    status,
-                                    desc,
-                                    _,
-                                ) = await self.bot.apiclient.get_project_res(payloads)
-                                if not status:
-                                    self.log.warn(
-                                        "Project %s turned off welcome message",
-                                        project_id,
-                                    )
-                                    return
+                        if p_desc:
+                            string = f"👏 Welcome {{username}}.\n{p_desc}"
 
-                                if project_pic:
-                                    pic = project_pic
-
-                                if desc:
-                                    string = f"👏 Welcome {{username}}.\n{desc}"
-                            except Exception as e:
-                                self.log.warn("Get project pics error %s", e)
-
-                            if not string:
-                                string = await self.text(
-                                    chat.id, "default-welcome", noformat=True
-                                )
-                            formatted_text = await self._build_text(
-                                string, new_member, chat, self.bot.client
+                        if not string:
+                            string = await self.text(
+                                chat.id, "default-welcome", noformat=True
                             )
-                            msg = await self.bot.client.send_photo(
-                                message.chat.id,
-                                pic,
-                                caption=formatted_text,
-                                message_thread_id=thread_id,
-                                # reply_to_message_id=reply_to,
-                                reply_markup=button,
-                            )
-                        elif msg_type in {Types.STICKER, Types.ANIMATION}:
-                            msg = await self.SEND[msg_type](
-                                message.chat.id,
-                                file_id,
-                                message_thread_id=thread_id,
-                                reply_to_message_id=reply_to,
-                            )
-                        else:
-                            msg = await self.SEND[msg_type](
-                                message.chat.id,
-                                file_id,
-                                caption=formatted_text,
-                                message_thread_id=thread_id,
-                                reply_to_message_id=reply_to,
-                                reply_markup=button,
-                            )
-                    except MediaEmpty:
-                        await self.bot.client.send_message(
+                        formatted_text = await self._build_text(
+                            string, new_member, chat, self.bot.client
+                        )
+                        msg = await self.bot.client.send_photo(
                             message.chat.id,
-                            await self.text(message.chat.id, "welcome-message-expired"),
+                            pic,
+                            caption=formatted_text,
+                            message_thread_id=thread_id,
+                            # reply_to_message_id=reply_to,
+                            reply_markup=button,
                         )
-                    except MessageEmpty:
-                        self.log.warning(
-                            "Welcome message empty on %s.", message.chat.id
+                    elif msg_type in {Types.STICKER, Types.ANIMATION}:
+                        msg = await self.SEND[msg_type](
+                            message.chat.id,
+                            file_id,
+                            message_thread_id=thread_id,
+                            reply_to_message_id=reply_to,
                         )
-                    except Exception as e:
-                        self.log.error("Welcome message send error: %s", e)
+                    else:
+                        msg = await self.SEND[msg_type](
+                            message.chat.id,
+                            file_id,
+                            caption=formatted_text,
+                            message_thread_id=thread_id,
+                            reply_to_message_id=reply_to,
+                            reply_markup=button,
+                        )
+                except MediaEmpty:
+                    await self.bot.client.send_message(
+                        message.chat.id,
+                        await self.text(message.chat.id, "welcome-message-expired"),
+                    )
+                except MessageEmpty:
+                    self.log.warning("Welcome message empty on %s.", message.chat.id)
+                except Exception as e:
+                    self.log.error("Welcome message send error: %s", e)
 
-                    if msg:
-                        previous = await self.previous_welcome(
-                            chat.id, msg.id, is_bulk_welcome
-                        )
-                        if idx == 0 and previous:
-                            try:
-                                await self.bot.client.delete_messages(chat.id, previous)
-                            except MessageDeleteForbidden:
-                                pass
+                if msg:
+                    previous = await self.previous_welcome(
+                        chat.id, msg.id, is_bulk_welcome
+                    )
+                    if idx == 0 and previous:
+                        try:
+                            await self.bot.client.delete_messages(chat.id, previous)
+                        except MessageDeleteForbidden:
+                            pass
             except ChatWriteForbidden:
                 pass
 
