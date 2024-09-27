@@ -768,31 +768,6 @@ class Main(plugin.Plugin):
 
         # no project for group, error exception
         if not project_id:
-            # group_start_msg = await self.text(
-            #     chat.id, "group-start-exception", noformat=True
-            # )
-            # add_to_group_btn_text = await self.text(
-            #     chat.id, "add-to-group-button", noformat=True
-            # )
-            # usage_guide = await self.text(chat.id, "usage-guide", add_to_group_btn_text)
-            # group_start_msg += usage_guide
-            # button = [
-            #     [
-            #         InlineKeyboardButton(
-            #             "Start me", url=f"t.me/{self.bot.user.username}?start=true"
-            #         )
-            #     ]
-            # ]
-            # try:
-            #     await ctx.respond(
-            #         group_start_msg,
-            #         photo=guide_img_link,
-            #         reply_markup=InlineKeyboardMarkup(button),
-            #         parse_mode=ParseMode.MARKDOWN,
-            #     )
-            # except Exception as e:
-            #     self.log.error("/start command in group not reponse: %s", e)
-            #     await util.alert.send_alert(f"/start in group({chat.id}) not respond", str(e))
             return None
 
         project_link = util.misc.generate_project_detail_link(project_id, self.bot.uid)
@@ -836,6 +811,8 @@ class Main(plugin.Plugin):
             group_start_msg = await self.text(
                 chat.id, "group-no-task-exception", noformat=True
             )
+            await ctx.respond(group_start_msg)
+            return
 
         try:
             await ctx.respond(
