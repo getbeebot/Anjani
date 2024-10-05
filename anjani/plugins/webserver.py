@@ -287,7 +287,8 @@ class WebServer(plugin.Plugin):
             if int(event_type) == 99999:
                 try:
                     recipients = set()
-                    recipients.add(int(chat_id))
+                    if chat_id > 0:
+                        recipients.add(chat_id)
                     admins = data.get("admins")
                     if admins:
                         recipients.update({int(a) for a in admins})
