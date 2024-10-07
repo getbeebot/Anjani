@@ -271,7 +271,7 @@ class BeeconCMDPlugin(plugin.Plugin):
             self.log.warning("Not admin for yukix")
             return None
         msg_id = ctx.input
-        poll = await self.bot.client.stop_poll(chat_id, msg_id)
+        poll = await self.bot.client.stop_poll(chat_id, int(msg_id))
         self.log.debug("Poll result in stop: %s", poll)
 
         return str(poll)
