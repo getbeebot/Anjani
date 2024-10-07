@@ -228,20 +228,12 @@ class MysqlPoolClient:
         await self.update_many(sql, admins)
 
     async def get_og_user(self):
-        sql = """
-SELECT
-    tac.biz_user_id
-FROM
-    (
-        SELECT user_id, COUNT(*) AS record_count
-        FROM sky_activity_lottery_user
-        GROUP BY user_id
-        HAVING COUNT(*) > 3;
-    ) AS ll
-JOIN tz_app_connect tac ON ll.user_id = tac.user_id
-"""
+        sql = "SELECT tac.biz_user_id FROM ( SELECT user_id, COUNT(*) FROM sky_activity_lottery_user GROUP BY user_id HAVING COUNT(*) > 3) AS ll JOIN tz_app_connect AS tac ON ll.user_id = tac.user_id"
         return await self.query(sql)
 
     async def save_fb_usdt(self, chat_id: int, option: int | str):
+        """
+        CREATE TABLE feedback (`id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'id', `type` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'feedback type', `chat_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'user tg id', `option` tinyint unsigned NOT NULL DEFAULT 0 COMMENT 'option choice', primary key(`id`), KEY `type_chat_id_key` (`type`, `chat_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='feedbacks';
+        """
         sql = "INSERT INTO feedback(type, chat_id, option) VALUES(%s, %s, %s)"
         await self.update(sql, ("usdt", chat_id, option))
