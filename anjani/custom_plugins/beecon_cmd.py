@@ -51,7 +51,7 @@ class BeeconCMDPlugin(plugin.Plugin):
         await self.redis.close()
 
     async def on_start(self, _: int) -> None:
-        await self.mysql.connect()
+        await self.redis.connect()
 
     @listener.filters(filters.regex(r"notify_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
