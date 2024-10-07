@@ -251,3 +251,15 @@ class BeeconCMDPlugin(plugin.Plugin):
             return util.misc.generate_luckydraw_link(
                 int(args[0]), int(args[1]), self.bot.uid
             )
+
+    @command.filters(filters.private)
+    async def cmd_yukix(self, ctx: command.Context) -> Optional[str]:
+        chat_id = ctx.chat.id
+        if not is_whitelist(chat_id):
+            self.log.warning("Not admin for yukix")
+            return None
+
+        msg = await self.bot.client.send_poll(
+            chat_id, "Is this a poll question?", ["Yes", "No", "Maybe"]
+        )
+        self.log.debug("Poll answer msg: %s", msg)
