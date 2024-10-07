@@ -235,5 +235,5 @@ class MysqlPoolClient:
         """
         CREATE TABLE feedback (`id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'id', `type` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'feedback type', `chat_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'user tg id', `option` tinyint unsigned NOT NULL DEFAULT 0 COMMENT 'option choice', primary key(`id`), KEY `type_chat_id_key` (`type`, `chat_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='feedbacks';
         """
-        sql = "INSERT INTO feedback(type, chat_id, option) VALUES(%s, %s, %s)"
+        sql = "INSERT INTO feedbacks(type, chat_id, option) VALUES(%s, %s, %s)"
         await self.update(sql, ("usdt", chat_id, option))
