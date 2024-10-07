@@ -17,23 +17,6 @@ from anjani import command, listener, plugin, util
 CHUNK_SIZE: int = 60 * 60 / 2
 
 
-def is_whitelist(chat_id) -> Optional[bool]:
-    whitelist = [
-        6812515288,
-        1821086162,
-        7465037644,
-        2113937194,
-        7037181285,
-        1013334686,
-        6303440178,
-        7054195491,
-    ]
-    if chat_id in whitelist:
-        return True
-
-    return False
-
-
 def remove_duplicate(lst: list) -> list:
     return list(dict.fromkeys(lst))
 
@@ -55,6 +38,13 @@ class BeeconCMDPlugin(plugin.Plugin):
 
     @listener.filters(filters.regex(r"notify_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
+        chat_id = query.message.chat.id
+        if not util.misc.is_whitelist(int(chat_id)):
+            try:
+                await query.message.delete()
+            except Exception:
+                pass
+            return None
         match = query.matches[0].group(1)
         msg = await self.get_msg(query.from_user.id)
         if not msg:

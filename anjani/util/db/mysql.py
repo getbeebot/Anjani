@@ -233,15 +233,16 @@ class MysqlPoolClient:
 
     async def save_fb_usdt(self, chat_id: int, option: int | str):
         """
-        CREATE TABLE feedbacks (
-            id bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'id',
-            type varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'feedback type',
-            chat_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'user tg id',
-            choice tinyint unsigned NOT NULL DEFAULT 0 COMMENT 'option choice',
-            update_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            create_time datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            primary key(id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='feedbacks';
+        CREATE TABLE `feedbacks` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'id',
+          `type` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'feedback type',
+          `chat_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'user tg id',
+          `choice` tinyint unsigned NOT NULL DEFAULT '0' COMMENT 'option choice',
+          `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `idx_type_chat_id` (`type`,`chat_id`)
+        ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='feedbacks'
         """
         sql = "INSERT INTO feedbacks(type, chat_id, choice) VALUES(%s, %s, %s)"
         await self.update(sql, ("usdt", chat_id, option))
