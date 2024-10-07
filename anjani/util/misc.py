@@ -17,7 +17,7 @@
 import logging
 import os
 import shutil
-from typing import TYPE_CHECKING, Any, Callable, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Set, Tuple, Union
 
 import base58
 import msgpack
@@ -89,6 +89,21 @@ async def session_restore():
     if not await src.exists():
         return
     await copy_file(src, dest)
+
+
+def is_whitelist(chat_id) -> Optional[bool]:
+    whitelist = [
+        6812515288,
+        1821086162,
+        2113937194,
+        1013334686,
+        6303440178,
+        7054195491,
+    ]
+    if chat_id in whitelist:
+        return True
+
+    return False
 
 
 TWA_LINK = os.getenv("TWA_LINK")

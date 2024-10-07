@@ -556,17 +556,8 @@ class BeeconPlugin(plugin.Plugin):
     async def cmd_who(self, ctx: command.Context) -> Optional[str]:
         chat = ctx.chat
         user_id = ctx.input
-        whitelist = [
-            6812515288,
-            1821086162,
-            7465037644,
-            2113937194,
-            7037181285,
-            1013334686,
-            6303440178,
-        ]
 
-        if chat.id not in whitelist:
+        if not util.misc.is_whitelist(chat.id):
             return "Command /who only for whitelist user."
 
         user: User = await self.bot.client.get_users(user_id)
@@ -579,7 +570,7 @@ class BeeconPlugin(plugin.Plugin):
         chat = ctx.chat
         chat_id = ctx.input
 
-        if not self.is_whitelist(chat.id):
+        if not util.misc.is_whitelist(chat.id):
             return "Command /who only for whitelist user."
 
         invite_link = await self.bot.client.create_chat_invite_link(
@@ -592,7 +583,7 @@ class BeeconPlugin(plugin.Plugin):
         chat = ctx.chat
         project_name = ctx.input
 
-        if not self.is_whitelist(chat.id):
+        if not util.misc.is_whitelist(chat.id):
             return "Command /projects only for whitelist user."
 
         if not project_name:
@@ -617,7 +608,7 @@ class BeeconPlugin(plugin.Plugin):
         chat = ctx.chat
         args = ctx.input
 
-        if not self.is_whitelist(chat.id):
+        if not util.misc.is_whitelist(chat.id):
             return "Command /addadmin only for whitelist user."
         if not args:
             return "No args for /addadmin"
@@ -645,19 +636,3 @@ class BeeconPlugin(plugin.Plugin):
 
         await self.bot.apiclient.add_admin(payloads)
         await ctx.respond("Ok")
-
-    def is_whitelist(self, chat_id) -> Optional[bool]:
-        whitelist = [
-            6812515288,
-            1821086162,
-            7465037644,
-            2113937194,
-            7037181285,
-            1013334686,
-            6303440178,
-            7054195491,
-        ]
-        if chat_id in whitelist:
-            return True
-
-        return False
