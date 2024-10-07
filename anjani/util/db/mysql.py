@@ -226,3 +226,22 @@ class MysqlPoolClient:
     async def update_admins(self, admins):
         sql = "INSERT INTO user_tags(user_id, tag_id) VALUES (%s, %s)"
         await self.update_many(sql, admins)
+
+    async def get_og_user(self):
+        sql = """
+SELECT
+    tac.biz_user_id
+FROM
+    (
+        SELECT user_id, COUNT(*) AS record_count
+        FROM sky_activity_lottery_user
+        GROUP BY user_id
+        HAVING COUNT(*) > 3;
+    ) AS ll
+JOIN tz_app_connect tac ON ll.user_id = tac.user_id
+"""
+        return await self.query(sql)
+
+    async def save_fb_usdt(self, chat_id: int, option: int | str):
+        sql = "INSERT INTO feedback(type, chat_id, option) VALUES(%s, %s, %s)"
+        await self.update(sql, ("usdt", chat_id, option))

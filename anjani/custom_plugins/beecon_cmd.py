@@ -51,7 +51,7 @@ class BeeconCMDPlugin(plugin.Plugin):
         await self.redis.close()
 
     async def on_start(self, _: int) -> None:
-        await self.redis.connect()
+        await self.mysql.connect()
 
     @listener.filters(filters.regex(r"notify_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
@@ -251,27 +251,3 @@ class BeeconCMDPlugin(plugin.Plugin):
             return util.misc.generate_luckydraw_link(
                 int(args[0]), int(args[1]), self.bot.uid
             )
-
-    @command.filters(filters.private)
-    async def cmd_yukisp(self, ctx: command.Context) -> Optional[str]:
-        chat_id = ctx.chat.id
-        if not is_whitelist(chat_id):
-            self.log.warning("Not admin for yukix")
-            return None
-
-        msg = await self.bot.client.send_poll(
-            chat_id, "Is this a poll question?", ["Yes", "No", "Maybe"]
-        )
-        self.log.debug("Poll answer msg: %s", msg)
-
-    @command.filters(filters.private)
-    async def cmd_yukiep(self, ctx: command.Context) -> Optional[str]:
-        chat_id = ctx.chat.id
-        if not is_whitelist(chat_id):
-            self.log.warning("Not admin for yukix")
-            return None
-        msg_id = ctx.input
-        poll = await self.bot.client.stop_poll(chat_id, int(msg_id))
-        self.log.debug("Poll result in stop: %s", poll)
-
-        return str(poll)
