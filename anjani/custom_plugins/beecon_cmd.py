@@ -253,7 +253,7 @@ class BeeconCMDPlugin(plugin.Plugin):
             )
 
     @command.filters(filters.private)
-    async def cmd_yukix(self, ctx: command.Context) -> Optional[str]:
+    async def cmd_yukisp(self, ctx: command.Context) -> Optional[str]:
         chat_id = ctx.chat.id
         if not is_whitelist(chat_id):
             self.log.warning("Not admin for yukix")
@@ -263,3 +263,15 @@ class BeeconCMDPlugin(plugin.Plugin):
             chat_id, "Is this a poll question?", ["Yes", "No", "Maybe"]
         )
         self.log.debug("Poll answer msg: %s", msg)
+
+    @command.filters(filters.private)
+    async def cmd_yukiep(self, ctx: command.Context) -> Optional[str]:
+        chat_id = ctx.chat.id
+        if not is_whitelist(chat_id):
+            self.log.warning("Not admin for yukix")
+            return None
+        msg_id = ctx.input
+        poll = await self.bot.client.stop_poll(chat_id, msg_id)
+        self.log.debug("Poll result in stop: %s", poll)
+
+        return str(poll)
