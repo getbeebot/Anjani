@@ -1,3 +1,4 @@
+import asyncio
 from typing import ClassVar, Optional
 
 from pyrogram import filters
@@ -37,6 +38,10 @@ class BeeconFeedback(plugin.Plugin):
             await query.message.delete()
         except MessageDeleteForbidden:
             pass
+        await self.bot.client.send_message(
+            query.message.chat.id,
+            "Thank you for your feedback. We values every single user and will make progress based on your option.",
+        )
 
     @command.filters(filters.private)
     async def cmd_usdtfb(self, ctx: command.Context) -> Optional[str]:
@@ -73,6 +78,7 @@ We will seriously consider all your feedback.
             ]
         )
         for u in users:
+            await asyncio.sleep(1)
             user_chat_id = int(u[0])
             if user_chat_id == chat_id:
                 await self.bot.client.send_message(
