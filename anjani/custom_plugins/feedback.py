@@ -83,6 +83,6 @@ We will seriously consider all your feedback.
                 await self.bot.client.send_message(
                     user_chat_id, msg, reply_markup=buttons
                 )
-                self.log.info("Sending usdt feedback message to user %s", user_chat_id)
+                self.log.info("Sent usdt feedback message to user %s", user_chat_id)
             except Exception:
                 pass
