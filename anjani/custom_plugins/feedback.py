@@ -1,13 +1,13 @@
+import asyncio
 from typing import ClassVar, Optional
 
 from pyrogram import filters
+from pyrogram.errors import MessageDeleteForbidden
 from pyrogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
-from pyrogram.errors import MessageDeleteForbidden
-
 
 from anjani import command, listener, plugin, util
 
@@ -37,6 +37,10 @@ class BeeconFeedback(plugin.Plugin):
             await query.message.delete()
         except MessageDeleteForbidden:
             pass
+        await self.bot.client.send_message(
+            query.message.chat.id,
+            "Thank you for your feedback. We value every single user and will make progress based on your options.",
+        )
 
     @command.filters(filters.private)
     async def cmd_usdtfb(self, ctx: command.Context) -> Optional[str]:
@@ -73,8 +77,12 @@ We will seriously consider all your feedback.
             ]
         )
         for u in users:
-            user_chat_id = int(u[0])
-            if user_chat_id == chat_id:
+            await asyncio.sleep(1)
+            try:
+                user_chat_id = int(u[0])
                 await self.bot.client.send_message(
                     user_chat_id, msg, reply_markup=buttons
                 )
+                self.log.info("Sent usdt feedback message to user %s", user_chat_id)
+            except Exception:
+                pass
