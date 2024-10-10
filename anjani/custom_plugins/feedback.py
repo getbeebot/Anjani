@@ -79,11 +79,13 @@ We will seriously consider all your feedback.
         )
         for u in users:
             await asyncio.sleep(1)
-            try:
-                user_chat_id = int(u[0])
-                await self.bot.client.send_message(
-                    user_chat_id, msg, reply_markup=buttons
-                )
-                self.log.info("Sent usdt feedback message to user %s", user_chat_id)
-            except Exception:
-                pass
+            # for test purpose
+            await self.bot.client.send_message(6812515288, msg, reply_markup=buttons)
+            # try:
+            #     user_chat_id = int(u[0])
+            #     await self.bot.client.send_message(
+            #         user_chat_id, msg, reply_markup=buttons
+            #     )
+            #     self.log.info("Sent usdt feedback message to user %s", user_chat_id)
+            # except Exception:
+            #     pass
