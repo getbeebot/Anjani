@@ -49,30 +49,31 @@ class BeeconFeedback(plugin.Plugin):
             self.log.warning("Not admin for yukix")
             return None
 
-        users = await self.mysql.get_og_user()
+        # users = await self.mysql.get_og_user()
+        users = await self.mysql.get_og_user2()
         self.log.debug("OG users: %s", users)
         msg = """
 We've received feedback from some of you regarding the issue of small amounts of USDT that cannot be withdrawn. We have the following options for you to choose from! Please select your preferred solution:
 
-1. **Auto-Yield Service**: We can offer a service that allows your balance to grow over time, with an annual yield potentially exceeding 10%. You'll also have the option to deposit more funds to earn interest.
+1. **Virtual Goods**: We'll support the purchase of virtual items, such as TG Stars, Telegram Premium memberships, or gift cards.
 2. **Lottery-Style Game**: Participate in a fun game where you can place bets to win more prizes (but be aware that there's a chance of losing too).
-3. **Virtual Goods**: We'll support the purchase of virtual items, such as TG Stars, Telegram Premium memberships, or gift cards.
+3. **Auto-Yield Service**: We can offer a service that allows your balance to grow over time, with an annual yield potentially exceeding 10%. You'll also have the option to deposit more funds to earn interest.
 
 We will seriously consider all your feedback.
         """
-        option1 = "1. Auto-Yield Service"
+        option3 = "1. Virtual Goods"
         option2 = "2. Lottery-Style Game"
-        option3 = "3. Virtual Goods"
+        option1 = "3. Auto-Yield Service"
         buttons = InlineKeyboardMarkup(
             [
                 [
-                    InlineKeyboardButton(option1, callback_data="fb_usdt_1"),
+                    InlineKeyboardButton(option3, callback_data="fb_usdt_3"),
                 ],
                 [
                     InlineKeyboardButton(option2, callback_data="fb_usdt_2"),
                 ],
                 [
-                    InlineKeyboardButton(option3, callback_data="fb_usdt_3"),
+                    InlineKeyboardButton(option1, callback_data="fb_usdt_1"),
                 ],
             ]
         )
