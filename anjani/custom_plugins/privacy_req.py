@@ -12,12 +12,10 @@ class PrivacyRequest(plugin.Plugin):
 
     @listener.filters(filters.private)
     async def on_message(self, message: Message) -> None:
-        if message.command:
-            self.log.info("Receiving command %s", message.command)
-            return None
-        await message.reply(
-            "Subscribe @daily_gifts_en and @airdrophub_great to earn more."
-        )
+        pass
+        # if message.command:
+        #     self.log.info("Receiving command %s", message.command)
+        #     return None
 
     @command.filters(filters.private)
     async def cmd_yukit(self, ctx: command.Context) -> Optional[str]:
