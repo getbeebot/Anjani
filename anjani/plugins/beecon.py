@@ -512,7 +512,8 @@ class BeeconPlugin(plugin.Plugin):
                 )
             else:
                 pic = pics.strip()
-                if pic.split(".")[-1] == "gif":
+                subfix = pic.split(".")[-1].lower()
+                if subfix == "gif" or subfix == "mp4":
                     reply_res = InlineQueryResultVideo(
                         video_url=pic,
                         thumb_url=pic,
