@@ -117,7 +117,7 @@ We will seriously consider all your feedback.
             try:
                 user_chat_id = int(u[0])
                 # for testing
-                if not (user_chat_id == 6812515288):
+                if user_chat_id != 6812515288:
                     continue
                 await self.bot.client.send_photo(
                     chat_id=user_chat_id, photo=pic, caption=msg, reply_markup=buttons
