@@ -96,7 +96,9 @@ We will seriously consider all your feedback.
             return None
 
         users = await self.mysql.get_passive_user()
-        pic = "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/C-1002427123635.jpg"
+        pic = (
+            "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/20241018-124042.jpeg"
+        )
         msg = """
 🎁  A prize pool of 100 USDT, with a 100% chance of winning! Everyone wins, no one misses out!  🎉🎉
 
