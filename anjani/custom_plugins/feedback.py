@@ -112,7 +112,10 @@ We will seriously consider all your feedback.
 👇Click below to open 🌈 ⬇️
 """
         url = "https://t.me/beecon_bot/app?startapp=Yqn7Gcpa6DBV1HyfBMfEZAHSykWXYWoHia6R3HV1mgeNMiZqgK2w7neWz4fhkEeoJ575bT9"
-        buttons = InlineKeyboardMarkup([[InlineKeyboardButton("", url=url)]])
+        buttons = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("🎁 Open 100 USDT 🎁", url=url)]]
+        )
+        self.log.debug("users: %s", users)
         for u in users:
             try:
                 user_chat_id = int(u[0])
