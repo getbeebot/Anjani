@@ -250,3 +250,7 @@ class MysqlPoolClient:
     async def get_og_user2(self):
         sql = "SELECT tac.biz_user_id FROM ( SELECT user_id, COUNT(*) FROM sky_activity_lottery_user GROUP BY user_id HAVING COUNT(*) = 3) AS ll JOIN tz_app_connect AS tac ON ll.user_id = tac.user_id"
         return await self.query(sql)
+
+    async def get_passive_user(self):
+        sql = "SELECT tac.biz_user_id FROM ( SELECT user_id, COUNT(*) FROM sky_activity_lottery_user GROUP BY user_id HAVING COUNT(*) = 2) AS ll JOIN tz_app_connect AS tac ON ll.user_id = tac.user_id"
+        return await self.query(sql)
