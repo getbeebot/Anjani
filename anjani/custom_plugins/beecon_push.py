@@ -79,19 +79,22 @@ class BeeconPushPlugin(plugin.Plugin):
         luckydraw_share = await orm.LuckydrawShare.get_share_info(
             self.mydb, int(pid), int(tid), lang
         )
+        self.log.debug("pushxbind command luckydraw share: %s", luckydraw_share)
+
         if not luckydraw_share:
             self.log.warning("No luckydraw share info for %s", ctx.input)
             return None
 
         pic = luckydraw_share.pics
         msg = luckydraw_share.des
-        btn_txt = luckydraw_share.btn_desc[0]["text"]
+        btn_txt = luckydraw_share.btn_desc["text"]
         btn_url = util.misc.generate_luckydraw_link(pid, tid, self.bot.uid)
         buttons = InlineKeyboardMarkup(
             [[InlineKeyboardButton(text=btn_txt, url=btn_url)]]
         )
 
         users = await self.mysql.get_x_users()
+        self.log.debug("pushxbind: users %s", users)
 
         if not users:
             self.log.warning("No x users")
