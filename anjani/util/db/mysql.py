@@ -254,3 +254,7 @@ class MysqlPoolClient:
     async def get_passive_user(self):
         sql = "SELECT tac.biz_user_id FROM ( SELECT user_id, COUNT(*) FROM sky_activity_lottery_user GROUP BY user_id HAVING COUNT(*) = 2) AS ll JOIN tz_app_connect AS tac ON ll.user_id = tac.user_id"
         return await self.query(sql)
+
+    async def get_x_users(self):
+        sql = "SELECT tac.biz_user_id FROM tz_app_connect AS tac JOIN tz_user AS tu ON tac.user_id = tu.user_id where tu.twitter_uid IS NOT NULL"
+        return await self.query(sql)
