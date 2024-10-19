@@ -106,7 +106,7 @@ class BeeconPushPlugin(plugin.Plugin):
                 # for test purpose
                 if tg_id != 6812515288:
                     continue
-                await self.bot.send_photo(
+                await self.bot.client.send_photo(
                     chat_id=tg_id, photo=pic, caption=msg, reply_markup=buttons
                 )
                 self.log.info("Sent message to x binder %s", tg_id)
