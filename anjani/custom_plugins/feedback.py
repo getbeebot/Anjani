@@ -88,42 +88,43 @@ We will seriously consider all your feedback.
             except Exception:
                 pass
 
-    @command.filters(filters.private)
-    async def cmd_grayt(self, ctx: command.Context) -> Optional[str]:
-        chat_id = ctx.chat.id
-        if not util.misc.is_whitelist(chat_id):
-            self.log.warning("Not admin for yukix")
-            return None
 
-        users = await self.mysql.get_passive_user()
-        pic = (
-            "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/20241018-124042.jpeg"
-        )
-        msg = """
-🎁  A prize pool of 100 USDT, with a 100% chance of winning! Everyone wins, no one misses out!  🎉🎉
+#     @command.filters(filters.private)
+#     async def cmd_grayt(self, ctx: command.Context) -> Optional[str]:
+#         chat_id = ctx.chat.id
+#         if not util.misc.is_whitelist(chat_id):
+#             self.log.warning("Not admin for yukix")
+#             return None
 
-
-🔥 Don't miss this opportunity, join us now! 🚀✨
+#         users = await self.mysql.get_passive_user()
+#         pic = (
+#             "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/20241018-124042.jpeg"
+#         )
+#         msg = """
+# 🎁  A prize pool of 100 USDT, with a 100% chance of winning! Everyone wins, no one misses out!  🎉🎉
 
 
-🌟 The rules are simple, and participating is easy! Invite your friends to join and discover even bigger surprises! 💃🕺
+# 🔥 Don't miss this opportunity, join us now! 🚀✨
 
 
-📅 This event is for a limited time only, so act fast! For more details, stay tuned to our channel! 📢🔔
+# 🌟 The rules are simple, and participating is easy! Invite your friends to join and discover even bigger surprises! 💃🕺
 
-👇Click below to open 🌈 ⬇️
-"""
-        url = "https://t.me/beecon_bot/app?startapp=Yqn7Gcpa6DBV1HyfBMfEZAHSykWXYWoHia6R3HV1mgeNMiZqgK2w7neWz4fhkEeoJ575bT9"
-        buttons = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("🎁 Open 100 USDT 🎁", url=url)]]
-        )
-        self.log.debug("users: %s", users)
-        for u in users:
-            try:
-                user_chat_id = int(u[0])
-                await self.bot.client.send_photo(
-                    chat_id=user_chat_id, photo=pic, caption=msg, reply_markup=buttons
-                )
-                self.log.info("Sent gray test to user %s", user_chat_id)
-            except Exception as e:
-                self.log.warning("Sent gray test to user %s error %s", e)
+
+# 📅 This event is for a limited time only, so act fast! For more details, stay tuned to our channel! 📢🔔
+
+# 👇Click below to open 🌈 ⬇️
+# """
+#         url = "https://t.me/beecon_bot/app?startapp=Yqn7Gcpa6DBV1HyfBMfEZAHSykWXYWoHia6R3HV1mgeNMiZqgK2w7neWz4fhkEeoJ575bT9"
+#         buttons = InlineKeyboardMarkup(
+#             [[InlineKeyboardButton("🎁 Open 100 USDT 🎁", url=url)]]
+#         )
+#         self.log.debug("users: %s", users)
+#         for u in users:
+#             try:
+#                 user_chat_id = int(u[0])
+#                 await self.bot.client.send_photo(
+#                     chat_id=user_chat_id, photo=pic, caption=msg, reply_markup=buttons
+#                 )
+#                 self.log.info("Sent gray test to user %s", user_chat_id)
+#             except Exception as e:
+#                 self.log.warning("Sent gray test to user %s error %s", e)
