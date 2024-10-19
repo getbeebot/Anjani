@@ -49,7 +49,7 @@ class BeeconPushPlugin(plugin.Plugin):
 
         pic = luckydraw_share.pics
         msg = luckydraw_share.des
-        btn_txt = luckydraw_share.btn_desc[0]["text"]
+        btn_txt = luckydraw_share.btn_desc["text"]
         url = util.misc.generate_luckydraw_link(int(pid), int(tid), self.bot.uid)
         buttons = InlineKeyboardMarkup([[InlineKeyboardButton(text=btn_txt, url=url)]])
 
@@ -103,9 +103,6 @@ class BeeconPushPlugin(plugin.Plugin):
         for u in users:
             try:
                 tg_id = int(u[0])
-                # for test purpose
-                if tg_id != 6812515288:
-                    continue
                 await self.bot.client.send_photo(
                     chat_id=tg_id, photo=pic, caption=msg, reply_markup=buttons
                 )
