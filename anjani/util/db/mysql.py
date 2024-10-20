@@ -256,5 +256,5 @@ class MysqlPoolClient:
         return await self.query(sql)
 
     async def get_x_users(self):
-        sql = "SELECT tac.biz_user_id FROM tz_app_connect AS tac JOIN tz_user AS tu ON tac.user_id = tu.user_id where tu.twitter_uid IS NOT NULL"
+        sql = "SELECT tac.biz_user_id FROM tz_app_connect AS tac JOIN tz_user AS tu ON tac.user_id = tu.user_id where tu.twitter_uid IS NOT NULL ORDER BY tu.user_regtime ASC"
         return await self.query(sql)

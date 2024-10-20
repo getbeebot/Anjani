@@ -75,7 +75,7 @@ class BeeconPushPlugin(plugin.Plugin):
             self.log.warning("No args for pushxbind")
             return None
 
-        (pid, tid, lang) = ctx.input.split(" ")
+        (pid, tid, lang, idx) = ctx.input.split(" ")
         luckydraw_share = await orm.LuckydrawShare.get_share_info(
             self.mydb, int(pid), int(tid), lang
         )
@@ -100,7 +100,15 @@ class BeeconPushPlugin(plugin.Plugin):
             self.log.warning("No x users")
             return None
 
-        for u in users:
+        user_len = len(users)
+        group_size = int(user_len / 3)
+        user_idx = int(idx)
+        start_idx = (user_idx - 1) * group_size
+        end_idx = user_idx * group_size
+        if end_idx > user_len:
+            end_idx = user_len
+
+        for u in users[start_idx:end_idx]:
             try:
                 tg_id = int(u[0])
                 await self.bot.client.send_photo(
