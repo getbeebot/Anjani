@@ -354,141 +354,141 @@ class Main(plugin.Plugin):
                 reply_markup=button,
                 parse_mode=ParseMode.MARKDOWN,
             )
-        elif match.startswith("project"):
-            project = re.compile(r"project_([0-9]+|overview)").match(match)
-            if not project:
-                raise ValueError("Unable to find project")
+        # elif match.startswith("project"):
+        #     project = re.compile(r"project_([0-9]+|overview)").match(match)
+        #     if not project:
+        #         raise ValueError("Unable to find project")
 
-            match_p = project.group(1)
-            if match_p == "overview":
-                user_id = query.from_user.id
-                project_btns = await self.project_builder(user_id)
-                start_btns = await self.build_start_button()
-                if start_btns:
-                    project_btns.extend(start_btns)
+        #     match_p = project.group(1)
+        #     if match_p == "overview":
+        #         user_id = query.from_user.id
+        #         project_btns = await self.project_builder(user_id)
+        #         start_btns = await self.build_start_button()
+        #         if start_btns:
+        #             project_btns.extend(start_btns)
 
-                keyboard = InlineKeyboardMarkup(project_btns)
-                try:
-                    await query.edit_message_text(
-                        text=await self.text(None, "start-pm", self.bot.user.username),
-                        reply_markup=keyboard,
-                        parse_mode=ParseMode.MARKDOWN,
-                    )
-                except MessageNotModified:
-                    pass
-            elif match_p.isdigit():
-                project_id = int(project.group(1))
-                project_link = util.misc.generate_project_detail_link(
-                    project_id, self.bot.uid
-                )
+        #         keyboard = InlineKeyboardMarkup(project_btns)
+        #         try:
+        #             await query.edit_message_text(
+        #                 text=await self.text(None, "start-pm", self.bot.user.username),
+        #                 reply_markup=keyboard,
+        #                 parse_mode=ParseMode.MARKDOWN,
+        #             )
+        #         except MessageNotModified:
+        #             pass
+        #     elif match_p.isdigit():
+        #         project_id = int(project.group(1))
+        #         project_link = util.misc.generate_project_detail_link(
+        #             project_id, self.bot.uid
+        #         )
 
-                (project_name, project_desc) = await self.mysql.get_project_brief(
-                    project_id
-                )
+        #         (project_name, project_desc) = await self.mysql.get_project_brief(
+        #             project_id
+        #         )
 
-                text = f"**Community**: {project_name}\n"
-                if project_desc:
-                    text += f"**Description**: {project_desc}"
+        #         text = f"**Community**: {project_name}\n"
+        #         if project_desc:
+        #             text += f"**Description**: {project_desc}"
 
-                keyboard = InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton(text="Edit", url=project_link),
-                            InlineKeyboardButton(
-                                text="Bot Notification",
-                                callback_data=f"help_config_{project_id}",
-                            ),
-                        ],
-                        [
-                            InlineKeyboardButton(
-                                text=await self.text(None, "back-button"),
-                                callback_data="help_project_overview",
-                            )
-                        ],
-                    ]
-                )
-                try:
-                    # sync project config to db every time go to project breif page
-                    project_config = await self.get_project_config(project_id)
-                    if project_config:
-                        await project_config.update_or_create()
-                    await query.edit_message_text(
-                        text=text, reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN
-                    )
-                except MessageNotModified:
-                    pass
-            else:
-                raise ValueError("Unable to find project")
-        elif match.startswith("config"):
-            c_match = re.compile(r"config_(\d+)_?([a-zA-Z]+)?_?(\d+)?").match(match)
-            if not c_match:
-                raise ValueError("Unable to find project config")
+        #         keyboard = InlineKeyboardMarkup(
+        #             [
+        #                 [
+        #                     InlineKeyboardButton(text="Edit", url=project_link),
+        #                     InlineKeyboardButton(
+        #                         text="Bot Notification",
+        #                         callback_data=f"help_config_{project_id}",
+        #                     ),
+        #                 ],
+        #                 [
+        #                     InlineKeyboardButton(
+        #                         text=await self.text(None, "back-button"),
+        #                         callback_data="help_project_overview",
+        #                     )
+        #                 ],
+        #             ]
+        #         )
+        #         try:
+        #             # sync project config to db every time go to project breif page
+        #             project_config = await self.get_project_config(project_id)
+        #             if project_config:
+        #                 await project_config.update_or_create()
+        #             await query.edit_message_text(
+        #                 text=text, reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN
+        #             )
+        #         except MessageNotModified:
+        #             pass
+        #     else:
+        #         raise ValueError("Unable to find project")
+        # elif match.startswith("config"):
+        #     c_match = re.compile(r"config_(\d+)_?([a-zA-Z]+)?_?(\d+)?").match(match)
+        #     if not c_match:
+        #         raise ValueError("Unable to find project config")
 
-            project_id = int(c_match.group(1))
+        #     project_id = int(c_match.group(1))
 
-            project_config = await self.get_project_config(project_id)
-            if not project_config:
-                project_config = BotNotificationConfig(project_id)
-                await self.update_project_config(project_config)
+        #     project_config = await self.get_project_config(project_id)
+        #     if not project_config:
+        #         project_config = BotNotificationConfig(project_id)
+        #         await self.update_project_config(project_config)
 
-            self.log.debug("Debugging config: %s", c_match)
+        #     self.log.debug("Debugging config: %s", c_match)
 
-            if c_match.group(2) and c_match.group(3):
-                attr_key = c_match.group(2)
+        #     if c_match.group(2) and c_match.group(3):
+        #         attr_key = c_match.group(2)
 
-                if attr_key == "ovduration":
-                    ovduration = c_match.group(3)
-                    setattr(project_config, attr_key, int(ovduration))
-                    await self.update_project_config(project_config)
+        #         if attr_key == "ovduration":
+        #             ovduration = c_match.group(3)
+        #             setattr(project_config, attr_key, int(ovduration))
+        #             await self.update_project_config(project_config)
 
-                    duration_btns = await self.duration_config_builder(project_id)
-                    duration_btns.append(
-                        [
-                            InlineKeyboardButton(
-                                text=await self.text(None, "back-button"),
-                                callback_data=f"help_config_{project_id}",
-                            )
-                        ]
-                    )
-                    try:
-                        text = "Please choose duration:"
-                        keyboard = InlineKeyboardMarkup(duration_btns)
-                        await query.edit_message_text(text=text, reply_markup=keyboard)
-                        return
-                    except Exception as e:
-                        self.log.error(
-                            "Duration button callback: %s error: %s", c_match, e
-                        )
+        #             duration_btns = await self.duration_config_builder(project_id)
+        #             duration_btns.append(
+        #                 [
+        #                     InlineKeyboardButton(
+        #                         text=await self.text(None, "back-button"),
+        #                         callback_data=f"help_config_{project_id}",
+        #                     )
+        #                 ]
+        #             )
+        #             try:
+        #                 text = "Please choose duration:"
+        #                 keyboard = InlineKeyboardMarkup(duration_btns)
+        #                 await query.edit_message_text(text=text, reply_markup=keyboard)
+        #                 return
+        #             except Exception as e:
+        #                 self.log.error(
+        #                     "Duration button callback: %s error: %s", c_match, e
+        #                 )
 
-                cur_value = getattr(project_config, attr_key)
+        #         cur_value = getattr(project_config, attr_key)
 
-                setattr(project_config, attr_key, cur_value ^ 1)
+        #         setattr(project_config, attr_key, cur_value ^ 1)
 
-                await self.update_project_config(project_config)
+        #         await self.update_project_config(project_config)
 
-            config_btns = await self.project_config_builder(project_id)
-            try:
-                config_btns.append(
-                    [
-                        InlineKeyboardButton(
-                            text=await self.text(None, "back-button"),
-                            callback_data=f"help_project_{project_id}",
-                        )
-                    ]
-                )
+        #     config_btns = await self.project_config_builder(project_id)
+        #     try:
+        #         config_btns.append(
+        #             [
+        #                 InlineKeyboardButton(
+        #                     text=await self.text(None, "back-button"),
+        #                     callback_data=f"help_project_{project_id}",
+        #                 )
+        #             ]
+        #         )
 
-                (project_name, project_desc) = await self.mysql.get_project_brief(
-                    project_id
-                )
+        #         (project_name, project_desc) = await self.mysql.get_project_brief(
+        #             project_id
+        #         )
 
-                text = f"**Community**: {project_name}\n"
-                if project_desc:
-                    text += f"**Description**: {project_desc}"
+        #         text = f"**Community**: {project_name}\n"
+        #         if project_desc:
+        #             text += f"**Description**: {project_desc}"
 
-                keyboard = InlineKeyboardMarkup(config_btns)
-                await query.edit_message_text(text=text, reply_markup=keyboard)
-            except Exception as e:
-                self.log.error("Config callback error: %s", e)
+        #         keyboard = InlineKeyboardMarkup(config_btns)
+        #         await query.edit_message_text(text=text, reply_markup=keyboard)
+        #     except Exception as e:
+        #         self.log.error("Config callback error: %s", e)
 
         elif match:
             plug = re.compile(r"plugin\((\w+)\)").match(match)
@@ -733,7 +733,7 @@ class Main(plugin.Plugin):
                     return
 
             keyboard = []
-            project_buttons = await self.project_builder(chat.id)
+            project_buttons = await self.project_builder(chat.id, is_link=True)
             if project_buttons:
                 keyboard.extend(project_buttons)
 
