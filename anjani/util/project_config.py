@@ -1,9 +1,9 @@
 """Configurations for Project"""
 
-import logging
 import json
-
+import logging
 from dataclasses import dataclass
+
 from .db import MysqlPoolClient
 
 log = logging.getLogger("bot.notify.config")
@@ -14,7 +14,7 @@ class BotNotificationConfig:
     def __init__(
         self,
         project_id,
-        overview=1,
+        overview=0,
         ovduration=14400,
         newdraw=1,
         userjoin=1,
@@ -67,7 +67,7 @@ class BotNotificationConfig:
                     nojoinmsg=config[8],
                 )
         except Exception as e:
-            log.warn("Get project %s config error: %s", project_id, e)
+            log.warning("Get project %s config error: %s", project_id, e)
             return BotNotificationConfig(project_id)
         finally:
             await mysql_client.close()

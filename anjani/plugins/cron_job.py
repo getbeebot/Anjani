@@ -41,7 +41,7 @@ class CronJob(plugin.Plugin):
 
         project_intervals = await self.get_project_intervals()
         if not project_intervals:
-            self.log.warn("No cron job cause no project")
+            self.log.warning("No cron job cause no project")
             return None
 
         for interval, projects in project_intervals.items():
@@ -69,7 +69,7 @@ class CronJob(plugin.Plugin):
         rows = await self.mysql.get_project_ids(self.bot.uid)
 
         if not rows:
-            self.log.warn("Threre's not project to push notification")
+            self.log.warning("Threre's not project to push notification")
             return None
 
         res: Dict[int, List[tuple]] = {}
@@ -120,7 +120,7 @@ class CronJob(plugin.Plugin):
                 group_context = await get_template("group-notify-no-participants")
                 group_notify_msg = group_context.format(tasks=tasks)
             else:
-                self.log.warn(
+                self.log.warning(
                     "Not meet nofity condition, skipped: %s",
                     (group_id, project_id, self.bot.uid),
                 )
@@ -132,7 +132,7 @@ class CronJob(plugin.Plugin):
                 try:
                     await self.bot.client.delete_messages(group_id, int(pre_msg))
                 except Exception as e:
-                    self.log.warn("Delete previous pushed message error: %s", e)
+                    self.log.warning("Delete previous pushed message error: %s", e)
             engage_img = os.getenv(
                 "ENGAGE_IMG",
                 "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
@@ -145,7 +145,7 @@ class CronJob(plugin.Plugin):
                 }
                 project_res = await self.bot.apiclient.get_project_res(payloads)
                 if project_res[1] == 0:
-                    self.log.warn("Project %s turn off push notify", project_id)
+                    self.log.warning("Project %s turn off push notify", project_id)
                     continue
                 if project_res[0]:
                     engage_img = project_res[0]
@@ -185,11 +185,11 @@ class CronJob(plugin.Plugin):
     async def tagging_admin(self):
         admin_tag_id = await self.mysql.get_tag_id_by_name("admin")
         if not admin_tag_id:
-            self.log.warn("Can not find admin tag")
+            self.log.warning("Can not find admin tag")
             return None
         admins = await self.mysql.get_admins_with_notag()
         if not admins:
-            self.log.warn("No new admins need to tag")
+            self.log.warning("No new admins need to tag")
             return None
         admin_tags = [(a[0], admin_tag_id) for a in admins]
         self.log.debug("admins with tags %s", admin_tags)
