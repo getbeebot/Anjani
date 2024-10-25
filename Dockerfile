@@ -22,14 +22,14 @@ COPY pyproject.toml poetry.lock ./
 RUN pip install --upgrade pip \
     && pip install poetry
 
-RUN poetry install --no-root --only main -E uvloop
+RUN poetry install --no-root --only main -E uvloop && rm -rf $POETRY_CACHE_DIR
 
-RUN apt-get -qq install -y --no-install-recommends git
+# RUN apt-get -qq install -y --no-install-recommends git
 
-ARG USERBOTINDO_ACCESS_TOKEN
-COPY ./preinstall.sh ./
-RUN chmod +x ./preinstall.sh
-RUN ./preinstall.sh && rm -rf $POETRY_CACHE_DIR
+# ARG USERBOTINDO_ACCESS_TOKEN
+# COPY ./preinstall.sh ./
+# RUN chmod +x ./preinstall.sh
+# RUN ./preinstall.sh && rm -rf $POETRY_CACHE_DIR
 
 
 FROM base AS runner

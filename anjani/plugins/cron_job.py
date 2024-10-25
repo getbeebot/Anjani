@@ -150,7 +150,7 @@ class CronJob(plugin.Plugin):
                 if project_res[0]:
                     engage_img = project_res[0]
             except Exception as e:
-                self.log.warn("Get project task notify pic error: %s", e)
+                self.log.warning("Get project task notify pic error: %s", e)
 
             try:
                 msg = await self.bot.client.send_photo(

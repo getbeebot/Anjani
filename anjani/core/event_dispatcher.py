@@ -186,15 +186,28 @@ class EventDispatcher(MixinBase):
 
         return link
 
-    async def save_chat_info(self: "Anjani", chat: Chat) -> None:
+    async def update_chat_member_join_record(
+        self: "Anjani", chat: Chat, chat_type: int
+    ) -> None:
+        try:
+            mysql_client = util.db.MysqlPoolClient.init_from_env()
+            async for member in self.client.get_chat_members(chat.id):
+                if member.joined_date:
+                    await mysql_client.save_new_member(
+                        chat.id, chat_type, member.user.id, self.uid, member.joined_date
+                    )
+        except Exception as e:
+            self.log.warning(
+                "Update chat member join record for %s failed: %s", chat.id, e
+            )
+        finally:
+            await mysql_client.update_chat_status(self.uid, chat.id, chat_type)
+            await mysql_client.close()
+            del mysql_client
+
+    async def save_chat_info(self: "Anjani", chat: Chat, chat_type: int) -> None:
         try:
             chat_link = await self.get_chat_link(chat)
-            chat_type = 0
-            if chat.type == ChatType.CHANNEL:
-                chat_type = 1
-            elif chat.type == ChatType.GROUP:
-                # normal group
-                chat_type = 2
 
             chat_id = chat.id
             chat_name = chat.title
@@ -207,6 +220,8 @@ class EventDispatcher(MixinBase):
             }
             self.log.info(f"Bot joining {chat.type} {chat_name}({chat_id}) {chat_link}")
             await self.mysql.update_chat_info(chat_info)
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.update_chat_member_join_record(chat, chat_type))
         except Exception as e:
             self.log.error("Update chat info error: %s", e)
 
@@ -482,12 +497,20 @@ class EventDispatcher(MixinBase):
 
         self.log.debug("Dispatching event '%s' with data %s", event, args)
 
+        def parse_chat_type(chat_type: ChatType) -> int:
+            result = 0
+            if chat_type == ChatType.CHANNEL:
+                result = 1
+            elif chat_type == ChatType.GROUP:
+                result = 2
+            return result
+
         if event == "message":
             event_data = args[0]
             if event_data.new_chat_title:
                 chat = event_data.chat
                 chat.title = event_data.new_chat_title
-                await self.save_chat_info(chat)
+                await self.save_chat_info(chat, parse_chat_type(chat.type))
 
         async def save_msg(filename: str, content: str):
             target_file = f"messages/{filename}.txt"
@@ -508,11 +531,7 @@ class EventDispatcher(MixinBase):
             updated: ChatMemberUpdated = args[0]
             chat = updated.chat
 
-            chat_type = 0
-            if chat.type == ChatType.CHANNEL:
-                chat_type = 1
-            elif chat.type == ChatType.GROUP:
-                chat_type = 2
+            chat_type = parse_chat_type(chat.type)
 
             new_member = updated.new_chat_member
             if new_member and new_member.joined_date:
@@ -531,7 +550,7 @@ class EventDispatcher(MixinBase):
 
             # only for bot join group
             if updated.new_chat_member and updated.new_chat_member.user.id == self.uid:
-                await self.save_chat_info(chat)
+                await self.save_chat_info(chat, chat_type)
                 await self.create_project_on_join(updated)
 
             if updated.new_chat_member and updated.invite_link:
