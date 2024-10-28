@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 
 
@@ -63,10 +63,13 @@ def format_msg_timestamp(ms: int) -> str:
     try:
         # for some un-known reason, java request timestamp is utc-8
         # to make the time correct, add 8h
-        tz_delta = timedelta(hours=8)
-        return datetime.fromtimestamp(
-            timestamp=ms / 1000, tz=timezone(tz_delta)
-        ).strftime("%Y-%m-%d %H:%M:%S (UTC)")
+        # tz_delta = timedelta(hours=8)
+        # return datetime.fromtimestamp(
+        #     timestamp=ms / 1000, tz=timezone(tz_delta)
+        # ).strftime("%Y-%m-%d %H:%M:%S (UTC)")
+        return datetime.fromtimestamp(timestamp=ms / 1000).strftime(
+            "%Y-%m-%d %H:%M:%S (UTC)"
+        )
     except Exception:
         return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S (UTC)")
 
