@@ -229,7 +229,7 @@ class WebServer(plugin.Plugin):
                 loop = asyncio.get_running_loop()
                 loop.create_task(self.update_user_avatar(user_id))
             except Exception as e:
-                self.log.warn("update user avatar error: %s", e)
+                self.log.warning("update user avatar error: %s", e)
             ret_data.update({"ok": True, "data": user_info})
         except Exception as e:
             self.log.error("update user error %s", e)
@@ -309,74 +309,79 @@ class WebServer(plugin.Plugin):
             project_id = await self.bot.mysql.get_chat_project_id(chat_id, self.bot.uid)
             project_config = await BotNotificationConfig.get_project_config(project_id)
 
-            chat = await self.bot.client.get_chat(chat_id)
-            notify_type = data.get("notifyType")
-            if (
-                event_type != 99
-                and chat.type == ChatType.CHANNEL
-                and notify_type in [1, 2, 3, 5]
-            ):
-                self.log.warn(
-                    "Chat type is channel, not sending notification. Channel: %s, content: %s",
-                    chat.title,
-                    payloads,
-                )
-                return web.json_response(
-                    {"ok": False, "error": "I'm not push notification to channel"},
-                    status=200,
-                )
+            try:
+                chat = await self.bot.client.get_chat(chat_id)
+                notify_type = data.get("notifyType")
+                if (
+                    event_type != 99
+                    and chat.type == ChatType.CHANNEL
+                    and notify_type in [1, 2, 3, 5]
+                ):
+                    self.log.warning(
+                        "Chat type is channel, not sending notification. Channel: %s, content: %s",
+                        chat.title,
+                        payloads,
+                    )
+                    return web.json_response(
+                        {"ok": False, "error": "I'm not push notification to channel"},
+                        status=200,
+                    )
 
-            lucky_draw_btn = InlineKeyboardButton(text="View the luckydraw", url=uri)
-            withdraw_btn = InlineKeyboardButton(
-                text="Withdraw", url="t.me/beecon_wallet_bot?start=true"
-            )
-            ret_data.update({"ok": True})
-            if notify_type == 1 and project_config.newdraw:
-                await self.newdraw_notify(chat_id, data, button)
-            elif notify_type == 2 and project_config.userjoin:
-                await self.user_join_notify(chat_id, data, button)
-            elif notify_type == 3 and project_config.draw:
-                await self.draw_notify(chat_id, data, button)
-            elif notify_type in [4, 10, 11, 12]:
-                chat_id = data.get("owner")
-                await self.draw_list_notify(
-                    int(chat_id), data, InlineKeyboardMarkup([[lucky_draw_btn]])
+                lucky_draw_btn = InlineKeyboardButton(
+                    text="View the luckydraw", url=uri
                 )
-            elif notify_type == 5 and project_config.newtask:
-                await self.newtask_notify(chat_id, data, button)
-            elif notify_type == 6:  # private congrats
-                await self.congrats_notify(
-                    chat_id,
-                    data,
-                    InlineKeyboardMarkup(
-                        [
-                            [lucky_draw_btn],
-                            [withdraw_btn],
-                        ]
-                    ),
+                withdraw_btn = InlineKeyboardButton(
+                    text="Withdraw", url="t.me/beecon_wallet_bot?start=true"
                 )
-            elif notify_type == 7:
-                await self.congrat_records_notify(
-                    chat_id,
-                    data,
-                    InlineKeyboardMarkup(
-                        [
-                            [lucky_draw_btn],
-                            [withdraw_btn],
-                        ]
-                    ),
-                )
-            elif notify_type == 8:
-                await self.invite_records_notify(
-                    chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
-                )
-            elif notify_type == 9:
-                await self.invite_success_notify(
-                    chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
-                )
-            else:
-                self.log.warn("Not send mssage for request: %s", payloads)
-                ret_data.update({"ok": False, "error": "reject by setting"})
+                ret_data.update({"ok": True})
+                if notify_type == 1 and project_config.newdraw:
+                    await self.newdraw_notify(chat_id, data, button)
+                elif notify_type == 2 and project_config.userjoin:
+                    await self.user_join_notify(chat_id, data, button)
+                elif notify_type == 3 and project_config.draw:
+                    await self.draw_notify(chat_id, data, button)
+                elif notify_type in [4, 10, 11, 12]:
+                    chat_id = data.get("owner")
+                    await self.draw_list_notify(
+                        int(chat_id), data, InlineKeyboardMarkup([[lucky_draw_btn]])
+                    )
+                elif notify_type == 5 and project_config.newtask:
+                    await self.newtask_notify(chat_id, data, button)
+                elif notify_type == 6:  # private congrats
+                    await self.congrats_notify(
+                        chat_id,
+                        data,
+                        InlineKeyboardMarkup(
+                            [
+                                [lucky_draw_btn],
+                                [withdraw_btn],
+                            ]
+                        ),
+                    )
+                elif notify_type == 7:
+                    await self.congrat_records_notify(
+                        chat_id,
+                        data,
+                        InlineKeyboardMarkup(
+                            [
+                                [lucky_draw_btn],
+                                [withdraw_btn],
+                            ]
+                        ),
+                    )
+                elif notify_type == 8:
+                    await self.invite_records_notify(
+                        chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
+                    )
+                elif notify_type == 9:
+                    await self.invite_success_notify(
+                        chat_id, data, InlineKeyboardMarkup([[lucky_draw_btn]])
+                    )
+                else:
+                    self.log.warning("Not send mssage for request: %s", payloads)
+                    ret_data.update({"ok": False, "error": "reject by setting"})
+            except Exception as e:
+                self.log.warning("Send notify message error: %s", e)
 
             # push union draw to daily gift channel
             if event_type == 99 and notify_type == 1:
@@ -508,7 +513,7 @@ class WebServer(plugin.Plugin):
         # 1. query user id based on chat_id
         user_id = await self.mysql.get_user_id(chat_id)
         if not user_id:
-            self.log.warn(
+            self.log.warning(
                 "update user avatar can not find user_id by telegram chat id %s",
                 chat_id,
             )
@@ -541,7 +546,7 @@ class WebServer(plugin.Plugin):
                     f"https://{s3_bucket}.s3.ap-southeast-1.amazonaws.com/{avatar_name}"
                 )
         except Exception as e:
-            self.log.warn("Get chat %s avatar link error %s", chat_id, e)
+            self.log.warning("Get chat %s avatar link error %s", chat_id, e)
 
         return avatar_link
 
@@ -589,7 +594,7 @@ class WebServer(plugin.Plugin):
             try:
                 await self.bot.client.delete_messages(chat_id, int(pre_msg))
             except Exception as e:
-                self.log.warn(
+                self.log.warning(
                     "Delete previous user join luckydraw message error: %s", e
                 )
         # 2. retrieve pics based on user config
