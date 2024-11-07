@@ -10,7 +10,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from anjani import plugin
 from anjani.language import get_template
-from anjani.util import misc
+from anjani.util import apiclient, misc
 from anjani.util.db import AsyncRedisClient, MysqlPoolClient
 from anjani.util.project_config import BotNotificationConfig
 
@@ -21,10 +21,12 @@ class CronJob(plugin.Plugin):
 
     mysql: MysqlPoolClient
     redis: AsyncRedisClient
+    api: apiclient.APIClient
 
     async def on_load(self) -> None:
         self.mysql = MysqlPoolClient.init_from_env()
         self.redis = AsyncRedisClient.init_from_env()
+        self.api = apiclient.APIClient.init_from_env()
 
     async def on_start(self, _: int) -> None:
         scheduler = AsyncIOScheduler()
@@ -39,20 +41,9 @@ class CronJob(plugin.Plugin):
         tagging_admin_trigger = IntervalTrigger(seconds=28800)  # every 8 hours
         scheduler.add_job(self.tagging_admin, trigger=tagging_admin_trigger)
 
-        project_intervals = await self.get_project_intervals()
-        if not project_intervals:
-            self.log.warning("No cron job cause no project")
-            return None
-
-        for interval, projects in project_intervals.items():
-            trigger = IntervalTrigger(seconds=interval)
-            scheduler.add_job(
-                self.push_overview,
-                args=[
-                    projects,
-                ],
-                trigger=trigger,
-            )
+        interval = int(os.getenv("AUTO_NOTIFY_INTERVAL")) or 6 * 60 * 60
+        overview_trigger = IntervalTrigger(seconds=interval)
+        scheduler.add_job(self.push_overview_v2, trigger=overview_trigger)
 
         scheduler.start()
         self.log.info("Started auto notification cron job")
@@ -61,9 +52,68 @@ class CronJob(plugin.Plugin):
         try:
             await self.mysql.close()
             await self.redis.close()
+            await self.api.close()
         except Exception:
             pass
         self.log.info("Shutdown auto notification cron job")
+
+    async def push_overview_v2(self):
+        db_res = await self.mysql.get_project_ids(self.bot.uid)
+        for item in db_res:
+            try:
+                pid = int(item[0])
+                chat_id = int(item[1])
+                payloads = {
+                    "botId": self.bot.uid,
+                    "project_id": pid,
+                    "res_type": 2,
+                }
+                (pic, status, desc, text) = await self.api.get_project_res(payloads)
+                # Skip if project setting turned off
+                if status == 0:
+                    continue
+                plink = misc.generate_project_detail_link(pid, self.bot.uid)
+                button = InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("🕹 Enter", url=plink)]]
+                )
+                tasks = await self.mysql.get_project_tasks(pid)
+                participants = await self.mysql.get_project_participants(pid)
+
+                self.log.info(
+                    f"Auto push notification group {chat_id}, project {pid}, tasks: {tasks}, participants: {participants}"
+                )
+                # TODO: use java response text field, not template
+                if tasks and participants > 7:
+                    msg_tpl = await get_template("group-start-pm")
+                    msg_text = msg_tpl.format(tasks=tasks, participants=participants)
+                elif tasks:
+                    msg_tpl = await get_template("group-notify-no-participants")
+                    msg_text = msg_tpl.format(tasks=tasks)
+                else:
+                    self.log.warning(
+                        "Not meet nofity condition, skipped: %s",
+                        (chat_id, pid, self.bot.uid),
+                    )
+                    continue
+
+                pre_msg = await self.redis.get(f"notify_{chat_id}")
+                if pre_msg:
+                    try:
+                        await self.bot.client.delete_messages(chat_id, int(pre_msg))
+                    except Exception as e:
+                        self.log.warning("Delete previous pushed message error: %s", e)
+                if not pic:
+                    pic = os.getenv(
+                        "ENGAGE_IMG",
+                        "https://beeconavatar.s3.ap-southeast-1.amazonaws.com/engage.png",
+                    )
+                msg = await self.bot.client.send_photo(
+                    chat_id, pic, caption=msg_text, reply_markup=button
+                )
+                if msg:
+                    await self.redis.set(f"notify_{chat_id}", msg.id)
+            except Exception as e:
+                self.log.error("Push overview message to %s error: %s", item, e)
 
     async def get_project_intervals(self):
         rows = await self.mysql.get_project_ids(self.bot.uid)
