@@ -41,6 +41,7 @@ class CronJob(plugin.Plugin):
         tagging_admin_trigger = IntervalTrigger(seconds=28800)  # every 8 hours
         scheduler.add_job(self.tagging_admin, trigger=tagging_admin_trigger)
 
+        # community overview notification
         interval = int(os.getenv("AUTO_NOTIFY_INTERVAL")) or 6 * 60 * 60
         overview_trigger = IntervalTrigger(seconds=interval)
         scheduler.add_job(self.push_overview_v2, trigger=overview_trigger)
