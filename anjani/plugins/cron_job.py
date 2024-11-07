@@ -41,20 +41,6 @@ class CronJob(plugin.Plugin):
         tagging_admin_trigger = IntervalTrigger(seconds=28800)  # every 8 hours
         scheduler.add_job(self.tagging_admin, trigger=tagging_admin_trigger)
 
-        # project_intervals = await self.get_project_intervals()
-        # if not project_intervals:
-        #     self.log.warning("No cron job cause no project")
-        #     return None
-
-        # for interval, projects in project_intervals.items():
-        #     trigger = IntervalTrigger(seconds=interval)
-        #     scheduler.add_job(
-        #         self.push_overview,
-        #         args=[
-        #             projects,
-        #         ],
-        #         trigger=trigger,
-        #     )
         interval = int(os.getenv("AUTO_NOTIFY_INTERVAL")) or 4 * 60 * 60
         overview_trigger = IntervalTrigger(seconds=interval)
         scheduler.add_job(self.push_overview_v2, trigger=overview_trigger)
@@ -87,7 +73,7 @@ class CronJob(plugin.Plugin):
                 if status == 0:
                     continue
                 plink = misc.generate_project_detail_link(pid, self.bot.uid)
-                button = InlineKeyboardButton(
+                button = InlineKeyboardMarkup(
                     [[InlineKeyboardButton("🕹 Enter", url=plink)]]
                 )
                 tasks = await self.mysql.get_project_tasks(pid)
