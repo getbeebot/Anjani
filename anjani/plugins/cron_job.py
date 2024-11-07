@@ -55,7 +55,7 @@ class CronJob(plugin.Plugin):
         #         ],
         #         trigger=trigger,
         #     )
-        interval = int(os.getenv("AUTO_NOTIFY_INTERVAL") | 4 * 60 * 60)
+        interval = int(os.getenv("AUTO_NOTIFY_INTERVAL")) or 4 * 60 * 60
         overview_trigger = IntervalTrigger(seconds=interval)
         scheduler.add_job(self.push_overview_v2, trigger=overview_trigger)
 
