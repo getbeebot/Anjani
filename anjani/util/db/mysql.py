@@ -149,7 +149,7 @@ class MysqlPoolClient:
         return res
 
     async def get_project_tasks(self, project_id: int):
-        sql = "SELECT COUNT(*) FROM beebot.bot_task WHERE project_id = %s AND deleted <> 1"
+        sql = "SELECT COUNT(*) FROM beebot.bot_task WHERE project_id = %s AND status = 1 AND deleted <> 1"
         (count,) = await self.query_one(sql, (project_id,))
         return count
 
