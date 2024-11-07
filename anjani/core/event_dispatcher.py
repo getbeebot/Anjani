@@ -458,7 +458,7 @@ class EventDispatcher(MixinBase):
                     )
                 loop.create_task(update_project_info(tenant_id, project_id, chat))
             except Exception as e:
-                self.log.warn("Update project init info error %s", e)
+                self.log.warning("Update project init info error %s", e)
 
             notify_msg = json.dumps(
                 {
