@@ -27,6 +27,7 @@ from pyrogram.enums.parse_mode import ParseMode
 from pyrogram.errors import (
     ChannelInvalid,
     ChannelPrivate,
+    ChatWriteForbidden,
     MessageDeleteForbidden,
     MessageNotModified,
 )
@@ -826,6 +827,8 @@ class Main(plugin.Plugin):
                 delete_after=60,
             )
             await self.bot.client.delete_messages(chat.id, ctx.message.id)
+        except ChatWriteForbidden as err:
+            self.log.warning(f"/start command not response in group {chat.id}: {err}")
         except Exception as e:
             self.log.error("/start command in group not response: %s", e)
             await util.alert.send_alert(
