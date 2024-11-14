@@ -262,10 +262,13 @@ class BeeconCMDPlugin(plugin.Plugin):
         # self.log.debug("synchat chats: %s", chats)
 
         for chat in chats:
-            self.log.debug("sync chat: %s", chat)
-            if await self.chat_deleted_p(chat.chat_id):
-                chat.deleted = 1
-            await chat.save(self.mydb)
+            try:
+                self.log.debug("sync chat: %s", chat)
+                if await self.chat_deleted_p(chat.chat_id):
+                    chat.deleted = 1
+                await chat.save(self.mydb)
+            except Exception:
+                pass
 
     async def chat_deleted_p(self, chat_id: int) -> bool:
         res = False
