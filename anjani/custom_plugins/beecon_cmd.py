@@ -258,7 +258,6 @@ class BeeconCMDPlugin(plugin.Plugin):
 
         # get chats
         chats = await orm.TgChatInfo.get_all_chat(self.mydb, self.bot.uid)
-        # await self.mydb.commit()
 
         for chat in chats:
             self.log.debug("sync chat: %s", chat)
