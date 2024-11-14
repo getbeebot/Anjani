@@ -100,6 +100,7 @@ class TgChatInfo(ORMBase):
         await session.execute(stmt)
         await session.commit()
 
+    @classmethod
     async def get_all_chat(self, session: AsyncSession, bot_id: int):
         stmt = select(TgChatInfo).where(TgChatInfo.bot_id == bot_id)
         result = await session.scalars(stmt)

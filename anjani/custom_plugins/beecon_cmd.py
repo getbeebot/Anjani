@@ -259,6 +259,8 @@ class BeeconCMDPlugin(plugin.Plugin):
             # TODO: check for signle chat
             pass
 
+        self.log.debug("sync chat input: %s", ctx.input)
+
         # get chats
         chats = await orm.TgChatInfo.get_all_chat(self.mydb, self.bot.uid)
 
