@@ -535,6 +535,11 @@ class EventDispatcher(MixinBase):
 
             new_member = updated.new_chat_member
             if new_member and new_member.joined_date:
+                self.log.debug(
+                    "New member join: %s, new_member joined_data: %s",
+                    new_member,
+                    new_member.joined_date,
+                )
                 try:
                     tg_user_id = new_member.user.id
                     joined_date = new_member.joined_date
