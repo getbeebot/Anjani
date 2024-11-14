@@ -249,8 +249,11 @@ class BeeconCMDPlugin(plugin.Plugin):
     @command.filters(filters.private)
     async def cmd_synchat(self, ctx: command.Context) -> Optional[str]:
         chat_id = ctx.chat.id
+        self.log.debug("In sync chat, chat_id: %s", chat_id)
         if not util.misc.is_whitelist(chat_id):
             return None
+
+        self.log.debug("Whitelist pass")
 
         if ctx.input:
             # TODO: check for signle chat
