@@ -44,7 +44,7 @@ from pyrogram.types import (
 )
 from websockets import client
 
-from anjani import plugin, util
+from anjani import orm, plugin, util
 from anjani.error import EventDispatchError
 from anjani.language import get_template
 from anjani.listener import Listener, ListenerFunc
@@ -532,6 +532,14 @@ class EventDispatcher(MixinBase):
             chat = updated.chat
 
             chat_type = parse_chat_type(chat.type)
+
+            old_member = updated.old_chat_member
+            if old_member and old_member.user.id == self.uid:
+                chat_info = orm.TgChatInfo(
+                    chat.id, chat.title, self.uid, chat_type=chat_type, deleted=1
+                )
+                await self.mydb.flush()
+                await chat_info.save(self.mydb)
 
             new_member = updated.new_chat_member
             if new_member and new_member.joined_date:
