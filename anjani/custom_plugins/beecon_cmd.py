@@ -253,8 +253,11 @@ class BeeconCMDPlugin(plugin.Plugin):
             return None
 
         if ctx.input:
-            # TODO: check for signle chat
-            pass
+            chat = await orm.TgChatInfo.get_chat(self.mydb, ctx.input, self.bot.uid)
+            if await self.chat_deleted_p(chat.chat_id):
+                chat.deleted = 1
+                await chat.save(self.mydb)
+            return "Ok"
 
         # get chats
         chats = await orm.TgChatInfo.get_all_chat(self.mydb, self.bot.uid)
@@ -266,9 +269,10 @@ class BeeconCMDPlugin(plugin.Plugin):
                 self.log.debug("sync chat: %s", chat)
                 if await self.chat_deleted_p(chat.chat_id):
                     chat.deleted = 1
-                await chat.save(self.mydb)
+                    await chat.save(self.mydb)
             except Exception:
                 pass
+        return "Ok"
 
     async def chat_deleted_p(self, chat_id: int) -> bool:
         res = False
