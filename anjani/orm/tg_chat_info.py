@@ -80,31 +80,32 @@ class TgChatInfo(ORMBase):
             TgChatInfo.chat_type == self.chat_type,
             TgChatInfo.bot_id == self.bot_id,
         )
+        async with session as cur:
+            res = await cur.scalars(stmt)
+            chat = res.one_or_none()
 
-        res = await session.scalars(stmt)
-        chat = res.one_or_none()
-
-        if chat:
-            stmt = (
-                update(TgChatInfo)
-                .where(
-                    TgChatInfo.bot_id == self.bot_id,
-                    TgChatInfo.chat_id == self.chat_id,
-                    TgChatInfo.chat_type == self.chat_type,
+            if chat:
+                stmt = (
+                    update(TgChatInfo)
+                    .where(
+                        TgChatInfo.bot_id == self.bot_id,
+                        TgChatInfo.chat_id == self.chat_id,
+                        TgChatInfo.chat_type == self.chat_type,
+                    )
+                    .values(**values)
                 )
-                .values(**values)
-            )
-        else:
-            stmt = insert(TgChatInfo).values(**values)
+            else:
+                stmt = insert(TgChatInfo).values(**values)
 
-        await session.execute(stmt)
-        await session.commit()
+            await cur.execute(stmt)
+            await cur.commit()
 
     @classmethod
     async def get_all_chat(cls, session: AsyncSession, bot_id: int):
-        stmt = select(cls).where(cls.bot_id == bot_id)
-        result = await session.scalars(stmt)
-        return result.all()
+        async with session as cur:
+            stmt = select(cls).where(cls.bot_id == bot_id, cls.deleted == 0)
+            result = await cur.scalars(stmt)
+            return result.all()
 
     @classmethod
     async def get_chat(cls, session: AsyncSession, chat_id: int, bot_id: int):
