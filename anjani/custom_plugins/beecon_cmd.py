@@ -12,7 +12,7 @@ from pyrogram.types import (
     Message,
 )
 
-from anjani import command, listener, plugin, util
+from anjani import command, listener, orm, plugin, util
 
 CHUNK_SIZE: int = 60 * 60 / 2
 
@@ -26,15 +26,19 @@ class BeeconCMDPlugin(plugin.Plugin):
     helpable: ClassVar[bool] = False
 
     redis: util.db.AsyncRedisClient
+    mydb: orm.AsyncSession
 
     async def on_load(self) -> None:
         self.redis = util.db.AsyncRedisClient.init_from_env()
+        self.mydb = orm.AsyncSession(self.bot.myengine)
 
     async def on_stop(self) -> None:
         await self.redis.close()
+        await self.mydb.close()
 
     async def on_start(self, _: int) -> None:
         await self.redis.connect()
+        await self.mydb.flush()
 
     @listener.filters(filters.regex(r"notify_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
@@ -241,3 +245,32 @@ class BeeconCMDPlugin(plugin.Plugin):
             return util.misc.generate_luckydraw_link(
                 int(args[0]), int(args[1]), self.bot.uid
             )
+
+    @command.filters(filters.private)
+    async def cmd_synchat(self, ctx: command.Context) -> Optional[str]:
+        chat_id = ctx.chat.id
+        if not util.misc.is_whitelist(chat_id):
+            return None
+
+        if ctx.input:
+            # TODO: check for signle chat
+            pass
+
+        # get chats
+        chats = await orm.TgChatInfo.get_all_chat(self.mydb, self.bot.uid)
+
+        self.log.debug("All chats: %s", chats)
+
+        for chat in chats:
+            if await self.chat_deleted_p(chat.chat_id):
+                chat.deleted = 1
+            self.log.debug("is chat deleted: %", chat.deleted)
+            await chat.save(self.mydb)
+
+    async def chat_deleted_p(self, chat_id: int) -> bool:
+        try:
+            chat = await self.bot.client.get_chat(chat_id)
+            if not chat:
+                return True
+        except Exception:
+            return True
