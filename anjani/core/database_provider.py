@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 class DatabaseProvider(MixinBase):
     db: util.db.AsyncDatabase
     myengine: orm.AsyncEngine
+    mydb: orm.AsyncSession
 
     def __init__(self: "Anjani", **kwargs: Any) -> None:
         if sys.platform == "win32":
@@ -41,6 +42,7 @@ class DatabaseProvider(MixinBase):
 
         self.db = client.get_database("AnjaniBot")
         self.myengine = orm.init_engine()
+        self.mydb = orm.AsyncSession(self.myengine)
 
         # Propagate initialization to other mixins
         super().__init__(**kwargs)

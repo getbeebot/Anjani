@@ -6,9 +6,10 @@ from sqlalchemy.ext.asyncio import (  # noqa: F401
     create_async_engine,
 )
 
-from .tz_user import TzUser  # noqa: F401
-from .tg_user_start_bot import TgUserStartBot  # noqa: F401
 from .luckydraw_share import LuckydrawShare  # noqa: F401
+from .tg_chat_info import TgChatInfo  # noqa: F401
+from .tg_user_start_bot import TgUserStartBot  # noqa: F401
+from .tz_user import TzUser  # noqa: F401
 
 
 def init_engine():

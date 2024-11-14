@@ -12,7 +12,7 @@ from pyrogram.types import (
     Message,
 )
 
-from anjani import command, listener, plugin, util
+from anjani import command, listener, orm, plugin, util
 
 CHUNK_SIZE: int = 60 * 60 / 2
 
@@ -26,15 +26,19 @@ class BeeconCMDPlugin(plugin.Plugin):
     helpable: ClassVar[bool] = False
 
     redis: util.db.AsyncRedisClient
+    mydb: orm.AsyncSession
 
     async def on_load(self) -> None:
         self.redis = util.db.AsyncRedisClient.init_from_env()
+        self.mydb = orm.AsyncSession(self.bot.myengine)
 
     async def on_stop(self) -> None:
         await self.redis.close()
+        await self.mydb.close()
 
     async def on_start(self, _: int) -> None:
         await self.redis.connect()
+        await self.mydb.flush()
 
     @listener.filters(filters.regex(r"notify_(.*)"))
     async def on_callback_query(self, query: CallbackQuery) -> None:
@@ -241,3 +245,44 @@ class BeeconCMDPlugin(plugin.Plugin):
             return util.misc.generate_luckydraw_link(
                 int(args[0]), int(args[1]), self.bot.uid
             )
+
+    @command.filters(filters.private)
+    async def cmd_synchat(self, ctx: command.Context) -> Optional[str]:
+        chat_id = ctx.chat.id
+        if not util.misc.is_whitelist(chat_id):
+            return None
+
+        if ctx.input:
+            chat = await orm.TgChatInfo.get_chat(self.mydb, ctx.input, self.bot.uid)
+            if await self.chat_deleted_p(chat.chat_id):
+                chat.deleted = 1
+                await chat.save(self.mydb)
+            return "Ok"
+
+        # get chats
+        chats = await orm.TgChatInfo.get_all_chat(self.mydb, self.bot.uid)
+
+        # self.log.debug("synchat chats: %s", chats)
+
+        for chat in chats:
+            try:
+                self.log.debug("sync chat: %s", chat)
+                is_deleted = await self.chat_deleted_p(chat.chat_id)
+                if chat and is_deleted:
+                    chat.deleted = 1
+                    await chat.save(self.mydb)
+            except Exception:
+                pass
+        return "Ok"
+
+    async def chat_deleted_p(self, chat_id: int) -> bool:
+        res = False
+        try:
+            chat = await self.bot.client.get_chat(chat_id)
+            if not chat:
+                res = True
+        except Exception:
+            res = True
+
+        self.log.debug("chat_delete_p_res: %s", res)
+        return res

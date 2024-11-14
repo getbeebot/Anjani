@@ -44,7 +44,7 @@ from pyrogram.types import (
 )
 from websockets import client
 
-from anjani import plugin, util
+from anjani import orm, plugin, util
 from anjani.error import EventDispatchError
 from anjani.language import get_template
 from anjani.listener import Listener, ListenerFunc
@@ -219,7 +219,8 @@ class EventDispatcher(MixinBase):
                 "bot_id": self.uid,
             }
             self.log.info(f"Bot joining {chat.type} {chat_name}({chat_id}) {chat_link}")
-            await self.mysql.update_chat_info(chat_info)
+            await self.mydb.flush()
+            await orm.TgChatInfo(**chat_info).save(self.mydb)
             loop = asyncio.get_running_loop()
             loop.create_task(self.update_chat_member_join_record(chat, chat_type))
         except Exception as e:
@@ -533,8 +534,21 @@ class EventDispatcher(MixinBase):
 
             chat_type = parse_chat_type(chat.type)
 
+            old_member = updated.old_chat_member
+            if old_member and old_member.user.id == self.uid:
+                chat_info = orm.TgChatInfo(
+                    chat.id, chat.title, self.uid, chat_type=chat_type, deleted=1
+                )
+                await self.mydb.flush()
+                await chat_info.save(self.mydb)
+
             new_member = updated.new_chat_member
             if new_member and new_member.joined_date:
+                self.log.debug(
+                    "New member join: %s, new_member joined_data: %s",
+                    new_member,
+                    new_member.joined_date,
+                )
                 try:
                     tg_user_id = new_member.user.id
                     joined_date = new_member.joined_date
