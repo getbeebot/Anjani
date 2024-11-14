@@ -267,7 +267,8 @@ class BeeconCMDPlugin(plugin.Plugin):
         for chat in chats:
             try:
                 self.log.debug("sync chat: %s", chat)
-                if await self.chat_deleted_p(chat.chat_id):
+                is_deleted = await self.chat_deleted_p(chat.chat_id)
+                if chat and is_deleted:
                     chat.deleted = 1
                     await chat.save(self.mydb)
             except Exception:
