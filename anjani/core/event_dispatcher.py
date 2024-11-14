@@ -219,7 +219,9 @@ class EventDispatcher(MixinBase):
                 "bot_id": self.uid,
             }
             self.log.info(f"Bot joining {chat.type} {chat_name}({chat_id}) {chat_link}")
-            await self.mysql.update_chat_info(chat_info)
+            await self.mydb.flush()
+            await orm.TgChatInfo(**chat_info).save(self.mydb)
+            # await self.mysql.update_chat_info(chat_info)
             loop = asyncio.get_running_loop()
             loop.create_task(self.update_chat_member_join_record(chat, chat_type))
         except Exception as e:
