@@ -249,24 +249,18 @@ class BeeconCMDPlugin(plugin.Plugin):
     @command.filters(filters.private)
     async def cmd_synchat(self, ctx: command.Context) -> Optional[str]:
         chat_id = ctx.chat.id
-        self.log.debug("In sync chat, chat_id: %s", chat_id)
         if not util.misc.is_whitelist(chat_id):
             return None
-
-        self.log.debug("Whitelist pass")
 
         if ctx.input:
             # TODO: check for signle chat
             pass
 
-        self.log.debug("sync chat input: %s", ctx.input)
-
         # get chats
         chats = await orm.TgChatInfo.get_all_chat(self.mydb, self.bot.uid)
 
-        self.log.debug("All chats: %s", chats)
-
         for chat in chats:
+            self.log.debug("sync chat: %s", chat)
             if await self.chat_deleted_p(chat.chat_id):
                 chat.deleted = 1
             self.log.debug("is chat deleted: %", chat.deleted)
@@ -275,6 +269,7 @@ class BeeconCMDPlugin(plugin.Plugin):
     async def chat_deleted_p(self, chat_id: int) -> bool:
         try:
             chat = await self.bot.client.get_chat(chat_id)
+            self.log.debug("chat deleted p: %s", chat)
             if not chat:
                 return True
         except Exception:
