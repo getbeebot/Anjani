@@ -101,8 +101,15 @@ class TgChatInfo(ORMBase):
         await session.commit()
 
     @classmethod
-    async def get_all_chat(self, session: AsyncSession, bot_id: int):
-        stmt = select(TgChatInfo).where(TgChatInfo.bot_id == bot_id)
-        result = await session.scalars(stmt)
-        await session.commit()
-        return result.fetchall()
+    async def get_all_chat(cls, session: AsyncSession, bot_id: int):
+        async with session as cur:
+            stmt = select(cls).where(cls.bot_id == bot_id)
+            result = await cur.scalars(stmt)
+            return result.fetchall()
+
+    @classmethod
+    async def get_chat(cls, session: AsyncSession, chat_id: int, bot_id: int):
+        async with session as cur:
+            stmt = select(cls).where(cls.chat_id == chat_id, cls.bot_id == bot_id)
+            result = await cur.scalars(stmt)
+            return result.one_or_none()
