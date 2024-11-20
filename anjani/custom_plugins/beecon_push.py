@@ -134,7 +134,8 @@ class BeeconPushPlugin(plugin.Plugin):
             self.mydb, int(pid), int(tid), lang
         )
 
-        self.debug("pushsu command luckdraw share: %s", luckdraw_share)
+        self.log.debug("debug for /pushsu luckdraw_share %s", luckdraw_share)
+
         if not luckdraw_share:
             self.log.warning("No luckdraw share info for %s", ctx.input)
 
