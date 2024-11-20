@@ -117,3 +117,48 @@ class BeeconPushPlugin(plugin.Plugin):
                 self.log.info("Sent message to x binder %s", tg_id)
             except Exception as e:
                 self.log.warning("Sent to x binder %s info failed: %s", tg_id, e)
+
+    @command.filters(filters.private)
+    async def cmd_pushsu(self, ctx: command.Context) -> str | None:
+        chat_id = ctx.chat.id
+        if not util.misc.is_whitelist(chat_id):
+            self.log.warning("Not admin for pushsu command")
+            return None
+
+        if not ctx.input:
+            self.log.warning("No args for pushxbind")
+            return "/pushsu usage: /pushsu <pid> <tid> <lang>"
+
+        (pid, tid, lang) = ctx.input.split(" ")
+        luckdraw_share = await orm.LuckydrawShare.get_share_info(
+            self.mydb, int(pid), int(tid), lang
+        )
+
+        self.log.debug("debug for /pushsu luckdraw_share %s", luckdraw_share)
+
+        if not luckdraw_share:
+            self.log.warning("No luckdraw share info for %s", ctx.input)
+
+        pic = luckdraw_share.pics
+        msg = luckdraw_share.des
+        btn_txt = luckdraw_share.btn_desc["text"]
+        btn_url = util.misc.generate_luckydraw_link(pid, tid, self.bot.uid)
+        buttons = InlineKeyboardMarkup(
+            [[InlineKeyboardButton(text=btn_txt, url=btn_url)]]
+        )
+
+        users = await self.mysql.get_sleep_users()
+
+        if not users:
+            self.log.warning("No sleeping users result")
+            return None
+
+        for u in users:
+            try:
+                tg_id = int(u[0])
+                await self.bot.client.send_photo(
+                    chat_id=tg_id, photo=pic, caption=msg, reply_markup=buttons
+                )
+                self.log.info("Sent message to sleep user %s", tg_id)
+            except Exception as e:
+                self.log.warning("Sent to sleep user %s info failed: %s", tg_id, e)
