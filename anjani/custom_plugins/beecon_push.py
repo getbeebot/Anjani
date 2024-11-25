@@ -148,12 +148,19 @@ class BeeconPushPlugin(plugin.Plugin):
         )
 
         users = await self.mysql.get_sleep_users()
+        active_users = await self.mysql.get_active_users()
 
-        if not users:
+        self.log.debug("All users %s, active users: %s", users, active_users)
+
+        sleep_users = list(set(users) - set(active_users))
+
+        self.log.debug("Sleeping users: %s", sleep_users)
+
+        if not sleep_users:
             self.log.warning("No sleeping users result")
             return None
 
-        for u in users:
+        for u in sleep_users:
             try:
                 tg_id = int(u[0])
                 await self.bot.client.send_photo(
