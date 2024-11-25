@@ -260,7 +260,7 @@ class MysqlPoolClient:
         return await self.query(sql)
 
     async def get_active_users(self):
-        sql = "SELECT biz_user_id FROM (SELECT DISTINCT u.user_id FROM tz_user u LEFT JOIN bot_user_action a ON u.user_id = a.user_id WHERE a.create_time <= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AS r JOIN tz_app_connect AS tac ON r.user_id = tac.user_id"
+        sql = "SELECT biz_user_id FROM (SELECT DISTINCT u.user_id FROM tz_user u LEFT JOIN bot_user_action a ON u.user_id = a.user_id WHERE a.create_time > DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AS r JOIN tz_app_connect AS tac ON r.user_id = tac.user_id"
         return await self.query(sql)
 
     async def get_sleep_users(self):
