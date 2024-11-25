@@ -149,6 +149,9 @@ class BeeconPushPlugin(plugin.Plugin):
 
         users = await self.mysql.get_sleep_users()
         active_users = await self.mysql.get_active_users()
+
+        self.log.debug("All users %s, active users: %s", users, active_users)
+
         sleep_users = list(set(users) - set(active_users))
 
         self.log.debug("Sleeping users: %s", sleep_users)
